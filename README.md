@@ -1,10 +1,20 @@
 # Makhluk Kecil 3D — playtest build
 
 A small creature-raising game that runs entirely in the browser. This repository is the
-static build served through GitHub Pages: open the Pages URL on your phone and play.
+static build served through GitHub Pages. Play it at
+https://irf4n-muhammad.github.io/simul-game/ on your phone.
 
 Build: **v42**. The game clock runs in real time (one real day = one game day), so a
 creature grows over weeks, not minutes.
+
+## Install it like an app
+
+- Android (Chrome): open the link, then menu ⋮ → **Install app** (or **Add to Home screen**).
+- iPhone (Safari): open the link, then Share → **Add to Home Screen**.
+
+Install first, then always play from that icon: the installed app and the browser tab
+keep separate saves. If you already started in the browser, use **Back up** there and
+**I have a backup** in the installed app.
 
 ## For testers
 
