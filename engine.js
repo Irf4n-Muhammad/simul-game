@@ -488,6 +488,7 @@ function simulate_day(c, day, home) {
     if (!events.length && !x.boost) x.say(AMBIENT[x.phase](x));
   }
   if (HOOKS.status) HOOKS.status(x, dramas, events);  // skill, karier, momen penting, dadu (status.js)
+  if (HOOKS.keinginan) HOOKS.keinginan(x, { events, dramas, lineAt });  // keinginan makhluk: kedaluwarsa, tercapai, muncul (wants.js)
 
   const ph = x.phase;
   if (ph === "anak" || ph === "remaja") x.stat("kecerdasan", 0.08 + x.t("rajin") / 1500);

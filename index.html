@@ -559,7 +559,7 @@ svg { stroke: currentColor; }
 .fade.on { opacity: .7; }
 
 .sheet-wrap { position: absolute; inset: 0; background: rgba(30,24,20,.32); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center; padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
-.card { width: 100%; background: var(--paper); border-radius: 26px; box-shadow: 0 20px 50px rgba(30,20,10,.25); padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; animation: slide .35s cubic-bezier(.2,1,.3,1); max-height: 82%; overflow: auto; }
+.card { position: relative; width: 100%; background: var(--paper); border-radius: 26px; box-shadow: 0 20px 50px rgba(30,20,10,.25); padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; animation: slide .35s cubic-bezier(.2,1,.3,1); max-height: 82%; overflow: auto; }
 /* isi lembar nggak boleh ikut mengkerut waktu kepanjangan: lembarnya yang scroll, tombolnya tetap utuh */
 .card > * { flex-shrink: 0; }
 @keyframes slide { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
@@ -586,7 +586,7 @@ svg { stroke: currentColor; }
 .sr { position: absolute; left: -9999px; }
 @media (prefers-reduced-motion: reduce) { .need.low, .alert { animation: none } }
 
-#app.in-town .hud-bottom, #app.in-town .needs, #app.in-town .moment, #app.in-town .toast, #app.in-town .hint, #app.in-town #floats { display: none !important; }
+#app.in-town .hud-bottom, #app.in-town .needs, #app.in-town .moment, #app.in-town .today, #app.in-town .care, #app.in-town .toast, #app.in-town .hint, #app.in-town #floats { display: none !important; }
 .town-ui { position: absolute; inset: 0; pointer-events: none; }
 .sub.ver { display: block; text-align: center; opacity: .45; margin-top: 10px; font-size: 11px; user-select: none; }
 .dev-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.06); } .dev-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; } .dev-row small { opacity: .55; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dev-row input { width: 44%; margin: 0; }
@@ -632,6 +632,16 @@ svg { stroke: currentColor; }
 .daybar i { display: block; height: 100%; background: var(--ink); }
 .moment { pointer-events: auto; align-self: center; display: flex; align-items: center; gap: 8px; max-width: 100%; font-weight: 700; font-size: 12.5px; border-radius: 999px; padding: 7px 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .moment::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; box-shadow: 0 0 0 3px rgba(194,112,79,.2); }
+/* v43: the Today line (one sentence about what matters now), the "?" that replays a door tour, the phone "?" that replays an app intro */
+.today { pointer-events: auto; align-self: center; display: flex; align-items: center; gap: 8px; max-width: 100%; font-weight: 700; font-size: 12.5px; border-radius: 999px; padding: 7px 14px 7px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--glass-strong); color: var(--ink); border: 0; box-shadow: 0 2px 10px rgba(60,40,20,.12); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.today i { font-style: normal; font-size: 15px; line-height: 1; flex: none; }
+.today span { overflow: hidden; text-overflow: ellipsis; }
+.today.new { box-shadow: 0 0 0 2px var(--gold), 0 4px 14px rgba(212,168,83,.35); }
+.today.quiet { background: var(--glass); color: var(--ink-soft); font-weight: 600; }
+.qmark { position: absolute; top: 14px; right: 14px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(46,42,38,.08); color: var(--ink-soft); font-weight: 800; font-size: 14px; display: grid; place-items: center; padding: 0; }
+.town-q { position: absolute; top: 76px; right: 16px; pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--ink-soft); font-weight: 800; font-size: 15px; display: grid; place-items: center; padding: 0; box-shadow: var(--shadow); }
+.ph-q { position: absolute; z-index: 96; top: 52px; right: 14px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(120,120,128,.38); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; padding: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.want-ic { font-style: normal; font-size: 22px; line-height: 1; width: 30px; text-align: center; flex: none; }
 .round.dice { position: relative; font-weight: 800; font-size: 20px; }
 .round.dice .badge { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--paper); }
 .tabs { display: flex; gap: 4px; background: rgba(46,42,38,.06); padding: 4px; border-radius: 999px; }
@@ -1008,6 +1018,7 @@ svg { stroke: currentColor; }
     </div>
     <div class="needs" id="needs"></div>
     <div class="care" id="careStrip" hidden></div>
+    <button class="today" id="today" hidden><i id="todayIc"></i><span id="todayTx"></span></button>
     <button class="moment" id="momentPill" hidden></button>
   </div>
 
@@ -1017,6 +1028,7 @@ svg { stroke: currentColor; }
   <div id="floats"></div>
   <div class="town-ui" id="townUI" hidden>
     <div class="hood-chip" id="hoodName">Old Town</div>
+    <button class="town-q" id="townQ" aria-label="How the town works">?</button>
     <div class="town-bottom">
       <span class="town-hint">Drag to walk the street · tap a house</span>
       <button class="big" id="homeBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4Z"/><path d="M10 20v-5h4v5"/></svg>Back home</button>
@@ -1071,6 +1083,7 @@ svg { stroke: currentColor; }
 <script src="work.js"></script>
 <script src="pets.js"></script>
 <script src="mag.js"></script>
+<script src="wants.js"></script>
 <script src="game.js"></script>
 <script src="net.js"></script>
 <script>
@@ -1086,7 +1099,7 @@ const md = s => esc(s).replace(/_(.+?)_/g, "<em>$1</em>");
 const SAVE_KEY = "makhluk-kecil-3d-v2", CHAT_KEY = SAVE_KEY + "-chat";
 // ---- build: versi dan flag Dev. Tombol uji (mode test, bintang terbuka, kecepatan waktu, lembar Dev) cuma tampil kalau Dev nyala:
 // buka dengan ?dev=1 (nempel di browser ini sampai ?dev=0), atau ketuk nomor versi di lembar Family 7 kali. Build rilis: buang semua blok DEV.
-const APP_VER = "v42";
+const APP_VER = "v43";
 const DEV = (() => { try { const u = new URLSearchParams(location.search); if (u.has("dev")) localStorage.setItem("mk-dev", u.get("dev") === "0" ? "0" : "1"); return localStorage.getItem("mk-dev") === "1"; } catch (e) { return false; } })();
 const SPEEDS = [["Real time", 86400000], ["1 day = 1 min", 60000], ["1 day = 10 sec", 10000], ["1 day = 2 sec", 2000]];
 const PHASE_EN = { bayi: "Baby", anak: "Child", remaja: "Teen", dewasa: "Adult", tua: "Elder", meninggal: "Passed away", merantau: "Moved away" };
@@ -1132,7 +1145,7 @@ function drawHud() {
   $("ageLbl").textContent = `${PHASE_EN[cur.fase] || cur.fase} · ${fmtAge(cur.umur)} · Day ${game.home.last_day + 1}`;
   $("face").style.background = "#" + (COLOR[cur.rupa.warna] || 0xcccccc).toString(16).padStart(6, "0");
   $("bottom").style.opacity = gone ? 0.5 : 1;
-  drawMoment(); drawDice();
+  drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe();
 }
 
 // ================================================================ three.js scene
@@ -1514,7 +1527,7 @@ const blob = mesh(new THREE.PlaneGeometry(3.0, 3.0), F(0xffffff, { map: blobTex,
 blob.rotation.x = -Math.PI / 2;
 function buildCreature(m) {
   if (K) scene.remove(K.root);
-  K = makeCreature(m, scene);
+  K = makeCreature(m, scene); bubbleKey = null;
 }
 // builds a creature into any parent (the room, or the photo studio)
 function makeCreature(m, parent) {
@@ -1821,7 +1834,7 @@ const COACH = [
   { on: "care", el: () => $("actBtn"), text: n => `${n} is hungry. Tap <b>${$("actBtn").dataset.lbl || "the big button"}</b> to feed them, and pick what they eat.` },
   { on: "room", el: () => $("next"), text: () => `Tap the arrow or swipe to visit the other rooms. Each one has its own care.` },
   { on: "ok", el: () => $("careStrip"), text: n => `These are today's care tasks. <b>Morning</b>: breakfast and a bath. <b>Evening</b>: dinner and bedtime. Missing one day is fine, ${n} manages. Miss them day after day and ${n} gets tired and does worse at big moments. Going away? Tell the family in <b>Family</b>.` },
-  { on: "ok", phone: true, el: () => $("lifeBtn"), text: () => `Your <b>phone</b> has everything else: family chats, the town feed, the shop, and ${cur ? cur.nama + "'s" : "their"} constellations.` },
+  { on: "ok", phone: true, el: () => $("lifeBtn"), text: n => `Your <b>phone</b> starts small: family chat, photos and the calendar. New apps show up as ${n} grows.` },
   { on: "ok", el: () => null, text: n => `Time here runs like real time. Come back ${careHalfNow() ? "tomorrow morning for breakfast" : "this evening for dinner and bedtime"}. ${n} will be waiting.` },
 ];
 let coachEl = null, coachRing = null;
@@ -1829,11 +1842,16 @@ function coachShow() {
   if (!state || state.tut == null || state.tut >= COACH.length || !cur || sheetKind || PH) { coachHide(); return; }
   const st = COACH[state.tut], n = esc(cur.nama), target = st.el();
   hideHint();
-  if (!coachEl) { coachEl = document.createElement("div"); coachEl.className = "coach"; $("app").appendChild(coachEl); coachRing = document.createElement("div"); coachRing.className = "coach-ring"; $("app").appendChild(coachRing); }
+  coachMake();
   const last = state.tut === COACH.length - 1;
   coachEl.innerHTML = `<div class="bub">${st.text(n)}<div class="row2"><small>${state.tut + 1} of ${COACH.length}</small><span>${st.on === "ok" ? `<button data-c="ok">${last ? "Let's go" : "Got it"}</button>` : `<button class="skip" data-c="skip">Skip tour</button>`}</span></div></div>`;
   Tele.intro("tur", state.tut, "tampil");
   coachEl.querySelector("[data-c]").onclick = e => { const skip = e.target.dataset.c === "skip"; Tele.intro("tur", state.tut, skip ? "lewat" : "lanjut"); if (skip) state.tut = COACH.length; else state.tut += 1; save(); coachShow(); };
+  coachPlace(target);
+}
+function coachMake() { if (!coachEl) { coachEl = document.createElement("div"); coachEl.className = "coach"; $("app").appendChild(coachEl); coachRing = document.createElement("div"); coachRing.className = "coach-ring"; $("app").appendChild(coachRing); } }
+// the bubble sits under the thing it talks about (or above it, when that thing is low on the screen), with a ring around it
+function coachPlace(target) {
   const app = $("app").getBoundingClientRect();
   if (target && !target.hidden) {
     const r = target.getBoundingClientRect(), pad = 6;
@@ -1960,7 +1978,7 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || (TOWN && 
 // ================================================================ sheets
 const sheet = $("sheet");
 let sheetKind = null;
-function openSheet(kind, html) { if (PH) closePhone(true); coachHide(); sheetKind = kind; Tele.layar("lembar", kind); sheet.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; sheet.hidden = false; }
+function openSheet(kind, html) { if (PH) closePhone(true); if (tour) tourEnd("lanjut"); coachHide(); sheetKind = kind; Tele.layar("lembar", kind); sheet.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; sheet.hidden = false; sheetQ(kind); }
 function closeSheet() { sheet.classList.remove("clear"); if (TOWN) TOWN.clearPreview(); sheet.hidden = true; sheet.innerHTML = ""; sheetKind = null; if (state && state.tut < COACH.length) setTimeout(coachShow, 400); }
 sheet.addEventListener("click", e => { if (e.target === sheet && sheetKind !== "setup") closeSheet(); });
 
@@ -1991,7 +2009,7 @@ function showSetup() {
   $("hatch").onclick = () => {
     state = { akun: "akun-" + Math.random().toString(36).slice(2, 10), nama: $("nm").value.trim() || null,
       aturan: { sekolah: "wajib", jam_malam: null, pacaran: null, jajan: null }, wakil: draft.wakil,
-      hadir: [], jawaban: {}, aksi: [], dilihat: -1, jam: { base_ts: Date.now(), base_day: 0, ms: DEV ? draft.ms : 86400000 } };
+      hadir: [], jawaban: {}, aksi: [], dilihat: -1, tur_pintu: {}, jam: { base_ts: Date.now(), base_day: 0, ms: DEV ? draft.ms : 86400000 } };
     Tele.intro("telur", "setup", "menetas", { nama: state.nama ? 1 : 0, wakil: state.wakil, ms: state.jam.ms });
     save(); closeSheet(); boot();
     setTimeout(() => { play("jump", 800); burst(["★", "♥"], 8, "#D4A853"); say(`Hi! I'm ${cur?.nama}!`, 2500); }, 300);
@@ -2493,6 +2511,7 @@ function showProfile(id) {
     <p>${fmtAge(m.umur)} old${parents.length ? ` · child of ${esc(parents.join(" & "))}` : ""}${m.pasangan ? ` · with ${esc(m.pasangan)}` : ""}</p>
     <div>${habitsOf(id).map(h => `<span class="tag">${esc(HABITS[h].label)}</span>`).join("")}</div>
     ${tasteLine(m)}
+    ${wantsBox(id, here)}
     ${m.bekas.length ? `<div class="fieldset"><span class="lbl">Shaped by</span><div class="list">${m.bekas.map(b => `<div class="line"><span class="grow"><b>${esc(b.label)}</b><small class="sub">${esc(b.why || "")}${b.why ? " · " : ""}${fmtDate(b.d)}. Since then: ${esc(b.note)}.</small></span></div>`).join("")}</div></div>` : ""}
     ${s ? `<div class="box"><h3>${esc(s.best ? s.best.title : "No career yet")}</h3><small>${s.best ? esc(s.best.label) + " · " : ""}${coins(s.wallet)} · prestige ${s.prestige}</small></div>
       ${s.rares.length ? `<div>${s.rares.map(r => `<span class="tag rare">${esc(r.label)} · ${r.share}</span>`).join("")}</div>` : ""}
@@ -2569,6 +2588,7 @@ function showDev(tab = "main") {
     ${tab === "main" ? `<button class="secondary" id="devStarBtn">All stars open ${state.dev_stars ? "(on)" : "(off)"}</button>
       <div class="fieldset"><span class="lbl">Time speed (from now on; the past stays)</span><div class="chips">${SPEEDS.map(([l, ms]) => `<button class="chip" data-devms="${ms}" aria-pressed="${state.jam.ms === ms}">${l}</button>`).join("")}</div></div>
       <button class="secondary" id="devIntroBtn">Show the app intro cards again</button>
+      <div class="row2"><button class="secondary" id="devDoorBtn">Open every door ${state.dev_pintu ? "(on)" : "(off)"}</button><button class="secondary" id="devTourBtn">Replay door tours</button></div>
       <button class="secondary" id="devWorldBtn">Fire a test world event (${(game.home.world.events || []).length} so far)</button>
       <div class="row2"><button class="secondary" id="devBtnTop">+100 ${Cosmetics.CURRENCY.label} (${Cosmetics.saldo(state)})</button><button class="secondary" id="devCosAll">Own every cosmetic</button></div>
       <button class="secondary" id="devCosClear">Reset the closet</button>
@@ -2595,6 +2615,8 @@ function showDev(tab = "main") {
       else state.jam = { base_ts: Date.now(), base_day: dayFloat(), ms };
       save(); showDev("main"); tick();
     });
+    $("devDoorBtn").onclick = () => { state.dev_pintu = !state.dev_pintu; save(); refresh(); showDev("main"); };
+    $("devTourBtn").onclick = () => { state.tur_pintu = {}; save(); closeSheet(); say("The door tours will show again."); };
     $("devIntroBtn").onclick = () => { try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith("intro:")) localStorage.removeItem(k); } } catch (e) {} say("The intro cards will show again."); };
     $("devBtnTop").onclick = () => { Cosmetics.topUp(state, 100, "dev"); save(); showDev("main"); };
     $("devCosAll").onclick = () => { let n = 0; for (const x of Cosmetics.ITEMS) if (Cosmetics.grant(state, x.id, "dev")) n++; save(); say(`${n} items added to the closet.`); showDev("main"); };
@@ -2706,6 +2728,160 @@ function tasteLine(m) {
   if (!like.length && !no.length) return "";
   return `<p class="sub">${like.length ? `Loves ${like.map(k => F[k]).join(" and ")}.` : ""}${no.length ? ` Not a fan of ${no.map(k => F[k]).join(" or ")}.` : ""}</p>`;
 }
+// ================================================================ v43: doors, the Today line, door tours, wants
+// Pintu (wants.js): fitur muncul lewat cerita, satu per hari di minggu pertama. Yang belum terbuka disembunyikan, bukan dikunci.
+const doorsNow = () => game ? Wants.doors(game.home, today(), !!(state && state.dev_pintu)) : {};
+function drawDoors() {
+  const P = doorsNow();
+  $("diceBtn").hidden = !P.dadu; $("planBtn").hidden = !P.plan; $("townBtn").hidden = !P.town;
+}
+// ---- the Today line: one sentence about what matters right now, in a fixed order. Computed from the state every time, never saved.
+let todayKey = null, todayCache = null;
+const twSeen = new Set();
+function todayLine() {
+  if (!cur || !game) return null;
+  const gone = cur.fase === "meninggal" || cur.fase === "merantau";
+  if (gone) return null;
+  const c = game.home.get(cur.id), d = today(), n = cur.nama;
+  if (game.pending) return { k: "dilema", ic: "💬", tx: `${game.pending.name} needs an answer`, go: showDilemma, now: true };
+  const logsToday = feed.filter(l => l.day === d), P = doorsNow();
+  for (const l of logsToday) for (const e of l.events) { const D = Wants.doorOf(e); if (D && P[D.id]) return { k: "pintu:" + D.id, ic: "✨", tx: `New today: ${D.label}`, go: () => tourStart(D.id, true), now: true }; }
+  const mom = logsToday.filter(l => l.cid === cur.id).flatMap(l => Moments.detect(l)).filter(m => m.i >= 2 && m.line).sort((a, b) => b.i - a.i)[0];
+  if (mom) return { k: "momen:" + mom.tag, ic: mom.kind === "sedih" ? "🌧" : mom.kind === "tegang" ? "⏳" : "✨", tx: mom.line, go: showDiary };
+  const v = canCare() ? careView() : null;
+  if (v) { const open = v.items.filter(i => i.open && !i.done); if (open.length) { const i = open[0]; return { k: "rawat:" + i.id + ":" + v.half, ic: v.half ? "☾" : "☀", tx: `${i.label} for ${n}${open.length > 1 ? ` · ${open.length} to do` : ""}`, go: () => { const b = $("careStrip").querySelector(`[data-care="${i.id}"]`); if (b) b.click(); } }; } }
+  const m = nextMoment(); if (m && m.day - d <= 2) return { k: "momen:" + m.id, ic: "📌", tx: `${fmtWhen(m.day)}: ${nameOf(m.cid)}, ${m.label}`, go: () => showMoment(m) };
+  const wants = c ? Wants.active(c, d, game.home) : []; if (wants.length) { const w = wants[0]; return { k: "ingin:" + w.id, ic: w.ic, tx: `${n} wants ${w.label}`, go: () => showProfile(cur.id) }; }
+  if (v) return { k: "beres:" + v.half, ic: "✓", tx: v.half ? `All done for today. ${n} is settled.` : `Morning done. Come back this evening.`, quiet: true };
+  return { k: "sepi", ic: "·", tx: "A quiet day in Old Town.", quiet: true };
+}
+function drawToday() {
+  const el = $("today"); if (!el || !state) return;
+  const L = state.tut < COACH.length || (TOWN && TOWN.on) ? null : todayLine();
+  el.hidden = !L;
+  if (!L) { todayKey = null; todayCache = null; return; }
+  if (L.k !== todayKey) {
+    todayKey = L.k; $("todayIc").textContent = L.ic || ""; $("todayTx").textContent = L.tx;
+    el.classList.toggle("new", !!L.now); el.classList.toggle("quiet", !!L.quiet);
+    Tele.ev("today", { k: L.k.split(":")[0], a: "tampil" });
+  }
+  todayCache = L;
+}
+$("today").onclick = () => { const L = todayCache; if (!L || !L.go) return; Tele.ev("today", { k: L.k.split(":")[0], a: "ketuk" }); hideHint(); L.go(); };
+
+// ---- door tours: one to three coach bubbles the first time a door opens. Skippable; the "?" on a sheet, in town, or on the phone replays one.
+const TOURS = {
+  dadu: { el: () => $("diceBtn"), steps: n => [`This is the <b>die</b>. Roll it once a day. A high roll helps on ${n}'s big days.`, `Keep up to two good rolls for a day that matters. Luck can't be bought, and there's no second roll.`] },
+  plan: { el: () => $("planBtn"), steps: n => [`The <b>daily plan</b>. Pick what ${n}'s days look like, or let them choose.`, `They get bored of the same thing after five days. The older they get, the more they decide on their own.`] },
+  town: { el: () => (TOWN && TOWN.on) ? $("homeBtn") : $("townBtn"), steps: n => [`The <b>town</b>. Walk the street and tap a place to look inside.`, `A few places are open now. More open as the town grows, and ${n} will have reasons to go.`] },
+  chirp: { el: () => $("lifeBtn"), steps: n => [`<b>Chirp</b> is on the phone now: the town's feed. Neighbours, news, and one day ${n}'s own posts.`] },
+  stars: { el: () => $("lifeBtn"), steps: n => [`<b>Stars</b> is on the phone: ${n}'s talents, drawn as constellations.`, `Points come from what ${n} actually does. You choose which star to light next.`] },
+  mag: { el: () => $("lifeBtn"), steps: () => [`The <b>Magazine</b> is on the phone: a new issue every month about the town, and sometimes about your family.`] },
+  burrow: { el: () => $("lifeBtn"), steps: n => [`${n} has a phone of their own now. <b>Burrow</b> is where the town's jobs are: a profile, offers, and news from people they know.`, `You can suggest a job. ${n} decides whether to apply.`] },
+  bazaar: { el: () => $("lifeBtn"), steps: n => [`The <b>Bazaar</b> is open on the phone: things to buy, new and second-hand, and limited drops.`, `It's ${n}'s money. You can suggest; they can say no.`] },
+};
+const TOUR_VIS = { burrow: () => cur && phKind(game.home.get(cur.id)) !== "tablet", bazaar: () => cur && phKind(game.home.get(cur.id)) !== "tablet" };
+let tour = null;
+function tourMaybe() {
+  if (!state || !game || !cur || tour || sheetKind || PH || (TOWN && TOWN.on) || $("townBtn").disabled || coachEl || state.tut < COACH.length || game.pending) return;
+  if (cur.fase === "meninggal" || cur.fase === "merantau") return;
+  const P = doorsNow(), T = (state.tur_pintu ||= {});
+  for (const D of Wants.DOORS) if (P[D.id] && !T[D.id] && TOURS[D.id] && (!TOUR_VIS[D.id] || TOUR_VIS[D.id]())) { tourStart(D.id, false); return; }
+}
+function tourStart(id, ulang) {
+  const T = TOURS[id]; if (!T || !cur) return;
+  if (sheetKind) closeSheet(); if (PH) closePhone(true); coachHide();
+  tour = { id, i: 0, ulang: !!ulang };
+  Tele.intro("pintu", id, ulang ? "ulang" : "tampil");
+  tourShow();
+}
+function tourShow() {
+  if (!tour || !cur) { coachHide(); return; }
+  const T = TOURS[tour.id], steps = T.steps(esc(cur.nama)), target = T.el(), last = tour.i >= steps.length - 1;
+  hideHint(); coachMake();
+  coachEl.innerHTML = `<div class="bub">${steps[tour.i]}<div class="row2"><small>${steps.length > 1 ? `${tour.i + 1} of ${steps.length}` : ""}</small><span>${last ? "" : `<button class="skip" data-c="skip">Skip</button>`}<button data-c="ok">${last ? "Got it" : "Next"}</button></span></div></div>`;
+  coachEl.querySelectorAll("[data-c]").forEach(b => b.onclick = e => { if (e.target.dataset.c === "skip") return tourEnd("lewat"); if (last) return tourEnd("lanjut"); tour.i += 1; tourShow(); });
+  coachPlace(target);
+}
+function tourEnd(how) {
+  if (!tour) return;
+  Tele.intro("pintu", tour.id, how);
+  (state.tur_pintu ||= {})[tour.id] = 1; save();
+  tour = null; coachHide();
+}
+const SHEET_TOUR = { plan: "plan", dice: "dadu" };
+function sheetQ(kind) {
+  const id = SHEET_TOUR[kind]; if (!id || !TOURS[id]) return;
+  const b = document.createElement("button"); b.className = "qmark"; b.textContent = "?"; b.setAttribute("aria-label", "How this works");
+  b.onclick = () => tourStart(id, true);
+  const card = sheet.querySelector(".card"); if (card) card.appendChild(b);
+}
+$("townQ").onclick = () => tourStart("town", true);
+
+// ---- phone: intro cards for the apps that open through a door, and the "?" that replays whichever card this screen has
+const PH_INTRO = {
+  chirp: n => [["🐦", "Chirp", "The town's feed. Neighbours post here, and news lands here first."], ["💬", "Your family too", `One day ${n} will post here. What they say is up to them.`]],
+  stars: n => [["✨", "Stars", `${n}'s talents, drawn as constellations.`], ["🔭", "Light one up", `Points come from what ${n} actually does. Tap a star next to a lit one to light it.`]],
+  mag: () => [["📰", "The Magazine", "A new issue every month: the town, its people, and sometimes your family."]],
+  burrow: n => [["🐾", "Burrow", `The town's work network: a profile, job offers, and news from people ${n} knows.`], ["🤝", "You suggest, they decide", `Point ${n} at a job. They apply if they like it.`]],
+  bazaar: n => [["🛍️", "The Bazaar", "New things, second-hand finds and limited drops."], ["🪙", "Their money", `It's ${n}'s wallet. Suggest a buy; they can say no.`]],
+};
+const PH_INTRO_COL = { chirp: ["#D99A12", "#FFF1CC"], stars: ["#2B3270", "#E6E8F5"], mag: ["#C8102E", "#FBE3E6"], burrow: ["#1F7A6B", "#DDF0EC"], bazaar: ["#222", "#ECECEC"] };
+function phIntroFor(id) {
+  if (!PH || !PH_INTRO[id]) return;
+  const html = baIntro(id, PH_INTRO[id](cur ? cur.nama : "they"));
+  if (html) { const tmp = document.createElement("div"); tmp.innerHTML = html; baIntroBind(tmp); const [col, soft] = PH_INTRO_COL[id] || ["#C2704F", "#F6E8E0"]; PH.screen.querySelectorAll(":scope > .ba-intro").forEach(e => { e.style.zIndex = 97; e.style.setProperty("--ba", col); e.style.setProperty("--ba-soft", soft); }); }
+  phQ(id, () => phIntroFor(id));
+}
+function phIntroAfter(view, arg) {
+  if (!PH) return;
+  if (view === "chirp" || view === "mag") return phIntroFor(view);
+  if (PH.introKey) phQ(PH.introKey, () => phGo(view, arg));
+}
+const PH_Q_TOP = { stars: 108, mag: 84, burrow: 5, bazaar: 6 };
+function phQ(k, again) {
+  if (!PH) return;
+  PH.screen.querySelectorAll(":scope > .ph-q").forEach(e => e.remove());
+  const b = document.createElement("button"); b.className = "ph-q"; b.textContent = "?"; b.setAttribute("aria-label", "How this app works");
+  if (PH_Q_TOP[k] != null) b.style.top = PH_Q_TOP[k] + "px";
+  b.onclick = () => { try { localStorage.removeItem("intro:" + k); } catch (e) {} Tele.intro("app", k, "ulang"); again(); };
+  PH.screen.appendChild(b);
+}
+
+// ---- wants: what the creature is asking for. The list in the profile, and a thought bubble above their head in the room.
+function wantsBox(id, here) {
+  const c = game.home.get(id); if (!c) return "";
+  const W = here ? Wants.active(c, today(), game.home) : [], done = Wants.doneCount(c), cita = c.info.cita;
+  if (!W.length && !done && !cita) return "";
+  return `<div class="fieldset"><span class="lbl">Wants</span>
+    ${W.length ? `<div class="list">${W.map(w => `<div class="line"><i class="want-ic">${w.ic}</i><span class="grow"><b>${esc(w.label)}</b><small class="sub">${w.days ? `Since ${w.days} day${w.days > 1 ? "s" : ""} ago.` : "Since today."}${w.besar ? " A big one." : ""}</small></span></div>`).join("")}</div>` : here ? `<span class="sub">Nothing in particular right now.</span>` : ""}
+    ${cita ? `<span class="sub">Dream: ${esc(cita)}.</span>` : ""}${done ? `<span class="sub">${done} wish${done > 1 ? "es" : ""} come true so far.</span>` : ""}</div>`;
+}
+let bubbleKey = null;
+function bubbleSync() {
+  if (!K || !cur || !game) return;
+  const gone = cur.fase === "meninggal" || cur.fase === "merantau", c = game.home.get(cur.id);
+  const w = !gone && c ? Wants.active(c, today(), game.home)[0] : null, key = w ? w.id : null;
+  if (key === bubbleKey && !!K.bubble === !!w) return;
+  if (K.bubble) { K.root.remove(K.bubble); K.bubble.material.map.dispose(); K.bubble.material.dispose(); K.bubble = null; }
+  bubbleKey = key;
+  if (!w) return;
+  const tex = canvasTex((g, W, H) => {
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = "rgba(255,253,248,.97)"; g.strokeStyle = "rgba(60,40,20,.14)"; g.lineWidth = 4;
+    const bump = (x, y, r, stroke = true) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); if (stroke) g.stroke(); };
+    bump(W * 0.36, H * 0.26, W * 0.2); bump(W * 0.64, H * 0.24, W * 0.21); bump(W * 0.24, H * 0.5, W * 0.17); bump(W * 0.76, H * 0.5, W * 0.17); bump(W * 0.5, H * 0.56, W * 0.26);
+    g.beginPath(); g.ellipse(W / 2, H * 0.42, W * 0.36, H * 0.26, 0, 0, Math.PI * 2); g.fill();
+    bump(W * 0.36, H * 0.26, W * 0.18, false); bump(W * 0.64, H * 0.24, W * 0.19, false); bump(W * 0.5, H * 0.56, W * 0.24, false);
+    bump(W * 0.2, H * 0.84, W * 0.055); bump(W * 0.11, H * 0.93, W * 0.032);
+    g.font = `${Math.round(H * 0.36)}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "#2E2A26"; g.fillText(w.ic, W / 2, H * 0.44);
+  }, 256, 256);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  sp.scale.set(1.3, 1.3, 1); sp.position.set(1.0, 3.4, 0.3); sp.renderOrder = 20;
+  K.root.add(sp); K.bubble = sp;
+}
+
 $("diceBtn").onclick = () => { if (game) rollDice(); };
 $("momentPill").onclick = () => { const m = game && nextMoment(); if (m) showMoment(m); };
 $("lifeBtn").onclick = () => { hideHint(); if (game) showPhone(); };
@@ -2723,7 +2899,7 @@ function refresh(force) {
     cur = alive[0] || cur || v.anggota[v.anggota.length - 1]; selected = cur.id;
   }
   if (!K || K.key !== lookKey(cur)) buildCreature(cur);
-  petSync();
+  petSync(); bubbleSync();
   drawHud(); careUi();
 }
 // dev: unlimited star points. Lives in the save, and is applied while the game replays, so the stars stay lit after a reload.
@@ -2758,6 +2934,8 @@ function boot() {
   if (document.visibilityState === "visible") game.mark_attended(t);
   feed = game.advance(Math.max(-1, t - 4), null);
   feed.push(...game.advance(t, t));
+  // door tours: a save from before v43 has already used what is open today, so only new doors get a tour
+  if (state.tur_pintu == null) { state.tur_pintu = {}; if (oldSave) for (const [k, v] of Object.entries(doorsNow())) if (v) state.tur_pintu[k] = 1; save(); }
   if (game.half_now) feed.push(...game.noon(t));
   const missed = feed.filter(l => l.day > state.dilihat && !l.attended);
   for (const l of missed) for (const m of Moments.detect(l)) if (m.i >= 2) Tele.ev("momen", { k: m.kind, tag: m.tag, i: m.i, fase: l.phase, lewat: 1 });
@@ -3308,7 +3486,7 @@ function phWall(c) {
   const col = colorOf(member(c.id) || { rupa: c.rupa });
   return ph ? `url(${ph.img}) center/cover, ${col}` : `radial-gradient(circle at 30% 20%, ${col}, transparent 60%), radial-gradient(circle at 80% 90%, #2D3A63, transparent 55%), #1b1a24`;
 }
-function phApps(c) { const kid = phKind(c) === "tablet"; return PH_APPS.filter(a => !(kid && a.adult)).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets ? pwApp(c) : []); }
+function phApps(c) { const kid = phKind(c) === "tablet", P = doorsNow(); return PH_APPS.filter(a => !(kid && a.adult) && P[a.id] !== false).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets ? pwApp(c) : []); }
 function pwApp(c) { const P = c.st && c.st.pet; return [{ id: "paws", name: "Paws", bg: PW_COL, html: `<b class="pi-txt" style="font-size:27px">${P ? Pets.KINDS[P.kind].ic : "🐾"}</b>` }]; }
 function wdApp(c) { const v = Work.view(c, game.home, today()); return v ? [{ id: "ward", name: v.P.app, bg: v.P.color, html: `<b class="pi-txt" style="font-size:27px">${v.P.ic}</b>`, adult: true }] : []; }
 function phBadge(id, c) {
@@ -3327,7 +3505,8 @@ function phBadge(id, c) {
   if (id === "kindred") { const V = globalThis.Net ? Net.view(c) : null; return V && V.ready ? V.inbox.length : 0; }
   return 0;
 }
-function phNotes(c) {
+function phNotes(c) { const P = doorsNow(); return phNotes0(c).filter(n => P[n.app] !== false); }
+function phNotes0(c) {
   const day = today(), out = [];
   if (mgFresh()) {
     const I = Mag.issue(game.home, Mag.latest(day));
@@ -3368,7 +3547,7 @@ function showPhone(view = "lock") {
       <div class="ph-view" id="phView"></div><button class="ph-bar" id="phBar" aria-label="Home"><i></i></button></div></div>`;
   $("app").appendChild(el);
   PH = { el, c, kind, screen: el.querySelector("#phScreen"), view: null, app: null, q: { photos: "", calendar: "", mag: "", homes: "" } };
-  coachHide(); if (state && COACH[state.tut]?.phone) { state.tut += 1; save(); }
+  if (tour) tourEnd("lanjut"); coachHide(); if (state && COACH[state.tut]?.phone) { state.tut += 1; save(); }
   el.addEventListener("click", e => { if (e.target === el) closePhone(); });
   el.querySelector("#phBar").onclick = () => PH.view === "lock" ? phGo("home") : phHome();
   phSwipe(el.querySelector("#phScreen"));
@@ -3403,7 +3582,7 @@ function phGo(view, arg) {
   if (!PH) return;
   PH.c = game.home.get(cur.id); PH.view = view;
   Tele.layar("hp", view);
-  PH.screen.querySelectorAll(":scope > .ba-intro").forEach(e => e.remove());
+  PH.screen.querySelectorAll(":scope > .ba-intro, :scope > .ph-q").forEach(e => e.remove()); PH.introKey = null;
   const v = PH.el.querySelector("#phView"), c = PH.c;
   PH.screen.classList.toggle("dark", view === "lock" || view === "home" || view === "photo" || view === "biz" || view === "ward" || view === "paws");
   v.className = "ph-view ph-" + view;
@@ -3424,15 +3603,16 @@ function phGo(view, arg) {
   if (view === "chat" || view === "chatt") { waBind(v); mgFill(v); }
   if (view.startsWith("chirp")) { chBind(v); mgFill(v); }
   if (view === "homes") townInit().ready().then(() => { if (PH && PH.view === "homes") mgFill(v); });
+  phIntroAfter(view, arg);
 }
 function phOpen(id, go) {
   const c = PH.c;
   if (id.startsWith("biz:")) { PH.ba = { id: id.slice(4), tab: (go && go[0]) || "ops" }; phGo("biz", PH.ba); }
   else if (id === "ward") { PH.wd = { tab: "today" }; phGo("ward", PH.wd); }
   else if (id === "paws") { PH.pw = { tab: "today" }; phGo("paws", PH.pw); }
-  else if (id === "burrow") { phGo("home"); showBurrow(go ? go[0] : Career.profile(c, game.home, today()).offers.length ? "jobs" : "feed", "phone"); }
-  else if (id === "bazaar") { phGo("home"); showBazaar(go ? go[0] : "new", "phone"); if (go && go[1]) bzShow(go[0], go[1]); }
-  else if (id === "stars") { phGo("home"); showTree(c.id, "phone"); }
+  else if (id === "burrow") { phGo("home"); showBurrow(go ? go[0] : Career.profile(c, game.home, today()).offers.length ? "jobs" : "feed", "phone"); phIntroFor("burrow"); }
+  else if (id === "bazaar") { phGo("home"); showBazaar(go ? go[0] : "new", "phone"); if (go && go[1]) bzShow(go[0], go[1]); phIntroFor("bazaar"); }
+  else if (id === "stars") { phGo("home"); showTree(c.id, "phone"); phIntroFor("stars"); }
   else phGo(go ? go[0] : id, go ? go[1] : undefined);
 }
 function phBindIn(v) {
@@ -3892,6 +4072,7 @@ function baAlumni(c, b, v, T) {
 
 // ---- first open: three short cards that say what the app is for (once per app kind, per device)
 function baIntro(k, steps) {
+  if (PH) PH.introKey = k;  // the "?" on this screen replays this card
   try { if (localStorage.getItem("intro:" + k)) return ""; } catch (e) { return ""; }
   Tele.intro("app", k, "tampil");
   return `<div class="ba-intro" data-intro="${k}"><div class="ba-intro-card">${steps.map((s, i) => `<section class="${i ? "" : "on"}"><span class="ba-intro-ic">${s[0]}</span><b>${esc(s[1])}</b><p>${esc(s[2])}</p></section>`).join("")}
@@ -6283,8 +6464,11 @@ function bzItem(view) {
 // ---- photo memories: a photo is a memory of something that really happened (who, where, why)
 // event id from the simulation -> where it happened, the caption, the face, and any prop in the picture
 const W_ = (w, d = "someone") => (w && w.nama) || d;
+const wantDone = (l) => { const c = game && game.home.get(l.cid), r = c && Wants.recent(c, l.day).find(x => x[2] === "tercapai"); return r ? { id: r[1], label: Wants.labelFor(r[1], c, l.day, game.home) } : null; };
 const PHOTO = {
   malam_pertama: { place: "home", face: "calm", cap: (n) => `${n}'s first night home` },
+  keinginan_besar: { place: (l) => ({ maraton: "plaza", toko: "plaza", cinta: "park", teman: "park" })[(wantDone(l) || {}).id] || "home", face: "joy",
+    cap: (n, w, l) => { const r = wantDone(l); return r ? `${n} wanted ${r.label}. Got it.` : `${n}'s big wish came true`; } },
   senyum_pertama: { place: "home", face: "joy", cap: (n) => `${n}'s first smile` },
   ketawa_pertama: { place: "home", face: "joy", cap: (n) => `${n}'s first laugh` },
   duduk_sendiri: { place: "home", face: "surprise", cap: (n) => `${n} sat up all by themselves` },
@@ -6367,7 +6551,7 @@ function photoOps(d = game && today()) {
       const sp = photoSpec(eid), key = `${l.cid}:${l.day}:${eid}`;
       if (!sp || seen.has(key) || out.some(o => o.key === key)) continue;
       const a = (l.ach || []).find(x => "ach:" + x.id === eid), who = peopleOf(l, eid);
-      out.push({ key, eid, cid: l.cid, name: l.name, day: l.day, phase: l.phase, age: l.age, place: sp.place, face: sp.face, prop: sp.prop, who,
+      out.push({ key, eid, cid: l.cid, name: l.name, day: l.day, phase: l.phase, age: l.age, place: typeof sp.place === "function" ? sp.place(l) : sp.place, face: sp.face, prop: sp.prop, who,
         caption: sp.cap(l.name, who[0], l, a), line: ((l.lineAt && l.lineAt[eid]) || (a && a.label) || "").replace(/_/g, "") });
     }
   }
@@ -6545,6 +6729,7 @@ function tick() {
     logs.push(...(game.noon_logs || [])); game.noon_logs = [];
     if (logs.length) {
       feed.push(...logs); if (feed.length > 3000) feed = feed.slice(-2000);
+      if (visible) for (const l of logs) if (l.events.some(e => e.startsWith("keinginan_"))) { const c = game.home.get(l.cid); for (const r of (c ? Wants.recent(c, l.day) : [])) { const key = `${l.cid}|${r[0]}|${r[1]}|${r[2]}`; if (!twSeen.has(key)) { twSeen.add(key); Tele.ev("keinginan", { a: r[2], k: r[1], fase: l.phase }); } } }
       // momen greget (moments.js) dicatat buat telemetry: nanti dilihat apa pemain lebih lama di app atau balik besoknya sesudah momen jenis ini
       if (visible) for (const l of logs) for (const m of Moments.detect(l)) Tele.ev("momen", { k: m.kind, tag: m.tag, i: m.i, fase: l.phase });
       for (const l of logs) {
@@ -6583,7 +6768,7 @@ function townInit() {
 }
 async function enterTown() {
   if (!game || !globalThis.Town) return;
-  hideHint(); closeSheet(); Tele.layar("app", "town");
+  hideHint(); closeSheet(); if (tour) tourEnd("lanjut"); Tele.layar("app", "town");
   townInit();
   $("townBtn").disabled = true;
   await TOWN.enter(townData());

@@ -4,6 +4,7 @@
 "use strict";
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
+  const W = (typeof module !== "undefined") ? require("./wants.js") : globalThis.Wants;  // keinginan: dicek sesudah tiap tindakan pemain
   const NEED_MAP = { makan: "lapar", mandi: "kebersihan", tidur: "energi" };
 
   // ---------------------------------------------------------------- rawat pagi dan malam
@@ -310,7 +311,17 @@
       return { log: rng.choice(lines), quote };
     }
 
+    // Sesudah tindakan yang diterima: keinginan makhluk ikut dicek (wants.js). Jalan saat main dan saat replay, jadi hasilnya sama.
     _act(cid, kind, day) {
+      this.refused = null;
+      const ok = this._act0(cid, kind, day);
+      if (ok && !this.refused && W) {
+        const c = this.home.get(cid);
+        if (c && c.alive(day) && !("keluar" in c.info) && !kind.startsWith("net:") && !kind.startsWith("titip:")) W.afterAct(this, c, kind, day);
+      }
+      return ok;
+    }
+    _act0(cid, kind, day) {
       if (kind.startsWith("titip:")) return this._titip(kind.slice(6), day);
       const no = this._refuse(cid, kind, day);
       if (no === "again") return false;

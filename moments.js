@@ -7,6 +7,8 @@
 (function () {
   // tag storylet -> [jenis, intensitas 1..3]
   const TAG = {
+  // keinginan makhluk tercapai (wants.js): kecil = puncak 1, besar = puncak 2 (dapat foto)
+  keinginan_tercapai: ["puncak", 1], keinginan_besar: ["puncak", 2],
   // tonggak bayi minggu 1–2 dan tambalan kuliah/tua (Blok A nomor 8)
   malam_pertama: ["puncak", 1], senyum_pertama: ["puncak", 2], ketawa_pertama: ["puncak", 2], kenal_nama: ["puncak", 1], duduk_sendiri: ["puncak", 2],
   gap_puncak: ["puncak", 2], kampus_organisasi: ["puncak", 1], kampus_skripsi: ["tegang", 2], tulis_memoar: ["puncak", 1], memoar_selesai: ["puncak", 2], warisan_resep: ["puncak", 1],
