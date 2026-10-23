@@ -640,6 +640,8 @@ svg { stroke: currentColor; }
 .today.quiet { background: var(--glass); color: var(--ink-soft); font-weight: 600; }
 .qmark { position: absolute; top: 14px; right: 14px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(46,42,38,.08); color: var(--ink-soft); font-weight: 800; font-size: 14px; display: grid; place-items: center; padding: 0; }
 .town-q { position: absolute; top: 76px; right: 16px; pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--ink-soft); font-weight: 800; font-size: 15px; display: grid; place-items: center; padding: 0; box-shadow: var(--shadow); }
+.ptag { display: inline-block; font-style: normal; font-weight: 700; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.08); color: #5A544C; vertical-align: 2px; margin-left: 5px; }
+.ch-ptag { display: inline-block; font-size: 11px; font-weight: 600; color: #7A746C; background: #F1EDE6; border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
 .ph-q { position: absolute; z-index: 96; top: 52px; right: 14px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(120,120,128,.38); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; padding: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .want-ic { font-style: normal; font-size: 22px; line-height: 1; width: 30px; text-align: center; flex: none; }
 .round.dice { position: relative; font-weight: 800; font-size: 20px; }
@@ -1099,7 +1101,7 @@ const md = s => esc(s).replace(/_(.+?)_/g, "<em>$1</em>");
 const SAVE_KEY = "makhluk-kecil-3d-v2", CHAT_KEY = SAVE_KEY + "-chat";
 // ---- build: versi dan flag Dev. Tombol uji (mode test, bintang terbuka, kecepatan waktu, lembar Dev) cuma tampil kalau Dev nyala:
 // buka dengan ?dev=1 (nempel di browser ini sampai ?dev=0), atau ketuk nomor versi di lembar Family 7 kali. Build rilis: buang semua blok DEV.
-const APP_VER = "v43";
+const APP_VER = "v44";
 const DEV = (() => { try { const u = new URLSearchParams(location.search); if (u.has("dev")) localStorage.setItem("mk-dev", u.get("dev") === "0" ? "0" : "1"); return localStorage.getItem("mk-dev") === "1"; } catch (e) { return false; } })();
 const SPEEDS = [["Real time", 86400000], ["1 day = 1 min", 60000], ["1 day = 10 sec", 10000], ["1 day = 2 sec", 2000]];
 const PHASE_EN = { bayi: "Baby", anak: "Child", remaja: "Teen", dewasa: "Adult", tua: "Elder", meninggal: "Passed away", merantau: "Moved away" };
@@ -1793,13 +1795,23 @@ function setRoom(i, instant) {
 function canCare() { return cur && cur.fase !== "meninggal" && cur.fase !== "merantau" && !game.pending; }
 // ---- care, twice a day: morning (breakfast, bath) and evening (dinner, bedtime). Missed morning care can still be done late that day.
 const CARE_ROOM = { makan_p: 0, mandi: 1, makan_m: 0, tidur: 2 };
+// slot brand buat pilihan makan (iklan sebagai barang, tingkat 2): brand cuma ganti nama dan dapet tag Partner. Efek makanannya tetap dari game.js
+const FOOD_WORD = { power: "eggs on toast", comfort: "pancakes", fruit: "fruit and yogurt", light: "soup", family: "family dinner", treat: "pizza" };
+for (const [k, lbl] of Object.entries({ power: "Eggs on toast", comfort: "Pancakes", fruit: "Fruit and yogurt", light: "Light soup", family: "Family dinner", treat: "Pizza night" })) Brands.reg("food:" + k, lbl, "food", k);
+const foodBrand = opt => (opt && Brands.meta("food:" + opt)) || null;
 const careHalfNow = () => (dayFloat() % 1) >= 0.5 ? 1 : 0;
 function careView() { const c = cur && game.home.get(cur.id); return c ? game.careView(c) : null; }
 // what the action button does in this room right now
 function careItemFor(act) {
   const v = careView(); if (!v) return null;
   const it = id => v.items.find(i => i.id === id);
-  if (act === "makan") { const b = it("makan_p"), d = it("makan_m"); return v.half && !d.done ? d : !b.done ? b : { ...(v.half ? d : b), full: true }; }
+  if (act === "makan") {
+    const b = it("makan_p"), d = it("makan_m");
+    if (!b && !d) return null;
+    if (!b) return !d.done ? d : { ...d, full: true };   // hari pertama mulai sore: pagi nggak ada di daftar (bug lama, dibenerin v44)
+    if (!d) return !b.done ? b : { ...b, full: true };
+    return v.half && !d.done ? d : !b.done ? b : { ...(v.half ? d : b), full: true };
+  }
   if (act === "mandi") return it("mandi");
   if (act === "tidur") return it("tidur");
   return null;
@@ -1871,7 +1883,7 @@ function careDo(i) {
     openSheet("care", `<span class="ribbon" style="background: var(--sky)">${i.half ? "EVENING" : "MORNING"} · ${esc(cur.nama)}</span>
       <h2>${{ makan_p: "What's for breakfast?", makan_m: "What's for dinner?", tidur: "How should bedtime go?" }[i.id]}</h2>
       ${i.overdue ? `<p>It's late, so this one won't give a bonus. ${esc(cur.nama)} still needs it.</p>` : ""}
-      <div class="carepick">${i.opts.map(o => `<button class="choice yes" data-opt="${o.id}"><b>${esc(o.label)}${o.taste > 0 ? " ♥" : ""}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}</small></button>`).join("")}</div>
+      <div class="carepick">${i.opts.map(o => { const fb = foodBrand(o.id); if (fb) Tele.brand("food:" + o.id, "tampil", fb.tier); return `<button class="choice yes" data-opt="${o.id}"><b>${esc(fb ? fb.name : o.label)}${fb ? ' <i class="ptag">Partner</i>' : ""}${o.taste > 0 ? " ♥" : ""}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}</small></button>`; }).join("")}</div>
       <button class="close" data-close="1">Not now</button>`);
     sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => { closeSheet(); careAct(i, b.dataset.opt); });
     sheet.querySelector("[data-close]").onclick = closeSheet;
@@ -1880,7 +1892,9 @@ function careDo(i) {
 function careAct(i, opt) {
   game.half_now = careHalfNow();
   if (!game.act(selected, "rawat:" + i.id + (opt ? ":" + opt : ""))) return;
-  const note = game.careNote;
+  let note = game.careNote;
+  const fb = foodBrand(opt);
+  if (fb) { Tele.brand("food:" + opt, "pakai", fb.tier); if (note && FOOD_WORD[opt] && note.includes(FOOD_WORD[opt])) { note = note.split(FOOD_WORD[opt]).join(fb.name); Tele.brand("food:" + opt, "sebut", fb.tier); } }
   drainNoon(); save(); refresh(); joyUntil = now() + 2600; coachEvent("care");
   if (note) setTimeout(() => story(cur.nama, note, false), 900);
   playCare({ makan_p: "makan", makan_m: "makan", mandi: "mandi", tidur: "tidur" }[i.id], i, opt);
@@ -1913,7 +1927,7 @@ function playCare(act, item, opt) {
       const p = Math.min(1, (now() - t0) / 650);
       food.position.y = 4.2 - (4.2 - 1.45 * K.scale) * p * p; food.position.z = 1.6 - 0.4 * p; mouthOpen = p;
       if (p < 1) requestAnimationFrame(drop);
-      else { scene.remove(food); chewUntil = now() + 1200; setTimeout(() => { say({ power: "Strong start!", comfort: "Pancakes!!", fruit: "Crunchy!", light: "Warm soup...", family: "Everyone's here!", treat: "PIZZA!" }[opt] || "Nom nom!"); burst(["♥"], 4); }, 400); }
+      else { scene.remove(food); chewUntil = now() + 1200; setTimeout(() => { say(foodBrand(opt) ? foodBrand(opt).name + "!" : ({ power: "Strong start!", comfort: "Pancakes!!", fruit: "Crunchy!", light: "Warm soup...", family: "Everyone's here!", treat: "PIZZA!" }[opt] || "Nom nom!")); burst(["♥"], 4); }, 400); }
     })();
   } else if (act === "mandi") {
     for (let i = 0; i < 14; i++) setTimeout(() => burst(["○"], 1, "#8DA9BD", 22 + Math.random() * 16), i * 90);
@@ -2594,6 +2608,7 @@ function showDev(tab = "main") {
       <button class="secondary" id="devCosClear">Reset the closet</button>
       <p class="muted">Day ${liveDay()} · ${state.hadir.length} days visited · ${state.aksi.length} actions · save ${Math.round(JSON.stringify(state).length / 1024)} KB</p>` : ""}
     ${tab === "brands" ? `<p class="muted">Every brand name in town comes from one registry. A partner name replaces the fictional one everywhere (town signs after a reload). Numbers never change.</p>
+      <button class="secondary" id="devPilotBtn">Pilot partner: ${esc(Brands.PILOT["food:treat"].name)} ${Brands.pilotOn() ? "(on)" : "(off)"}</button>
       ${kinds.map(([k, l]) => `<details class="more"><summary>${l} · ${(B[k] || {}).n || 0}${(B[k] || {}).partner ? ` · ${B[k].partner} partner` : ""}</summary>${brandRows(k)}</details>`).join("")}
       <button class="secondary" id="devBrandClear">Clear all partner names</button>` : ""}
     ${tab === "tele" ? `<p class="muted">${S.event} events · ${S.sesi} sessions · stored on this device only (no server yet)</p>
@@ -2631,6 +2646,7 @@ function showDev(tab = "main") {
   if (tab === "brands") {
     sheet.querySelectorAll("[data-brand]").forEach(i => i.onchange = () => { Brands.set(i.dataset.brand, i.value); refresh(); });
     $("devBrandClear").onclick = () => { Brands.clear(); showDev("brands"); refresh(); };
+    $("devPilotBtn").onclick = () => { Brands.pilot(!Brands.pilotOn()); _chDay.clear(); showDev("brands"); refresh(); };
   }
   if (tab === "tele") {
     $("devTeleCopy").onclick = () => { const t = $("devTele"); t.value = Tele.dump(); t.select(); try { navigator.clipboard.writeText(t.value).then(() => say("Copied!"), () => {}); } catch (e) {} };
@@ -5057,9 +5073,11 @@ const CH_SELF = {
   tua: ["The bakery on the corner still makes the best bread. Some things never change. 🍞", "Watered the plants and watched the clouds. A good day.", "When I was young, we walked everywhere. Just saying.", "Grandkids visiting this weekend 🥰"],
 };
 function chDay(d) {
-  const sig = d + ":" + (d === today() ? "t" : "") + game.home.members.length + ":" + (game.home.world.events || []).length;
+  const sig = d + ":" + (d === today() ? "t" : "") + game.home.members.length + ":" + (game.home.world.events || []).length + ":" + ((Brands.stats().food || {}).partner || 0);
   if (_chDay.has(sig)) return _chDay.get(sig);
   const out = [], P = (by, m, t, x = {}) => out.push({ id: `${d}-${out.length}-${hashStr(by + t) % 9973}`, by, d, m: Math.max(0, Math.min(1439, Math.round(m))), t, ...x });
+  // barang partner (tingkat 2): satu post media tiap 30 hari per slot, ditandai Partner. Kulit aja: nama dari registry, nggak nyentuh simulasi
+  if (d > 0 && (d - 7) % 30 === 0) for (const e of Brands.list("food")) if (e.partner && e.meta) P("org:daily", 585 + (hashStr(e.key) % 90), `New at the corner shop: ${e.meta.name}. ${e.meta.about || ""}`.trim(), { partner: e.key });
   // townsfolk chatter
   const n = 4 + Math.floor(chH("n", d) * 4);
   for (let i = 0; i < n; i++) {
@@ -5179,16 +5197,18 @@ function chImg(key) {
 }
 function chPost(p, big) {
   const a = p.a, s = chStats(p), liked = CH.likes[p.id], rp = CH.rps[p.id];
+  const ptag = p.partner ? `<small class="ch-ptag">Partner</small>` : "";
+  if (p.partner) Tele.brand(p.partner + ":chirp", "tampil", 2);
   const head = `<span class="ch-name"><b data-chu="${esc(a.key)}">${esc(a.name)}</b>${a.org ? CH_SEAL : ""}<small>@${esc(a.handle)}${big ? "" : ` · ${chAgo(p)}`}</small></span>`;
   const acts = `<div class="ch-acts"><span>${CH_IC.reply}${s.replies ? chFmt(s.replies) : ""}</span><span>${CH_IC.rp}${s.rps ? chFmt(s.rps) : ""}</span>
     <button data-chlike="${esc(p.id)}" class="${liked ? "on like" : ""}">${CH_IC.like}${s.likes ? chFmt(s.likes) : ""}</button><span>${CH_IC.views}${chFmt(s.views)}</span><button data-chshare="${esc(p.id)}">${CH_IC.share}</button></div>`;
   if (big) {
     const when = p.ts ? new Date(p.ts) : null, hm = when ? `${when.getHours()}:${String(when.getMinutes()).padStart(2, "0")}` : `${Math.floor(p.m / 60)}:${String(p.m % 60).padStart(2, "0")}`;
-    return `<article class="ch-big"><header>${chAva(a, 46)}${head}</header><p>${chRich(p.t)}</p>${chImg(p.img)}
+    return `<article class="ch-big"><header>${chAva(a, 46)}${head}</header><p>${chRich(p.t)}</p>${ptag}${chImg(p.img)}
       <small class="ch-when">${hm} · ${fmtDate(p.d)} · <b>${chFmt(s.views)}</b> views</small>
       <div class="ch-counts"><span><b>${chFmt(s.rps)}</b> Rechirps</span><span><b>${chFmt(s.likes)}</b> Likes</span></div>${acts}</article>`;
   }
-  return `<article class="ch-p" data-chp="${esc(p.id)}">${p.rpBy ? `<small class="ch-rpby">${CH_IC.rp} You rechirped</small>` : ""}<div class="ch-p-row"><span data-chu="${esc(a.key)}">${chAva(a)}</span><div class="ch-p-body">${head}<p>${chRich(p.t)}</p>${chImg(p.img)}${acts}</div></div></article>`;
+  return `<article class="ch-p" data-chp="${esc(p.id)}">${p.rpBy ? `<small class="ch-rpby">${CH_IC.rp} You rechirped</small>` : ""}<div class="ch-p-row"><span data-chu="${esc(a.key)}">${chAva(a)}</span><div class="ch-p-body">${head}<p>${chRich(p.t)}</p>${ptag}${chImg(p.img)}${acts}</div></div></article>`;
 }
 // ---- the screens
 const chTop = (title, back) => `<header class="ch-top">${back ? `<button class="ch-back" data-chback="${back}" aria-label="Back"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>` : ""}${title}</header>`;

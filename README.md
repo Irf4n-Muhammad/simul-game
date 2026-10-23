@@ -4,7 +4,7 @@ A small creature-raising game that runs entirely in the browser. This repository
 static build served through GitHub Pages. Play it at
 https://irf4n-muhammad.github.io/simul-game/ on your phone.
 
-Build: **v43**. The game clock runs in real time (one real day = one game day), so a
+Build: **v44**. The game clock runs in real time (one real day = one game day), so a
 creature grows over weeks, not minutes.
 
 ## Install it like an app

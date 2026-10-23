@@ -66,6 +66,11 @@
     const key = `${j}:${k}:${l}`; if (l === "tampil") { if (S.seen.has(key)) return; S.seen.add(key); }
     ev("intro", Object.assign({ j, k: String(k).slice(0, 24), l }, extra || {}));
   }
+  // brand: barang partner di layar (k = kunci slot registry, a = tampil | pakai | sebut | buka, j = tingkat 1-3). "tampil" sekali per kunci per sesi
+  function brand(k, a, j) {
+    const key = `brand:${k}:${a}`; if (a === "tampil") { if (S.seen.has(key)) return; S.seen.add(key); }
+    ev("brand", { k: String(k).slice(0, 32), a, j: j | 0 });
+  }
   // notif di layar kunci HP: "tampil" (daftar app-nya, sekali per kombinasi per sesi) dan "klik" (app + urutan)
   function notif(a, app, i) {
     if (a === "tampil") { const key = "notif:" + app; if (S.seen.has(key)) return; S.seen.add(key); }
@@ -90,7 +95,7 @@
   const clear = () => { buf = []; save(); };
   const enable = v => { on = !!v; try { const s = store(); if (s) { if (on) s.removeItem(OFF); else s.setItem(OFF, "1"); } } catch (e) {} };
   const init = o => { if (o && o.ver) ver = o.ver; if (o && o.ctx) ctx = o.ctx; };
-  const API = { KEY, init, start, pause, resume, end, ev, layar, cari, intro, notif, aksi, dilema, teknis, count, summary, payload, dump, flush, clear, enable, enabled: () => on, session: () => S.id };
+  const API = { KEY, init, start, pause, resume, end, ev, layar, cari, intro, brand, notif, aksi, dilema, teknis, count, summary, payload, dump, flush, clear, enable, enabled: () => on, session: () => S.id };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Tele = API;
 })();
