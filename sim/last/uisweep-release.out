@@ -1,0 +1,10 @@
+<anonymous_script>:1
+ERR showPhone is not defined
+^
+
+SyntaxError: Unexpected token 'E', "ERR showPh"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at /tmp/claude-0/-home-claude/234e1ea8-e83e-5221-b55c-01c126403bb2/scratchpad/simul-game/sim/uisweep.js:18:23
+
+Node.js v22.22.0
+exit 1

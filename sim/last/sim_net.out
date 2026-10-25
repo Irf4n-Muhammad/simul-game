@@ -1,0 +1,60 @@
+B 205 Tofu jadian_remaja,keinginan_besar,keinginan_baru | _Tofu works a part-time job after school._ Tofu and Pita are a couple now! They wear matching bracelets from the night market. Tofu came home grinning and won't
+A 207 Mochi jadian_remaja,keinginan_baru | _Mochi studies at the dining table._ Mochi and Oki are a couple now! They wear matching bracelets from the night market. Mochi is saving up for something. Won't
+kenal 270 true true
+A 270 Mochi net_kenal | Mochi meets Tofu from the Tofu family. They talk so easily they lose track of time.
+B 270 Tofu net_kenal | Tofu meets Mochi from the Mochi family. They talk so easily they lose track of time.
+jadian 291 [ true, true ]
+A 291 Mochi net_jadian | Mochi and Tofu are officially dating. Both families' feeds are full of couple photos.
+B 291 Tofu net_jadian | Tofu and Mochi are officially dating. Both families' feeds are full of couple photos.
+tunangan 411 [ true, true ]
+A 411 Mochi net_tunangan | Mochi and Tofu are engaged! The Tofu family sends a message: "congrats, future in-law!"
+B 411 Tofu net_tunangan | Tofu and Mochi are engaged! The Mochi family sends a message: "congrats, future in-law!"
+nikah 441 [ true, true ]
+A 441 Mochi net_nikah | Mochi and Tofu get married in a garden, with just the two families. The cake is small but sooo good.
+B 441 Tofu net_nikah | Tofu and Mochi get married in a garden, with just the two families. The cake is small but sooo good.
+A 483 Mochi kabar_bayi | _Mochi focuses on work all day._ Great news: Mochi and Tofu are expecting babies! Mochi buys a baby name book right away.
+relay hamil 483 true
+B 483 Tofu net_hamil | Great news from the Mochi family: Tofu and Mochi are expecting babies!
+A 513 Mochi kelahiran,keinginan_baru | _Mochi hangs out and meets new people._ Mochi and Tofu have 3 babies! Lolo (cream, round ears, spotted) stays with you. Bobo is raised by the Tofu family. Toto 
+relay anak 513 true
+B 513 Tofu net_anak | Bobo, the baby of Tofu and Mochi, comes home to live with you. Mochi's family keeps a sibling.
+A 676 Mochi kabar_bayi | _Mochi hangs out and meets new people._ Great news: Mochi and Tofu are expecting babies! Mochi buys a baby name book right away.
+relay hamil 676 true
+B 676 Tofu net_hamil | Great news from the Mochi family: Tofu and Mochi are expecting babies!
+A 706 Mochi kelahiran | _Mochi spends the whole day with the kids._ Mochi and Tofu have 2 babies! Wawa (light blue, round ears, spotted) stays with you. Tata is raised by the Tofu fami
+relay anak 706 true
+B 706 Tofu net_anak | Tata, the baby of Tofu and Mochi, comes home to live with you. Mochi's family keeps a sibling.
+A 802 Lolo kenalan_menarik | Nobody tucked Lolo in last night, so they stayed up far too late. Lolo went to bed without dinner. _Lolo sends job applications here, there and everywhere._ Lol
+A 806 Mochi ulang_tahun_pernikahan | _Mochi does a morning workout._ Mochi and Tofu celebrate their 1-year wedding anniversary.
+B 806 Tofu ulang_tahun_pernikahan | _Tofu spends the whole day with the kids._ Tofu and Mochi celebrate their 1-year wedding anniversary.
+B 807 Bobo kenalan_menarik | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo sends job applications here, there and everywhere._ Bob
+A 833 Lolo jadian | Nobody tucked Lolo in last night, so they stayed up far too late. Lolo went to bed without dinner. _Lolo sends job applications here, there and everywhere._ Lol
+B 836 Bobo jadian | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo gets lost in their hobby._ Bobo and Eli are officially 
+A 977 Wawa kenalan_menarik | Nobody tucked Wawa in last night, so they stayed up far too late. Wawa went to bed without dinner. _Wawa does a morning workout._ Wawa meets Vivi on campus. The
+A 1015 Wawa jadian,keinginan_baru | Nobody tucked Wawa in last night, so they stayed up far too late. Wawa went to bed without dinner. _Wawa hangs out and meets new people._ Wawa and Vivi are offi
+B 1034 Tata kenalan_menarik | Nobody tucked Tata in last night, so they stayed up far too late. Tata went to bed without dinner. _Tata lazes around all day._ Tata meets Fani on campus. They 
+B 1062 Tata jadian,keinginan_baru | Nobody tucked Tata in last night, so they stayed up far too late. Tata went to bed without dinner. _Tata does a morning workout._ Tata and Fani are officially d
+B 1137 Bobo lamaran | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo hangs out and meets new people._ Bobo shows you a ring 
+B 1145 Tata kenalan_menarik | Nobody tucked Tata in last night, so they stayed up far too late. Tata went to bed without dinner. _Tata gets lost in their hobby._ Tata meets Kara at a coffee 
+B 1167 Bobo pernikahan | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo hangs out and meets new people._ _Decision: What kind o
+A 1171 Mochi ulang_tahun_pernikahan | _Mochi takes a slow morning walk around the neighborhood._ Mochi and Tofu celebrate their 2-year wedding anniversary.
+B 1171 Tofu ulang_tahun_pernikahan | _Tofu waits for the grandkids to come home from school._ Tofu and Mochi celebrate their 2-year wedding anniversary.
+B 1177 Tata jadian | Nobody tucked Tata in last night, so they stayed up far too late. Tata went to bed without dinner. _Tata hangs out and meets new people._ Tata and Kara are offi
+B 1228 Bobo kabar_bayi | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo lazes around all day._ Great news: Bobo and Eli are exp
+B 1258 Bobo kelahiran | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo hangs out and meets new people._ Bobo and Eli have 2 ba
+A 1281 Lolo lamaran | Nobody tucked Lolo in last night, so they stayed up far too late. Lolo went to bed without dinner. _Lolo hangs out and meets new people._ Lolo shows you a ring 
+A 1331 Lolo pernikahan | Nobody tucked Lolo in last night, so they stayed up far too late. Lolo went to bed without dinner. _Lolo does a morning workout._ _Decision: What kind of weddin
+B 1374 Bobo ulang_tahun_pernikahan_pasangan_sakit | Nobody tucked Bobo in last night, so they stayed up far too late. Bobo went to bed without dinner. _Bobo hangs out and meets new people._ Eli goes to the hospit
+A 1382 Lolo ulang_tahun_pernikahan_pasangan_sakit | Nobody tucked Lolo in last night, so they stayed up far too late. Lolo went to bed without dinner. _Lolo focuses on work all day._ Fani goes to the hospital wit
+B 1465 Cici jadian_remaja,keinginan_besar | Nobody tucked Cici in last night, so they stayed up far too late. Cici went to bed without dinner. _Cici works a part-time job after school._ Cici and Gita are 
+B 1484 Tata lamaran | Nobody tucked Tata in last night, so they stayed up far too late. Tata went to bed without dinner. _Tata gets lost in their hobby._ Tata shows you a ring hidden
+akun-aaa akun-aaa/makhluk-001 Mochi gen1 p= talent={"logic":5,"fitness":6,"charm":5,"creativity":5}
+  akun-aaa/makhluk-001-10 Lolo gen2 p=akun-aaa/makhluk-001,p:akun-bbb~akun-bbb/makhluk-001 talent={"logic":5,"fitness":6,"charm":5,"creativity":4}
+  akun-aaa/makhluk-001-20 Wawa gen2 p=akun-aaa/makhluk-001,p:akun-bbb~akun-bbb/makhluk-001 talent={"logic":6,"fitness":4,"charm":6,"creativity":6}
+  replay same: true
+akun-bbb akun-bbb/makhluk-001 Tofu gen1 p= talent={"logic":6,"fitness":5,"charm":6,"creativity":3}
+  akun-bbb/makhluk-001-x11 Bobo gen2 p=akun-bbb/makhluk-001,p:akun-aaa~akun-aaa/makhluk-001 talent={"logic":6,"fitness":6,"charm":6,"creativity":3}
+  akun-bbb/makhluk-001-x21 Tata gen2 p=akun-bbb/makhluk-001,p:akun-aaa~akun-aaa/makhluk-001 talent={"logic":7,"fitness":6,"charm":5,"creativity":4}
+  akun-bbb/makhluk-001-x21-adopsi Nana gen3 p=akun-bbb/makhluk-001-x21, talent={"logic":5,"fitness":5,"charm":4,"creativity":6}
+  akun-bbb/makhluk-001-x11-10 Cici gen3 p=akun-bbb/makhluk-001-x11,npc-akun-bbb/makhluk-001-x11-807-calon talent={"logic":7,"fitness":10,"charm":4,"creativity":3}
+  replay same: true

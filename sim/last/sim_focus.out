@@ -1,0 +1,22 @@
+  lit spark day 72 age 72
+100 age 100 skill 23 earned 3 {"age":2,"practice":1,"moments":0,"mastery":0}
+  lit art day 133 age 133
+  lit painting day 183 age 183
+200 age 200 skill 47 earned 9 {"age":4,"practice":2,"moments":1,"mastery":2}
+  lit painter day 231 age 231
+  lit painter_legend day 300 age 300
+300 age 300 skill 64 earned 20 {"age":6,"practice":4,"moments":2,"mastery":8}
+  lit painting_master day 381 age 381
+400 age 400 skill 79 earned 31 {"age":8,"practice":5,"moments":5,"mastery":13}
+500 age 500 skill 94 earned 41 {"age":10,"practice":6,"moments":7,"mastery":18}
+  lit art_icon day 506 age 506
+600 age 600 skill 100 earned 48 {"age":12,"practice":6,"moments":9,"mastery":21}
+700 age 700 skill 100 earned 52 {"age":14,"practice":7,"moments":10,"mastery":21}
+800 age 800 skill 100 earned 55 {"age":16,"practice":7,"moments":10,"mastery":22}
+  lit spark_crown day 850 age 850
+900 age 900 skill 100 earned 59 {"age":18,"practice":8,"moments":10,"mastery":23}
+1000 age 1000 skill 99 earned 61 {"age":20,"practice":8,"moments":10,"mastery":23}
+1100 age 1100 skill 98 earned 63 {"age":22,"practice":8,"moments":10,"mastery":23}
+1200 age 1200 skill 97 earned 64 {"age":24,"practice":8,"moments":10,"mastery":22}
+1300 age 1300 skill 95 earned 64 {"age":24,"practice":7,"moments":10,"mastery":21}
+1400 age 1400 skill 94 earned 64 {"age":24,"practice":7,"moments":10,"mastery":21}

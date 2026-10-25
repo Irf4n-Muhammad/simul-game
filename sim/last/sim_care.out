@@ -1,0 +1,24 @@
+full 149 {"lapar":100,"energi":100,"kebersihan":75.2626674445346,"mood":100} 8 Slept well, good dinner, good breakfast
+  299 {"lapar":100,"energi":100,"kebersihan":73.71182571165264,"mood":100} 8 Slept well, good dinner, good breakfast
+  449 {"lapar":100,"energi":100,"kebersihan":64.61448380630463,"mood":100} 8 Slept well, good dinner, good breakfast
+  599 {"lapar":100,"energi":100,"kebersihan":69.99008903093636,"mood":100} 8 Slept well, good dinner, good breakfast
+  749 {"lapar":100,"energi":100,"kebersihan":67.44125955924392,"mood":100} 8 Slept well, good dinner, good breakfast
+  899 {"lapar":100,"energi":100,"kebersihan":74.45796964224428,"mood":100} 8 Slept well, good dinner, good breakfast 
+  results: 7|Slept well, good dinner, good breakfast ; 7|Slept well, good dinner, good breakfast ; 7|Slept well, good dinner, good breakfast ; 7|Slept well, good dinner, good breakfast
+  replay same: true
+morning 149 {"lapar":68.25509023852646,"energi":0,"kebersihan":75.2626674445346,"mood":84.25} -0.5 Short on sleep, went to bed hungry, good breakfast
+  299 {"lapar":66.58154814876616,"energi":45,"kebersihan":73.71182571165264,"mood":100} 1.5 Short on sleep, went to bed hungry, good breakfast
+  449 {"lapar":60.04460333054885,"energi":45,"kebersihan":64.61448380630463,"mood":100} 1.5 Short on sleep, went to bed hungry, good breakfast
+  599 {"lapar":62.98658543545753,"energi":45,"kebersihan":69.99008903093636,"mood":98.3} 1.5 Short on sleep, went to bed hungry, good breakfast
+  749 {"lapar":61.899690102785826,"energi":45,"kebersihan":67.44125955924392,"mood":100} 1.5 Short on sleep, went to bed hungry, good breakfast
+  899 {"lapar":62.304698401130736,"energi":45,"kebersihan":74.45796964224428,"mood":100} 1.5 Short on sleep, went to bed hungry, good breakfast 
+  results: 4|Short on sleep, went to bed hungry, good breakfast ; 4|Short on sleep, went to bed hungry, good breakfast ; 4|Short on sleep, went to bed hungry, good breakfast ; 3|Short on sleep, went to bed hungry, good breakfast ; 4|Short on sleep, went to bed hungry, good breakfast
+  replay same: true
+none 149 {"lapar":0,"energi":0,"kebersihan":0,"mood":0} -8 Short on sleep, went to bed hungry, skipped breakfast
+  299 {"lapar":45,"energi":45,"kebersihan":45,"mood":0} -4 Short on sleep, went to bed hungry, skipped breakfast
+  449 {"lapar":45,"energi":45,"kebersihan":45,"mood":0} -4 Short on sleep, went to bed hungry, skipped breakfast
+  599 {"lapar":45,"energi":45,"kebersihan":45,"mood":0} -4 Short on sleep, went to bed hungry, skipped breakfast
+  749 {"lapar":45,"energi":45,"kebersihan":45,"mood":2.3499999999999996} -4 Short on sleep, went to bed hungry, skipped breakfast
+  899 {"lapar":45,"energi":45,"kebersihan":45,"mood":0} -4 Short on sleep, went to bed hungry, skipped breakfast 
+  results: -6|Short on sleep, went to bed hungry, skipped breakfast ; -6|Short on sleep, went to bed hungry, skipped breakfast ; -6|Short on sleep, went to bed hungry, skipped breakfast ; -6|Short on sleep, went to bed hungry, skipped breakfast
+  replay same: true

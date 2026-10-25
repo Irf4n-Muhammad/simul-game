@@ -1,0 +1,374 @@
+Mochi setia 33 ramah 29 patuh 23 cap 4
+Tofu setia 44 ramah 50 patuh 36 cap 3
+Kiki setia 57 ramah 44 patuh 31 cap 3
+Bubu setia 33 ramah 48 patuh 38 cap 4
+Lulu setia 29 ramah 54 patuh 52 cap 4
+Nana setia 54 ramah 54 patuh 49 cap 3
+dbg 0 Mochi bayi null true false false false 0
+dbg 0 Tofu bayi null true false false false 0
+dbg 0 Kiki bayi null true false false false 0
+dbg 0 Bubu bayi null true false false false 0
+dbg 0 Lulu bayi null true false false false 0
+dbg 0 Nana bayi null true false false false 0
+dbg 100 Mochi anak null true false false false 0
+dbg 100 Tofu anak null true false false false 0
+dbg 100 Kiki anak null true false false false 0
+dbg 100 Bubu anak null true false false false 0
+dbg 100 Lulu anak null true false false false 0
+dbg 100 Nana anak null true false false false 0
+dbg 200 Mochi remaja null true false false false 0
+dbg 200 Tofu remaja null true false false false 0
+dbg 200 Kiki remaja null true false false false 0
+dbg 200 Bubu remaja null true false false false 0
+dbg 200 Lulu remaja null true false false false 0
+dbg 200 Nana remaja {"nama":"Qiqi","tipe":"pasangan","skor":50,"sejak":197,"remaja":true} true false false false 0
+273 Mochi parent on kenal {"yes":true,"quote":null}
+274 Mochi net_kenal | Mochi meets Kiki from the Kiki family. They talk so easily they lose track of time.
+274 Kiki net_kenal | Kiki meets Mochi from the Mochi family. They talk so easily they lose track of time.
+274 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+275 Tofu net_kenal | Tofu meets Bubu from the Bubu family. They talk so easily they lose track of time.
+275 Bubu net_kenal | Bubu meets Tofu from the Tofu family. They talk so easily they lose track of time.
+275 Mochi parent on kenal {"yes":true,"quote":null}
+276 Mochi net_kenal | Mochi meets Lulu from the Lulu family. They talk so easily they lose track of time.
+276 Lulu net_kenal | Lulu meets Mochi from the Mochi family. They talk so easily they lose track of time.
+277 Mochi parent on kenal {"yes":true,"quote":null}
+278 Mochi net_kenal | Mochi meets Bubu from the Bubu family. They talk so easily they lose track of time.
+278 Bubu net_kenal | Bubu meets Mochi from the Mochi family. They talk so easily they lose track of time.
+281 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+282 Nana parent on kenal {"yes":true,"quote":null}
+283 Bubu net_kenal | Bubu meets Nana from the Nana family. They talk so easily they lose track of time.
+283 Nana net_kenal | Nana meets Bubu from the Bubu family. They talk so easily they lose track of time.
+283 Nana parent on kenal {"yes":true,"quote":null}
+284 Lulu net_kenal | Lulu meets Nana from the Nana family. They talk so easily they lose track of time.
+284 Nana net_kenal | Nana meets Lulu from the Lulu family. They talk so easily they lose track of time.
+286 Kiki suggest Lulu {"ok":true}
+287 Lulu parent on kenal {"yes":false,"quote":null}
+290 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+292 Kiki suggest Lulu {"ok":false}
+295 Mochi parent on wish jadian {"ok":true}
+297 Kiki suggest Lulu {"ok":false}
+297 Lulu parent on wish jadian {"ok":true}
+299 Mochi parent on jadian {"yes":true,"quote":null}
+300 Mochi net_jadian | Mochi and Lulu are officially dating. Both families' feeds are full of couple photos.
+300 Lulu net_jadian | Lulu and Mochi are officially dating. Both families' feeds are full of couple photos.
+dbg 300 Mochi dewasa {"nama":"Lulu","tipe":"pasangan","skor":65,"sejak":299,"remote":1,"host":0} true true true false 0
+dbg 300 Tofu dewasa {"nama":"Zizi","tipe":"pasangan","skor":60.599999999999994,"sejak":294} true true true false 2
+dbg 300 Kiki dewasa null true true true true 1
+dbg 300 Bubu dewasa null true true true false 2
+dbg 300 Lulu dewasa {"nama":"Mochi","tipe":"pasangan","skor":71.16,"sejak":299,"remote":1,"host":1} true true true true 1
+dbg 300 Nana dewasa null true true true false 1
+303 Mochi parent on jadian {"yes":true,"quote":null}
+303 Mochi parent on jadian {"yes":true,"quote":null}
+304 Kiki suggest Lulu {"ok":true}
+305 Lulu parent on kenal {"yes":false,"quote":null}
+306 Nana parent on wish jadian {"ok":true}
+307 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+309 Lulu parent on jadian {"yes":true,"quote":null}
+312 Nana parent on wish jadian {"ok":true}
+313 Bubu parent on jadian {"yes":true,"quote":null}
+314 Bubu net_jadian | Bubu and Nana are officially dating. Both families' feeds are full of couple photos.
+314 Nana net_jadian | Nana and Bubu are officially dating. Both families' feeds are full of couple photos.
+321 Lulu net_putus | Lulu and Nana drift apart. No drama, just fewer messages until there were none.
+321 Nana net_putus | Nana and Lulu drift apart. No drama, just fewer messages until there were none.
+321 Nana suggest Lulu {"ok":true}
+322 Tofu net_putus | Tofu and Bubu drift apart. No drama, just fewer messages until there were none.
+322 Bubu net_putus | Bubu and Tofu drift apart. No drama, just fewer messages until there were none.
+322 Lulu parent on kenal {"yes":false,"quote":null}
+325 Tofu parent on kenal {"yes":true,"quote":null}
+326 Tofu net_kenal | Tofu has been chatting with Kiki from the Kiki family. Just friends, apparently. 👀
+326 Kiki net_kenal | Kiki meets Tofu from the Tofu family. They talk so easily they lose track of time.
+329 Mochi net_putus | Mochi and Bubu drift apart. No drama, just fewer messages until there were none.
+329 Bubu net_putus | Bubu and Mochi drift apart. No drama, just fewer messages until there were none.
+329 Nana suggest Lulu {"ok":false}
+330 Bubu parent on kenal {"yes":false,"quote":null}
+334 Mochi parent on jadian {"yes":true,"quote":null}
+336 Mochi net_putus | Mochi and Kiki drift apart. No drama, just fewer messages until there were none.
+336 Kiki net_putus | Kiki and Mochi drift apart. No drama, just fewer messages until there were none.
+336 Kiki suggest Bubu {"ok":true}
+337 Bubu parent on kenal {"yes":false,"quote":"Not my type, sorry."}
+345 Mochi parent on kenal {"yes":true,"quote":null}
+346 Mochi net_kenal | Mochi has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+346 Mochi net_kepergok | Old Town is talking: Mochi was seen out with Nana while dating Lulu. Mochi can't look anyone in the eye.
+346 Lulu net_ketahuan | Word gets around Old Town: Mochi was seen out with Nana from another family. Lulu goes quiet at dinner.
+346 Nana net_kenal | Nana has been chatting with Mochi from the Mochi family. Just friends, apparently. 👀
+350 Mochi net_putus | Lulu heard about Nana and ended it. Mochi stares at the phone for a long time.
+350 Lulu net_putus | Lulu ends things with Mochi after hearing about Nana. Lulu says they're fine. They are not fine.
+357 Kiki parent on wish jadian {"ok":true}
+358 Tofu parent on jadian {"yes":false,"quote":null}
+360 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+362 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+376 Kiki suggest Bubu {"ok":true}
+376 Nana parent on jadian {"yes":true,"quote":null}
+377 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+385 Lulu suggest Mochi {"ok":true}
+388 Mochi net_putus | Mochi and Nana drift apart. No drama, just fewer messages until there were none.
+388 Nana net_putus | Nana and Mochi drift apart. No drama, just fewer messages until there were none.
+390 Mochi suggest Lulu {"ok":true}
+390 Bubu suggest Mochi {"ok":true}
+391 Mochi parent on kenal {"yes":false,"quote":null}
+391 Lulu parent on kenal {"yes":true,"quote":null}
+392 Mochi net_kenal | Mochi meets Lulu from the Lulu family. They talk so easily they lose track of time.
+392 Lulu net_kenal | Lulu meets Mochi from the Mochi family. They talk so easily they lose track of time.
+392 Kiki suggest Bubu {"ok":true}
+393 Bubu suggest Lulu {"ok":true}
+393 Nana suggest Lulu {"ok":true}
+394 Lulu parent on kenal {"yes":false,"quote":null}
+395 Tofu parent on jadian {"yes":true,"quote":null}
+396 Tofu net_putus | Tofu and Kiki drift apart. No drama, just fewer messages until there were none.
+396 Kiki net_putus | Kiki and Tofu drift apart. No drama, just fewer messages until there were none.
+397 Bubu net_ketahuan | Word gets around Old Town: Nana was seen out with Lulu from another family. Bubu goes quiet at dinner.
+397 Lulu net_kenal | Lulu meets Nana from the Nana family. They talk so easily they lose track of time.
+397 Nana net_kenal | Nana has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+397 Nana net_kepergok | Old Town is talking: Nana was seen out with Lulu while dating Bubu. Nana can't look anyone in the eye.
+dbg 400 Mochi dewasa null true true true true 3
+dbg 400 Tofu dewasa {"nama":"Zizi","tipe":"pasangan","skor":100,"sejak":294} true true true true 3
+dbg 400 Kiki dewasa null true true true true 3
+dbg 400 Bubu dewasa {"nama":"Nana","tipe":"pasangan","skor":80,"sejak":313,"remote":1,"host":1} true true true true 3
+dbg 400 Lulu dewasa null true true true false 3
+dbg 400 Nana dewasa {"nama":"Bubu","tipe":"pasangan","skor":85,"sejak":313,"remote":1,"host":0} true true true false 3
+401 Bubu net_maaf | Bubu forgives Nana. It'll take a while to trust again, but they're trying.
+401 Nana net_maaf | Bubu's family heard about Lulu. Bubu gives Nana one more chance.
+404 Kiki suggest Bubu {"ok":false}
+406 Mochi parent on kenal {"yes":true,"quote":null}
+407 Mochi net_kenal | Mochi meets Tofu from the Tofu family. They talk so easily they lose track of time.
+407 Tofu net_kenal | Tofu has been chatting with Mochi from the Mochi family. Just friends, apparently. 👀
+409 Lulu suggest Bubu {"ok":true}
+413 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+415 Lulu parent on wish jadian {"ok":true}
+418 Mochi net_jadian | Mochi and Lulu are officially dating. Both families' feeds are full of couple photos.
+418 Lulu net_jadian | Lulu and Mochi are officially dating. Both families' feeds are full of couple photos.
+423 Kiki suggest Bubu {"ok":true}
+425 Bubu parent on kenal {"yes":true,"quote":null}
+426 Kiki net_kenal | Kiki meets Bubu from the Bubu family. They talk so easily they lose track of time.
+426 Bubu net_kenal | Bubu has been chatting with Kiki from the Kiki family. Just friends, apparently. 👀
+426 Lulu suggest Bubu {"ok":true}
+431 Bubu suggest Mochi {"ok":true}
+432 Lulu net_putus | Lulu and Nana drift apart. No drama, just fewer messages until there were none.
+432 Nana net_putus | Nana and Lulu drift apart. No drama, just fewer messages until there were none.
+432 Mochi parent on kenal {"yes":false,"quote":null}
+433 Kiki suggest Nana {"ok":true}
+438 Nana parent on wish tunangan {"ok":true}
+441 Nana suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+443 Bubu net_tunangan | Bubu and Nana are engaged! The Nana family sends a message: "congrats, future in-law!"
+443 Nana net_tunangan | Nana and Bubu are engaged! The Bubu family sends a message: "congrats, future in-law!"
+444 Lulu suggest Bubu {"ok":true}
+447 Mochi net_putus | Mochi and Tofu drift apart. No drama, just fewer messages until there were none.
+447 Tofu net_putus | Tofu and Mochi drift apart. No drama, just fewer messages until there were none.
+448 Kiki parent on wish jadian {"ok":true}
+449 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+450 Kiki suggest Tofu {"ok":true}
+451 Bubu parent on jadian {"yes":true,"quote":null}
+452 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+452 Tofu parent on kenal {"yes":true,"quote":null}
+452 Nana suggest Lulu {"ok":true}
+453 Tofu net_kenal | Tofu has been chatting with Kiki from the Kiki family. Just friends, apparently. 👀
+453 Kiki net_kenal | Kiki meets Tofu from the Tofu family. They talk so easily they lose track of time.
+456 Bubu net_ketahuan | Word gets around Old Town: Nana was seen out with Lulu from another family. Bubu goes quiet at dinner.
+456 Lulu net_kenal | Lulu has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+456 Nana net_kenal | Nana has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+456 Bubu parent on ketahuan {"yes":true,"quote":null}
+457 Bubu net_maaf | Bubu forgives Nana. It'll take a while to trust again, but they're trying.
+457 Nana net_maaf | Bubu's family heard about Lulu. Bubu gives Nana one more chance.
+462 Kiki net_putus | Kiki and Bubu drift apart. No drama, just fewer messages until there were none.
+462 Bubu net_putus | Bubu and Kiki drift apart. No drama, just fewer messages until there were none.
+463 Lulu suggest Bubu {"ok":true}
+464 Bubu parent on kenal {"yes":true,"quote":null}
+465 Bubu net_kenal | Bubu has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+465 Bubu net_kepergok | Old Town is talking: Bubu was seen out with Lulu while dating Nana. Bubu can't look anyone in the eye.
+465 Lulu net_kenal | Lulu has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+465 Nana net_ketahuan | Word gets around Old Town: Bubu was seen out with Lulu from another family. Nana goes quiet at dinner.
+466 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+466 Nana parent on ketahuan {"yes":false,"quote":null}
+467 Bubu net_putus | Nana heard about Lulu and ended it. Bubu stares at the phone for a long time.
+467 Nana net_putus | Nana ends things with Bubu after hearing about Lulu. Nana says they're fine. They are not fine.
+472 Mochi suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+474 Tofu net_putus | Tofu and Kiki drift apart. No drama, just fewer messages until there were none.
+474 Kiki net_putus | Kiki and Tofu drift apart. No drama, just fewer messages until there were none.
+479 Mochi suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+482 Mochi suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+482 Kiki suggest Bubu {"ok":true}
+483 Bubu parent on kenal {"yes":true,"quote":null}
+484 Kiki net_kenal | Kiki meets Bubu from the Bubu family. They talk so easily they lose track of time.
+484 Bubu net_kenal | Bubu meets Kiki from the Kiki family. They talk so easily they lose track of time.
+487 Lulu net_putus | Lulu and Nana drift apart. No drama, just fewer messages until there were none.
+487 Nana net_putus | Nana and Lulu drift apart. No drama, just fewer messages until there were none.
+489 Bubu suggest Mochi {"ok":true}
+496 Bubu parent on wish jadian {"ok":true}
+499 Lulu parent on jadian {"yes":true,"quote":null}
+500 Bubu net_putus | Bubu and Lulu drift apart. No drama, just fewer messages until there were none.
+500 Lulu net_putus | Lulu and Bubu drift apart. No drama, just fewer messages until there were none.
+dbg 500 Mochi dewasa {"nama":"Lulu","tipe":"pasangan","skor":100,"sejak":417,"remote":1,"host":0} true true true true 2
+dbg 500 Tofu dewasa {"nama":"Zizi","tipe":"suami-istri","skor":100,"sejak":478} true false false false 4
+dbg 500 Kiki dewasa null true true true false 3
+dbg 500 Bubu dewasa null true true true true 3
+dbg 500 Lulu dewasa {"nama":"Mochi","tipe":"pasangan","skor":100,"sejak":417,"remote":1,"host":1} true true true true 2
+dbg 500 Nana dewasa null true true true true 3
+502 Bubu parent on kenal {"yes":true,"quote":null}
+503 Bubu net_kenal | Bubu meets Nana from the Nana family. They talk so easily they lose track of time.
+503 Nana net_kenal | Nana meets Bubu from the Bubu family. They talk so easily they lose track of time.
+507 Kiki parent on wish jadian {"ok":true}
+508 Lulu suggest Bubu {"ok":true}
+509 Bubu parent on jadian {"yes":false,"quote":null}
+511 Kiki net_putus | Kiki and Bubu drift apart. No drama, just fewer messages until there were none.
+511 Bubu net_putus | Bubu and Kiki drift apart. No drama, just fewer messages until there were none.
+523 Bubu parent on wish jadian {"ok":true}
+525 Mochi suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+525 Nana parent on jadian {"yes":true,"quote":null}
+526 Bubu net_jadian | Bubu and Nana are officially dating. Both families' feeds are full of couple photos.
+526 Nana net_jadian | Nana and Bubu are officially dating. Both families' feeds are full of couple photos.
+529 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+534 Kiki suggest Bubu {"ok":true}
+535 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+537 Bubu suggest Lulu {"ok":true}
+538 Bubu suggest Lulu {"ok":false}
+538 Lulu parent on kenal {"yes":true,"quote":null}
+539 Bubu net_kenal | Bubu has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+539 Lulu net_kenal | Lulu has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+540 Nana net_ketahuan | Word gets around Old Town: Bubu was seen out with Lulu from another family. Nana goes quiet at dinner.
+541 Nana parent on ketahuan {"yes":false,"quote":"I can't just let this go."}
+542 Bubu net_putus | Nana heard about Lulu and ended it. Bubu stares at the phone for a long time.
+542 Nana net_putus | Nana ends things with Bubu after hearing about Lulu. Nana says they're fine. They are not fine.
+548 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+550 Lulu parent on tunangan {"yes":false,"quote":null}
+558 Kiki suggest Mochi {"ok":true}
+564 Lulu parent on jadian {"yes":true,"quote":null}
+566 Bubu net_putus | Bubu and Lulu drift apart. No drama, just fewer messages until there were none.
+566 Lulu net_putus | Lulu and Bubu drift apart. No drama, just fewer messages until there were none.
+568 Lulu suggest Bubu {"ok":true}
+569 Bubu parent on kenal {"yes":false,"quote":null}
+574 Nana suggest Lulu {"ok":true}
+575 Lulu parent on kenal {"yes":true,"quote":null}
+576 Lulu net_kenal | Lulu has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+576 Nana net_kenal | Nana meets Lulu from the Lulu family. They talk so easily they lose track of time.
+576 Mochi suggest Nana {"ok":true}
+577 Kiki suggest Lulu {"ok":true}
+577 Nana parent on kenal {"yes":true,"quote":null}
+578 Mochi net_kenal | Mochi has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+578 Nana net_kenal | Nana meets Mochi from the Mochi family. They talk so easily they lose track of time.
+578 Lulu parent on kenal {"yes":false,"quote":null}
+579 Lulu net_ketahuan | Word gets around Old Town: Mochi was seen out with Nana from another family. Lulu goes quiet at dinner.
+580 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+581 Mochi parent on tunangan {"yes":true,"quote":null}
+582 Mochi net_putus | Lulu heard about Nana and ended it. Mochi stares at the phone for a long time.
+582 Lulu net_putus | Lulu ends things with Mochi after hearing about Nana. Lulu says they're fine. They are not fine.
+587 Kiki suggest Bubu {"ok":true}
+596 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+597 Lulu net_putus | Lulu and Nana drift apart. No drama, just fewer messages until there were none.
+597 Nana net_putus | Nana and Lulu drift apart. No drama, just fewer messages until there were none.
+599 Nana parent on wish jadian {"ok":true}
+dbg 600 Mochi dewasa null true true true true 2
+dbg 600 Tofu dewasa {"nama":"Zizi","tipe":"suami-istri","skor":100,"sejak":478} true false false false 4
+dbg 600 Kiki dewasa {"nama":"Leli","tipe":"pasangan","skor":92.71999999999997,"sejak":523} true true true true 3
+dbg 600 Bubu dewasa null true true true true 3
+dbg 600 Lulu dewasa null true true true false 4
+dbg 600 Nana dewasa null true true true true 2
+602 Mochi parent on wish jadian {"ok":true}
+603 Kiki suggest Nana {"ok":true}
+604 Bubu suggest Mochi {"ok":true}
+604 Nana parent on jadian {"yes":true,"quote":null}
+605 Mochi net_jadian | Mochi and Nana are officially dating. Both families' feeds are full of couple photos.
+605 Nana net_jadian | Nana and Mochi are officially dating. Both families' feeds are full of couple photos.
+614 Nana suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+620 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+620 Nana suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+623 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+627 Mochi suggest Bubu {"ok":false,"quote":"Mom. Please. 🙈"}
+627 Kiki suggest Lulu {"ok":true}
+631 Bubu suggest Nana {"ok":true}
+632 Nana parent on kenal {"yes":true,"quote":null}
+633 Bubu net_kenal | Bubu has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+633 Nana net_kenal | Nana has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+643 Bubu suggest Mochi {"ok":true}
+646 Lulu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+647 Bubu suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+654 Mochi suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+665 Nana suggest Bubu {"ok":true}
+666 Bubu net_putus | Bubu and Nana drift apart. No drama, just fewer messages until there were none.
+666 Nana net_putus | Nana and Bubu drift apart. No drama, just fewer messages until there were none.
+667 Bubu parent on kenal {"yes":false,"quote":null}
+670 Nana suggest Kiki {"ok":false,"quote":"Hmm. Not my type."}
+680 Bubu suggest Nana {"ok":true}
+684 Bubu net_kenal | Bubu has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+684 Nana net_kenal | Nana has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+689 Bubu suggest Mochi {"ok":true}
+691 Mochi parent on kenal {"yes":false,"quote":null}
+dbg 700 Mochi dewasa {"nama":"Nana","tipe":"pasangan","skor":100,"sejak":604,"remote":1,"host":1} true true true true 2
+dbg 700 Tofu dewasa {"nama":"Zizi","tipe":"suami-istri","skor":100,"sejak":478} true false false false 3
+dbg 700 Kiki dewasa {"nama":"Leli","tipe":"suami-istri","skor":100,"sejak":687} true false false false 3
+dbg 700 Bubu dewasa {"nama":"Qiqi","tipe":"pasangan","skor":100,"sejak":607} true true true true 2
+dbg 700 Lulu dewasa {"nama":"Intan","tipe":"pasangan","skor":99.05999999999996,"sejak":640} true true true true 2
+dbg 700 Nana dewasa {"nama":"Mochi","tipe":"pasangan","skor":100,"sejak":604,"remote":1,"host":0} true true true false 1
+701 Bubu suggest Lulu {"ok":true}
+705 Bubu net_kenal | Bubu has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+705 Lulu net_kenal | Lulu has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+710 Mochi suggest Lulu {"ok":true}
+711 Mochi suggest Lulu {"ok":false}
+714 Mochi net_kenal | Mochi has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+714 Lulu net_kenal | Lulu has been chatting with Mochi from the Mochi family. Just friends, apparently. 👀
+715 Bubu net_putus | Bubu and Nana drift apart. No drama, just fewer messages until there were none.
+715 Nana net_putus | Nana and Bubu drift apart. No drama, just fewer messages until there were none.
+722 Nana suggest Bubu {"ok":true}
+723 Bubu parent on kenal {"yes":false,"quote":null}
+727 Nana parent on wish tunangan {"ok":true}
+733 Nana parent on wish tunangan {"ok":true}
+739 Nana parent on wish tunangan {"ok":true}
+740 Mochi parent on wish tunangan {"ok":true}
+740 Mochi parent on tunangan {"yes":true,"quote":null}
+741 Mochi net_tunangan | Mochi and Nana are engaged! The Nana family sends a message: "congrats, future in-law!"
+741 Nana net_tunangan | Nana and Mochi are engaged! The Mochi family sends a message: "congrats, future in-law!"
+757 Mochi net_putus | Mochi and Lulu drift apart. No drama, just fewer messages until there were none.
+757 Lulu net_putus | Lulu and Mochi drift apart. No drama, just fewer messages until there were none.
+757 Nana suggest Lulu {"ok":true}
+758 Lulu parent on kenal {"yes":false,"quote":null}
+758 Lulu suggest Mochi {"ok":true}
+763 Bubu suggest Nana {"ok":true}
+763 Nana suggest Lulu {"ok":false}
+765 Mochi suggest Lulu {"ok":true}
+767 Bubu net_kenal | Bubu has been chatting with Nana from the Nana family. Just friends, apparently. 👀
+767 Nana net_kenal | Nana has been chatting with Bubu from the Bubu family. Just friends, apparently. 👀
+769 Mochi net_kenal | Mochi has been chatting with Lulu from the Lulu family. Just friends, apparently. 👀
+769 Lulu net_kenal | Lulu has been chatting with Mochi from the Mochi family. Just friends, apparently. 👀
+772 Bubu net_putus | Bubu and Lulu drift apart. No drama, just fewer messages until there were none.
+772 Lulu net_putus | Lulu and Bubu drift apart. No drama, just fewer messages until there were none.
+773 Mochi parent on wish nikah {"ok":true}
+775 Nana parent on nikah {"yes":true,"quote":null}
+776 Mochi net_nikah | Mochi and Nana get married in a garden, with just the two families. The cake is small but sooo good.
+776 Nana net_nikah | Nana and Mochi get married in a garden, with just the two families. The cake is small but sooo good.
+dbg 800 Mochi dewasa {"nama":"Nana","tipe":"suami-istri","skor":100,"sejak":775,"remote":1,"host":1} true false false false 0
+dbg 800 Tofu dewasa {"nama":"Zizi","tipe":"suami-istri","skor":100,"sejak":478} true false false false 1
+dbg 800 Kiki dewasa {"nama":"Leli","tipe":"suami-istri","skor":100,"sejak":687} true false false false 1
+dbg 800 Bubu dewasa {"nama":"Qiqi","tipe":"suami-istri","skor":100,"sejak":780} true false false false 1
+dbg 800 Lulu dewasa {"nama":"Intan","tipe":"pasangan","skor":100,"sejak":640} true true true true 0
+dbg 800 Nana dewasa {"nama":"Mochi","tipe":"suami-istri","skor":100,"sejak":775,"remote":1,"host":0} true false false false 1
+802 Mochi net_putus | Mochi and Lulu drift apart. No drama, just fewer messages until there were none.
+802 Lulu net_putus | Lulu and Mochi drift apart. No drama, just fewer messages until there were none.
+805 Bubu net_putus | Bubu and Nana drift apart. No drama, just fewer messages until there were none.
+805 Nana net_putus | Nana and Bubu drift apart. No drama, just fewer messages until there were none.
+dbg 900 Mochi dewasa {"nama":"Nana","tipe":"suami-istri","skor":100,"sejak":775,"remote":1,"host":1} true false false false 0
+dbg 900 Tofu dewasa {"nama":"Zizi","tipe":"suami-istri","skor":100,"sejak":478} true false false false 0
+dbg 900 Kiki dewasa {"nama":"Leli","tipe":"suami-istri","skor":100,"sejak":687} true false false false 0
+dbg 900 Bubu dewasa {"nama":"Qiqi","tipe":"suami-istri","skor":100,"sejak":780} true false false false 0
+dbg 900 Lulu dewasa {"nama":"Intan","tipe":"suami-istri","skor":100,"sejak":873} true false false false 0
+dbg 900 Nana dewasa {"nama":"Mochi","tipe":"suami-istri","skor":100,"sejak":775,"remote":1,"host":0} true false false false 0
+{
+  net_kenal: 52,
+  net_jadian: 10,
+  net_putus: 50,
+  net_kepergok: 3,
+  net_ketahuan: 6,
+  net_maaf: 4,
+  net_tunangan: 4,
+  net_nikah: 2
+}
+Mochi rels ["Nana:suami-istri"] notes ["Mochi passed on meeting Bubu.","Mochi said hi to Lulu.","Mochi agreed to wait a little longer with Nana.","Mochi said yes to Nana's proposal! 💍","Mochi passed on meeting Lulu.","Mochi said hi to Lulu."]
+  replay same: true members Mochi,Lulu
+Tofu rels [] notes ["Tofu told Bubu it's too soon.","Tofu met Kiki.","Tofu told Kiki it's too soon.","Tofu told Kiki it's too soon.","Tofu said hi to Mochi on their own.","Tofu met Kiki."]
+  replay same: true members Tofu,Pipi
+Kiki rels [] notes ["Kiki said hi to Bubu.","Bubu didn't say hi back.","Kiki said hi to Nana.","Nana didn't say hi back.","Kiki said hi to Lulu.","Lulu didn't say hi back."]
+  replay same: true members Kiki,Pipi,Koko
+Bubu rels [] notes ["Bubu said hi to Nana.","Bubu said hi to Mochi.","Mochi didn't say hi back.","Bubu said hi to Lulu.","Bubu passed on meeting Nana.","Bubu said hi to Nana."]
+  replay same: true members Bubu,Rere,Toto
+Lulu rels [] notes ["Lulu met Bubu.","Lulu met Mochi.","Lulu passed on meeting Nana.","Lulu said hi to Mochi.","Mochi didn't say hi back.","Lulu met Mochi."]
+  replay same: true members Lulu,Kiko
+Nana rels ["Mochi:suami-istri"] notes ["Nana agreed to wait a little longer with Mochi.","Nana agreed to wait a little longer with Mochi.","Nana said hi to Lulu.","Lulu didn't say hi back.","Nana met Bubu.","Nana is marrying Mochi."]
+  replay same: true members Nana,Nini,Fifi

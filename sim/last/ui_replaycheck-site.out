@@ -1,0 +1,5 @@
+[[700,"akun-test1/makhluk-001","rawat:makan_p:fruit",1],[700,"akun-test1/makhluk-001","rawat:makan_m:family",1],[700,"akun-test1/makhluk-001","rawat:tidur:cuddle",1],[700,"akun-test1/makhluk-001","rawat:mandi",1]][["akun-test1/makhluk-001","rawat:makan_p:fruit",1],["akun-test1/makhluk-001","rawat:makan_m:family",1],["akun-test1/makhluk-001","rawat:tidur:cuddle",1],["akun-test1/makhluk-001","rawat:mandi",1]]1 last 700 siang 700
+{"697":{},"698":{},"699":{},"700":{"makan_p":"fruit","late":{"makan_p":1,"mandi":1},"makan_m":"family","tidur":"cuddle","mandi":1}}|{"lapar":100,"energi":100,"kebersihan":100,"mood":86.05083366045763}
+SAME after reload
+[]
+exit 0
