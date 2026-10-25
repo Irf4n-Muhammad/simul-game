@@ -9,21 +9,27 @@ function drawDoors() {
 let todayKey = null, todayCache = null;
 const twSeen = new Set();
 function todayLine() {
+  // Keputusan ada di today.js (Today.line, bisa diuji di Node); di sini hanya potret keadaan + pemetaan kunci aksi -> fungsi layar.
   if (!cur || !game) return null;
-  const gone = cur.fase === "meninggal" || cur.fase === "merantau";
-  if (gone) return null;
-  const c = game.home.get(cur.id), d = today(), n = cur.nama;
-  if (game.pending) return { k: "dilema", ic: "💬", tx: `${game.pending.name} needs an answer`, go: showDilemma, now: true };
-  const logsToday = feed.filter(l => l.day === d), P = doorsNow();
-  for (const l of logsToday) for (const e of l.events) { const D = Wants.doorOf(e); if (D && P[D.id]) return { k: "pintu:" + D.id, ic: "✨", tx: `New today: ${D.label}`, go: () => tourStart(D.id, true), now: true }; }
-  const mom = logsToday.filter(l => l.cid === cur.id).flatMap(l => Moments.detect(l)).filter(m => m.i >= 2 && m.line).sort((a, b) => b.i - a.i)[0];
-  if (mom) return { k: "momen:" + mom.tag, ic: mom.kind === "sedih" ? "🌧" : mom.kind === "tegang" ? "⏳" : "✨", tx: mom.line, go: showDiary };
-  const v = canCare() ? careView() : null;
-  if (v) { const open = v.items.filter(i => i.open && !i.done); if (open.length) { const i = open[0]; return { k: "rawat:" + i.id + ":" + v.half, ic: v.half ? "☾" : "☀", tx: `${i.label} for ${n}${open.length > 1 ? ` · ${open.length} to do` : ""}`, go: () => { const b = $("careStrip").querySelector(`[data-care="${i.id}"]`); if (b) b.click(); } }; } }
-  const m = nextMoment(); if (m && m.day - d <= 2) return { k: "momen:" + m.id, ic: "📌", tx: `${fmtWhen(m.day)}: ${nameOf(m.cid)}, ${m.label}`, go: () => showMoment(m) };
-  const wants = c ? Wants.active(c, d, game.home) : []; if (wants.length) { const w = wants[0]; return { k: "ingin:" + w.id, ic: w.ic, tx: `${n} wants ${w.label}`, go: () => showProfile(cur.id) }; }
-  if (v) return { k: "beres:" + v.half, ic: "✓", tx: v.half ? `All done for today. ${n} is settled.` : `Morning done. Come back this evening.`, quiet: true };
-  return { k: "sepi", ic: "·", tx: "A quiet day in Old Town.", quiet: true };
+  const d = today();
+  const L = Today.line({
+    cur, pending: game.pending, feed, d,
+    doors: doorsNow,
+    care: () => canCare() ? careView() : null,
+    next: nextMoment,
+    wants: () => { const c = game.home.get(cur.id); return c ? Wants.active(c, d, game.home) : []; },
+    fmtWhen, nameOf,
+  });
+  if (!L || !L.go) return L;
+  const GO = {
+    dilema: () => showDilemma,
+    tur: () => () => tourStart(L.id, true),
+    diary: () => showDiary,
+    rawat: () => () => { const b = $("careStrip").querySelector(`[data-care="${L.id}"]`); if (b) b.click(); },
+    momen: () => () => showMoment(L.m),
+    profil: () => () => showProfile(cur.id),
+  };
+  return { ...L, go: GO[L.go]() };
 }
 function drawToday() {
   const el = $("today"); if (!el || !state) return;
