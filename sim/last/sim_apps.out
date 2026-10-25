@@ -1,0 +1,419 @@
+=== akun-biz0 replay same: true
+513 Gogo: Gogo wants to open a café. Starting it takes 3,500 coins, and Gogo has 950.
+513 PARENT Gogo cafe -> loan
+525 Gogo: Little Café: The Old Town latte art contest is on Sunday.
+526 Gogo: A harsh review of Little Café makes the rounds. Gogo reads it three times.
+527 Gogo: _Decision: Gogo's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead; they listened._ Gogo decided at Little Café: Won the latte art contest! A week of curio
+538 Gogo: Little Café: Laptop campers take every table for hours. The lunch crowd has nowhere to sit.
+540 Gogo: Gogo decided at Little Café: Two-hour limit on tables. Lunch is busier, and a few regulars grumble online.
+550 Gogo: Little Café: The Old Town latte art contest is on Sunday.
+552 Gogo: Gogo decided at Little Café: Came fourth at the latte art contest. Fun, but nobody noticed.
+570 Gogo: Little Café: The Old Town latte art contest is on Sunday.
+572 Gogo: Gogo decided at Little Café: Won the latte art contest! A week of curious new customers.
+574 Gogo: Little Café keeps losing money. Gogo is thinking about closing it.
+651 Gogo: Gogo has a new idea: opening a tutoring center someday. Gogo sketches a shop sign on a napkin.
+718 Gogo: Gogo has a new idea: opening a bookshop someday.
+  edge 2 yrs [] Little Café [cafe] lv0 since 513 closed 574 closed total -472 best 34 owners Gogo
+=== akun-biz1 replay same: true
+318 Nini: Nini wants to open a wheat farm. Starting it takes 2,500 coins, and Nini has 911.
+318 PARENT Nini farm -> loan
+370 Nini: 
+561 Nini: Nini wants to open a salon. Starting it takes 2,000 coins.
+561 PARENT Nini salon -> fund
+576 Nini: 
+578 Nini: 
+586 Nini: 
+588 Nini: 
+  [599] Hazel Salon (Salon, Stall) owner Nini fit 0.39 q 0.33 rep 31 cash 1137 30d profit 896 cust/day 4 staff  eq 1 loan 0
+603 Nini: Nini perfects a new signature at Hazel Salon: the Fluff-up. Regulars start asking for it by name.
+609 Nini: 
+611 Nini: 
+625 Nini: 
+627 Nini: 
+641 Nini: 
+643 Nini: 
+650 Nini: 
+652 Nini: 
+658 Nini: 
+660 Nini: 
+680 Nini: 
+682 Nini: 
+691 Nini: 
+693 Nini: 
+702 Nini: 
+704 Nini: 
+709 Nini: 
+711 Nini: 
+717 Nini: 
+719 Nini: 
+743 Nini: 
+745 Nini: 
+754 Nini: 
+756 Nini: 
+763 Nini: 
+765 Nini: 
+774 Nini: 
+776 Nini: 
+783 Nini: 
+785 Nini: 
+790 Nini: 
+792 Nini: 
+  [799] Hazel Salon (Salon, Stall) owner Nini fit 0.46 q 0.45 rep 46 cash 7592 30d profit 2246 cust/day 9 staff  eq 1 loan 0
+812 Nini: 
+814 Nini: Maple Salon closes its doors in the downturn. Some of its regulars start coming to Hazel Salon.
+815 Nini: 
+834 Nini: 
+836 Nini: 
+840 Nini: Old Town Salon closes its doors in the downturn. Some of its regulars start coming to Hazel Salon.
+845 Nini: 
+847 Nini: 
+855 Nini: Nini has a new idea: opening a boutique or a photo studio someday.
+856 Nini: 
+858 Nini: 
+860 Nini: 
+867 Nini: 
+869 Nini: 
+875 Nini: 
+877 Nini: 
+  edge 1 yrs [] Nini's Farm [farm] lv0 since 318 closed 370 closed total -948 best 0 owners Nini
+  edge 15 yrs [] Hazel Salon [salon] lv0 since 561 closed 913 sold total 22300 best 147 owners Nini
+=== akun-biz2 replay same: true
+334 Mimi: Mimi wants to open a wheat farm. Starting it takes 2,500 coins, and Mimi has 575.
+334 PARENT Mimi farm -> loan
+386 Mimi: Mimi has a new idea: opening a flour mill someday.
+  [399] Mimi's Farm (Wheat farm, Stall) owner Mimi fit 0.49 q 0.49 rep 42 cash 467 30d profit -60 cust/day 1 staff  eq 1 loan 1629
+448 Mimi: 
+461 Mimi: 
+480 Mimi: _Decision: Mimi's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._ Mimi has a new idea: opening a tutoring center someday.
+597 Mimi: Mimi has a new idea: opening a clinic someday.
+664 Mimi: Mimi wants to open a flour mill. Starting it takes 3,500 coins.
+664 PARENT Mimi mill -> fund
+775 Mimi: Mimi perfects a new signature at Clover Mill: Stone-ground Flour. Regulars start asking for it by name.
+776 Mimi: 
+  [799] Clover Mill (Flour mill, Stall) owner Mimi fit 0.68 q 0.67 rep 57 cash 4724 30d profit 1810 cust/day 3 staff  eq 1 loan 0
+815 Mimi: A new flour mill opens down the street from Clover Mill.
+833 Mimi: Bramble Mill closes its doors in the downturn. Some of its regulars start coming to Clover Mill.
+853 Mimi: 
+860 Mimi: 
+904 Mimi: A post about Stone-ground Flour goes viral on Chirp. There's a line out the door.
+913 Mimi: Mimi sells Clover Mill for 7,728 coins.
+1317 Kuku: Kuku has a new idea: opening a print shop someday.
+1373 Kuku: _Decision: Kuku's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._ Kuku has a new idea: opening a bookshop someday.
+1377 Kuku: Kuku has a new idea: opening a wholesaler someday.
+1459 Pupu: Pupu wants to open a salon. Starting it takes 2,000 coins, and Pupu has 760.
+1459 PARENT Pupu salon -> fund
+1463 Kuku: Kuku has a new idea: opening an accounting firm or a tutoring center someday.
+1463 Pupu: 
+1466 Pupu: 
+1468 Pupu: 
+1480 Pupu: 
+1482 Pupu: 
+1487 Kuku: Kuku wants to open a tutoring center. Starting it takes 1,500 coins. Kuku has stopped talking about a shop with their name on it.
+1487 PARENT Kuku tutoring -> fund
+1491 Kuku: 
+1495 Pupu: 
+1497 Pupu: 
+1498 Kuku: 
+1500 Kuku: 
+1503 Pupu: 
+1505 Pupu: Pupu decided at Honey Salon: The bride's hair fell flat before the ceremony. A refund, and an awkward week.
+1509 Kuku: 
+1511 Kuku: _Decision: Kuku's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._
+1516 Pupu: 
+1518 Pupu: 
+1524 Kuku: 
+1525 Kuku: Kuku perfects a new signature at Acorn Tutoring: Exam Rescue. Regulars start asking for it by name.
+1526 Kuku: 
+1527 Pupu: 
+1529 Pupu: 
+1534 Kuku: 
+1536 Kuku: 
+1541 Pupu: 
+1543 Pupu: 
+1546 Kuku: 
+1548 Kuku: 
+1548 Pupu: 
+1550 Pupu: 
+1553 Kuku: 
+1555 Kuku: 
+1557 Pupu: 
+1559 Pupu: 
+  edge 3 yrs [] Mimi's Farm [farm] lv0 since 334 closed 461 closed total -618 best 0 owners Mimi
+  edge 11 yrs [] Clover Mill [mill] lv0 since 664 closed 913 sold total 12953 best 139 owners Mimi
+  edge 4 yrs [] Honey Salon [salon] lv0 since 1459 open total 4697 best 69 owners Pupu
+  edge 3 yrs [] Acorn Tutoring [tutoring] lv0 since 1487 open total 3065 best 75 owners Kuku
+=== akun-biz3 replay same: true
+567 Mimi: _Decision: Mimi's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._ Mimi has a new idea: opening a print shop someday.
+620 Mimi: Mimi has a new idea: opening a bookshop someday.
+726 Mimi: Mimi has a new idea: opening a tutoring center someday.
+774 Mimi: Mimi has a new idea: opening a recruitment agency someday.
+777 Mimi: Mimi wants to open a tutoring center. Starting it takes 1,500 coins.
+777 PARENT Mimi tutoring -> fund
+790 Mimi: 
+791 Mimi: Mimi has a new idea: opening an accounting firm someday.
+792 Mimi: 
+795 Mimi: 
+799 Mimi: 
+  [799] Sunny Tutoring (Tutoring center, Stall) owner Mimi fit 0.60 q 0.45 rep 35 cash 972 30d profit 758 cust/day 6 staff  eq 1 loan 0
+801 Mimi: 
+806 Mimi: 
+808 Mimi: 
+816 Mimi: 
+818 Mimi: 
+833 Mimi: Acorn Tutoring closes its doors in the downturn. Some of its regulars start coming to Sunny Tutoring.
+853 Mimi: 
+855 Mimi: 
+860 Mimi: 
+866 Mimi: 
+868 Mimi: 
+874 Mimi: 
+876 Mimi: 
+891 Mimi: Mimi perfects a new signature at Sunny Tutoring: Exam Rescue. Regulars start asking for it by name.
+895 Mimi: 
+897 Mimi: 
+907 Mimi: 
+909 Mimi: 
+913 Mimi: Mimi hands Sunny Tutoring over to Mumu.
+914 Mumu: 
+916 Mumu: 
+936 Mumu: 
+938 Mumu: 
+956 Mumu: 
+958 Mumu: 
+978 Mumu: 
+980 Mumu: 
+996 Mumu: 
+998 Mumu: 
+  [999] Sunny Tutoring (Tutoring center, Stall) owner Mumu fit 0.53 q 0.48 rep 47 cash 5342 30d profit 626 cust/day 7 staff  eq 1 loan 0
+1004 Mumu: 
+1006 Mumu: 
+1020 Mumu: 
+1022 Mumu: 
+1044 Mumu: 
+1046 Mumu: 
+1057 Mumu: 
+1059 Mumu: 
+1069 Mumu: 
+1071 Mumu: 
+1078 Mumu: 
+1080 Mumu: 
+1085 Mumu: 
+1087 Mumu: 
+1108 Mumu: 
+1110 Mumu: 
+1120 Mumu: 
+1122 Mumu: 
+  edge 26 yrs [{"y":1,"p":17330,"r":null},{"y":2,"p":49708,"r":null}] Sunny Tutoring [tutoring] lv2 since 777 open total 149933 best 1536 owners Mimi>Mumu>Lulu
+=== akun-biz4 replay same: true
+522 Lulu: Lulu has a new idea: opening a bookshop someday.
+552 Lulu: Lulu has a new idea: opening a print shop someday.
+564 Lulu: _Decision: Lulu's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._ Lulu has a new idea: opening an accounting firm or a tutoring center someday.
+612 Lulu: Lulu has a new idea: opening a wholesaler someday.
+768 Cici: Cici wants to open a cleaning service. Starting it takes 1,500 coins, and Cici has 560.
+768 PARENT Cici cleaning -> fund
+780 Cici: 
+782 Cici: Cici decided at Little Cleaners: The crew missed half the floors. A refund, and an awkward week.
+789 Cici: 
+791 Cici: 
+795 Cici: Cici perfects a new signature at Little Cleaners: Sparkle Sunday. Regulars start asking for it by name.
+797 Lulu: Lulu has a new idea: opening a brokerage someday.
+798 Cici: 
+  [799] Little Cleaners (Cleaning service, Stall) owner Cici fit 0.51 q 0.54 rep 35 cash 903 30d profit 1380 cust/day 2 staff  eq 1 loan 0
+800 Cici: 
+822 Cici: Thistle Cleaners closes its doors in the downturn. Some of its regulars start coming to Little Cleaners.
+831 Cici: 
+833 Cici: 
+841 Cici: 
+843 Cici: 
+851 Cici: 
+853 Cici: 
+860 Cici: 
+873 Cici: 
+875 Cici: 
+895 Cici: 
+897 Cici: 
+902 Cici: 
+904 Cici: _Decision: Cici's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead; they didn't listen and chose: pass this time._ Cici decided at Little Cleaners: The cre
+911 Cici: 
+913 Cici: 
+915 Cici: Tata's a tiny cinema closes after a few months. The money is gone, the friendship survives.
+925 Cici: 
+927 Cici: 
+932 Cici: 
+934 Cici: 
+945 Cici: 
+947 Cici: 
+952 Cici: 
+954 Cici: 
+966 Cici: 
+968 Cici: Cici decided at Little Cleaners: The crew missed half the floors. A refund, and an awkward week.
+976 Cici: 
+978 Cici: 
+993 Cici: 
+995 Cici: Cici decided at Little Cleaners: The crew missed half the floors. A refund, and an awkward week.
+  [999] Little Cleaners (Cleaning service, Stall) owner Cici fit 0.57 q 0.62 rep 51 cash 8353 30d profit 2280 cust/day 3 staff  eq 1 loan 0
+1001 Cici: 
+1003 Cici: 
+1010 Cici: A new cleaning service opens down the street from Little Cleaners.
+1011 Cici: 
+1018 Cici: A post about Sparkle Sunday goes viral on Chirp. There's a line out the door.
+1030 Cici: 
+1032 Cici: 
+1045 Cici: 
+1047 Cici: _Decision: Cici's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead; they listened._
+1052 Cici: 
+1054 Cici: 
+1066 Cici: Cici wants to grow Little Cleaners into a shop. It would cost 7,500 coins from the business.
+1067 Cici: 
+  edge 13 yrs [{"y":1,"p":29567,"r":null}] Little Cleaners [cleaning] lv2 since 768 closed 1330 sold total 82523 best 782 owners Cici
+  edge 19 yrs [{"y":1,"p":18392,"r":null}] Pebble Couriers [courier] lv1 since 1170 open total 25519 best 254 owners Toto
+=== akun-biz5 replay same: true
+319 Bubu: Bubu wants to open a cleaning service. Starting it takes 1,500 coins, and Bubu has 810.
+319 PARENT Bubu cleaning -> loan
+327 Bubu: 
+329 Bubu: 
+342 Bubu: 
+344 Bubu: 
+370 Bubu: 
+372 Bubu: 
+376 Bubu: A post about Thistle Cleaners goes viral on Chirp. There's a line out the door.
+377 Bubu: Bubu perfects a new signature at Thistle Cleaners: Sparkle Sunday. Regulars start asking for it by name.
+389 Bubu: 
+391 Bubu: 
+  [399] Thistle Cleaners (Cleaning service, Stall) owner Bubu fit 0.54 q 0.6 rep 54 cash 2256 30d profit 1854 cust/day 3 staff  eq 1 loan 553
+410 Bubu: 
+412 Bubu: 
+414 Bubu: 
+417 Bubu: 
+419 Bubu: 
+434 Bubu: 
+436 Bubu: 
+442 Bubu: 
+444 Bubu: 
+453 Bubu: 
+455 Bubu: 
+460 Bubu: 
+462 Bubu: 
+463 Bubu: 
+472 Bubu: 
+474 Bubu: 
+526 Bubu: 
+528 Bubu: 
+536 Bubu: 
+538 Bubu: 
+568 Bubu: Bubu has a new idea: opening a tutoring center someday.
+579 Bubu: 
+581 Bubu: 
+584 Bubu: 
+592 Bubu: 
+594 Bubu: 
+595 Bubu: Bubu wants to grow Thistle Cleaners into a shop. It would cost 7,500 coins from the business.
+599 Bubu: A post about Sparkle Sunday goes viral on Chirp. There's a line out the door.
+  [599] Thistle Cleaners (Cleaning service, Shop) owner Bubu fit 0.61 q 0.69 rep 71 cash 1654 30d profit 3609 cust/day 5 staff  eq 1 loan 0
+602 Bubu: Bubu hires Eli Hollow as an associate at Thistle Cleaners.
+605 Bubu: 
+607 Bubu: 
+608 Bubu: Bubu hires Opi Moss as an account manager at Thistle Cleaners.
+613 Bubu: A post about Sparkle Sunday goes viral on Chirp. There's a line out the door.
+624 Bubu: 
+626 Bubu: 
+634 Bubu: 
+636 Bubu: 
+646 Bubu: 
+654 Bubu: 
+656 Bubu: 
+664 Bubu: 
+666 Bubu: 
+681 Bubu: 
+683 Bubu: _Decision: Bubu's boss offers them the lead on a big new project. It means long weeks. You chose: Take the lead._
+693 Bubu: Mrs. Thistle, a retired banker offers 3,400 coins for 24% of Thistle Cleaners.
+695 Bubu: 
+  edge 29 yrs [{"y":1,"p":44764,"r":null}] Thistle Cleaners [cleaning] lv2 since 319 closed 913 sold total 171963 best 924 owners Bubu
+  edge 13 yrs [] Lulu's Tutoring [tutoring] lv1 since 1255 open total 41329 best 611 owners Lulu>Wawa
+=== akun-biz6 replay same: true
+344 Tata: Tata wants to open a wheat farm. Starting it takes 2,500 coins, and Tata has 1,350.
+344 PARENT Tata farm -> loan
+357 Tata: A new wheat farm opens down the street from Tata's Farm.
+399 Tata: 
+517 Tata: Tata has a new idea: opening a bookshop someday. Tata sketches a shop sign on a napkin.
+547 Tata: Tata has a new idea: opening a print shop someday.
+578 Tata: Tata wants to open a print shop. Starting it takes 3,000 coins, and Tata has 1,459.
+578 PARENT Tata printer -> loan
+590 Tata: 
+  [599] Little Press (Print shop, Stall) owner Tata fit 0.55 q 0.49 rep 36 cash 465 30d profit -105 cust/day 1 staff  eq 1 loan 1625
+625 Tata: 
+717 Tata: Tata has a new idea: opening a tutoring center someday.
+749 Tata: Tata wants to open a bakery. Starting it takes 3,000 coins.
+749 PARENT Tata bakery -> fund
+765 Tata: Tata's Bakery: Butter prices jump 30% this week. The croissants eat a lot of butter.
+767 Tata: Tata decided at Tata's Bakery: Prices up 10% for two weeks.
+771 Tata: Tata has a new idea: opening an accounting firm someday.
+772 Tata: Tata's Bakery: A health inspector is visiting this week.
+774 Tata: Tata decided at Tata's Bakery: Closed early to scrub everything. The inspector left impressed.
+796 Tata: Tata's Bakery: Butter prices jump 30% this week. The croissants eat a lot of butter.
+798 Tata: Tata decided at Tata's Bakery: Prices up 10% for two weeks.
+  [799] Tata's Bakery (Bakery, Stall) owner Tata fit 0.47 q 0.43 rep 38 cash 435 30d profit -105 cust/day 11 staff  eq 1 loan 0
+802 Tata: Tata's Bakery keeps losing money. Tata is thinking about closing it.
+891 Rere: Rere wants to open a courier service. Starting it takes 2,000 coins.
+891 PARENT Rere courier -> fund
+901 Rere: 
+903 Rere: 
+930 Rere: 
+931 Rere: Rere perfects a new signature at Rere's Couriers: Same-day Hop. Regulars start asking for it by name.
+932 Rere: 
+945 Rere: 
+947 Rere: 
+954 Rere: 
+956 Rere: 
+961 Rere: 
+963 Rere: 
+975 Rere: Rere meets Vivi at a coffee shop. They talk so easily they lose track of time.
+977 Rere: 
+990 Rere: 
+992 Rere: 
+  [999] Rere's Couriers (Courier service, Stall) owner Rere fit 0.42 q 0.43 rep 41 cash 2357 30d profit 1425 cust/day 4 staff  eq 1 loan 0
+1004 Rere: 
+1006 Rere: 
+1029 Rere: 
+1031 Rere: 
+1046 Rere: 
+1048 Rere: 
+1055 Rere: 
+1057 Rere: 
+1077 Rere: 
+1079 Rere: 
+1088 Rere: 
+1093 Rere: 
+1095 Rere: 
+1102 Rere: 
+1104 Rere: 
+1117 Rere: 
+1119 Rere: 
+1125 Rere: 
+1127 Rere: 
+  edge 1 yrs [] Tata's Farm [farm] lv0 since 344 closed 399 closed total -1233 best 1 owners Tata
+  edge 1 yrs [] Little Press [printer] lv0 since 578 closed 625 closed total -39 best 23 owners Tata
+  edge 1 yrs [] Tata's Bakery [bakery] lv0 since 749 closed 802 closed total -321 best 3 owners Tata
+  edge 21 yrs [{"y":1,"p":16690,"r":null}] Rere's Couriers [courier] lv1 since 891 closed 1385 sold total 31779 best 319 owners Rere
+  edge 9 yrs [] Hazel Café [cafe] lv0 since 1239 open total 21631 best 166 owners Kuku
+=== akun-biz7 replay same: true
+584 Toto: Toto has a new idea: opening a print shop someday. Toto sketches a shop sign on a napkin.
+649 Toto: Toto has a new idea: opening a wholesaler someday.
+849 Toto: Toto has a new idea: opening a bookshop someday.
+870 Toto: Toto wants to open a wholesaler. Starting it takes 4,500 coins.
+870 PARENT Toto wholesale -> fund
+887 Toto: Toto has a new idea: opening a recruitment agency someday.
+891 Toto: Toto perfects a new signature at Acorn Wholesale: Next-day Crates. Regulars start asking for it by name.
+913 Toto: Toto hands Acorn Wholesale over to Kiko.
+915 Kiko: 
+945 Kiko: 
+  [999] Acorn Wholesale (Wholesaler, Stall) owner Kiko fit 0.47 q 0.55 rep 47 cash 2169 30d profit 570 cust/day 3 staff  eq 1 loan 0
+1009 Kiko: A new wholesaler opens down the street from Acorn Wholesale.
+1032 Kiko: 
+1155 Kiko: A new wholesaler opens down the street from Acorn Wholesale.
+1165 Kiko: 
+1197 Kiko: Kiko has a new idea: opening a tutoring center someday.
+  [1199] Acorn Wholesale (Wholesaler, Stall) owner Kiko fit 0.54 q 0.63 rep 56 cash 4919 30d profit 570 cust/day 3 staff  eq 1 loan 0
+1336 Kiko: Kiko sells Acorn Wholesale for 7,926 coins.
+  edge 10 yrs [{"y":1,"p":7077,"r":null}] Acorn Wholesale [wholesale] lv0 since 870 closed 1336 sold total 11831 best 56 owners Toto>Kiko
+{"open":18,"bank":0,"sold":6,"heir":3,"levels":{"0":12,"1":3,"2":3},"byTpl":{"cafe":2,"farm":3,"salon":2,"mill":1,"tutoring":3,"cleaning":2,"courier":2,"printer":1,"bakery":1,"wholesale":1}}

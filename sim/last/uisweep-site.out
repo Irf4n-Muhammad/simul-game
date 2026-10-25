@@ -1,0 +1,4 @@
+== sim/fixtures/state_akun-biz0.json members 1 errs 0
+akun-biz0/makhluk-001-adopsi showStatus && showStatus(): ERR showStatus is not defined
+makhluk-001-adopsi chat ok (go:0) | makhluk-001-adopsi chirp ok (go:0) | makhluk-001-adopsi burrow ok (go:0) | makhluk-001-adopsi bazaar ok (go:0) | makhluk-001-adopsi stars ok (go:0) | makhluk-001-adopsi calendar ok (go:0) | makhluk-001-adopsi photos ok (go:0) | makhluk-001-adopsi wallet ok (go:0) | makhluk-001-adopsi homes ok (go:0) | makhluk-001-adopsi mag ok (go:0) | makhluk-001-adopsi ventures ok (go:0) | makhluk-001-adopsi kindred ok (go:0) | makhluk-001-adopsi ward ok (go:0) | makhluk-001-adopsi paws ok (go:0)
+

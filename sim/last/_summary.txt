@@ -1,0 +1,21 @@
+sim_apps         exit=0    7.5s  419 lines
+sim_bake         exit=0    3.3s  112 lines
+sim_biz          exit=0    7.7s  419 lines
+sim_care         exit=0    1.6s  24 lines
+sim_focus        exit=0    (diulang)  22 lines
+sim_jobs         exit=0    3.0s  1 lines
+sim_jobs_b       exit=0    2.9s  1 lines
+sim_kd           exit=0   13.4s  374 lines
+sim_kendali      exit=0   19.7s  6 lines
+sim_mkt          exit=0    5.9s  26 lines
+sim_net          exit=0    4.4s  60 lines
+sim_nurse        exit=0    5.0s  125 lines
+sim_pets         exit=0    4.3s  2 lines
+sim_pts          exit=0    1.8s  17 lines
+sim_refuse       exit=0    1.2s  12 lines
+sim_rhythm       exit=0    2.0s  6 lines
+sim_svc          exit=0    7.0s  26 lines
+sim_unlock       exit=0    8.1s  35 lines
+sim_wait         exit=0   11.2s  14 lines
+chaos            exit=0    1.8s  4 lines (N=2 DAYS=900)
+DONE

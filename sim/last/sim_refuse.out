@@ -1,0 +1,12 @@
+akun-aaa Mumu patuh 58 refused 40 / 177 retry ok 0 replay true [
+  'Mumu shrugs. "Maybe another time."',
+  'Mumu shrugs. "Maybe another time."'
+]
+akun-bbb Rara patuh 58 refused 39 / 177 retry ok 0 replay true [
+  "Rara isn't in the mood for that today.",
+  "Rara isn't in the mood for that today."
+]
+akun-ccc Bubu patuh 61 refused 47 / 177 retry ok 0 replay true [
+  `Bubu has other plans today. "I'll decide my own day, thanks."`,
+  'Bubu shrugs. "Maybe another time."'
+]
