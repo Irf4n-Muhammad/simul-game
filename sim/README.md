@@ -40,8 +40,8 @@ Playwright dipakai dari pemasangan global (`npm root -g`), jadi tidak ada di `pa
 
 | Skrip | Mengukur | Cara | Angka terakhir |
 |---|---|---|---|
-| `uisweep.js` | Buka save contoh, jawab semua dilema, buka setiap lembar dan app (chat, chirp, burrow, bazaar, stars, calendar, photos, wallet, homes, mag, ventures, kindred, ward/biz, paws), kumpulkan error halaman | `SITE=$PWD/_site node sim/uisweep.js sim/fixtures/*.json` | lihat `sim/last/uisweep-site.out` dan `uisweep-release.out` |
-| `ui_replaycheck.js` | Rawat pagi lalu muat ulang halaman: catatan rawat dan kebutuhan harus sama setelah replay | `SITE=$PWD/_site node sim/ui_replaycheck.js` | lihat `sim/last/ui_replaycheck-site.out` |
+| `uisweep.js` | Buka save contoh, jawab semua dilema, buka setiap lembar dan app (chat, chirp, burrow, bazaar, stars, calendar, photos, wallet, homes, mag, ventures, kindred, ward/biz, paws), kumpulkan error halaman | `SITE=$PWD/_site node sim/uisweep.js sim/fixtures/*.json` | `_site`: 3 save, 5 makhluk, 0 error halaman (`uisweep-site.out`). `_release`: tidak bisa disapu lewat nama fungsi karena terser menyatukan fungsi sekali pakai (`showPhone` tidak ada lagi); yang dicek: halaman memuat tanpa error, dilema terjawab, lembar Family tanpa tombol Dev (lihat `uisweep-release.out`) |
+| `ui_replaycheck.js` | Rawat pagi lalu muat ulang halaman: catatan rawat dan kebutuhan harus sama setelah replay | `SITE=$PWD/_site node sim/ui_replaycheck.js` | SAME after reload, 0 error (`ui_replaycheck-site.out`) |
 | `_probe.js` | Pembantu: menulis `preview.html` + `ui.probe.js` (ui.js dengan kait `__e` untuk eval di dalam IIFE UI) di folder situs | dipanggil kedua harness | — |
 
 `fixtures/` berisi tiga save contoh (`state_akun-biz0/1/4.json`) untuk harness UI.
