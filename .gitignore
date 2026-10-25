@@ -1,0 +1,12 @@
+node_modules/
+_site/
+_release/
+.tmp/
+ui.js
+preview*.html
+arsip/
+shots*/
+*.png
+*.jpg
+*.log
+ui.probe.js

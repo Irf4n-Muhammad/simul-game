@@ -1,0 +1,17 @@
+{
+  "name": "makhluk-kecil",
+  "private": true,
+  "description": "Makhluk Kecil: sumber game (index.html + ui/ + modul .js), simulator, tes, dan alat build situs.",
+  "scripts": {
+    "build": "python3 tools/build_site.py",
+    "build:release": "python3 tools/build_site.py --release --out _release",
+    "lint": "python3 tools/build_ui.py && eslint .",
+    "test": "node --test test/*.test.js",
+    "check": "npm run lint && npm test && npm run build && npm run build:release"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.0",
+    "globals": "^16.0.0",
+    "terser": "^5.51.0"
+  }
+}
