@@ -1,30 +1,46 @@
-# Publishes this folder as a GitHub Pages site on every push to main.
-# First run also switches Pages on for the repository (enablement: true).
-name: Deploy to GitHub Pages
+# Setiap push dan pull request: lint + tes + build situs + build rilis (periksa saja).
+# Hanya push ke main yang menerbitkan hasil build (_site/) ke GitHub Pages.
+name: Check and deploy
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      # Build rilis hanya untuk memastikan kode Dev bisa dibuang bersih; hasilnya tidak diterbitkan.
+      - run: npm run build:release
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: check
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
       - id: deployment
         uses: actions/deploy-pages@v4
