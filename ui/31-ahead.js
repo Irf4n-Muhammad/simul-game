@@ -62,14 +62,17 @@ const AHEAD_DAYS = 180;
 function showAhead() {
   const S = aheadSnap(); if (!S) return;
   const soon = Soon.items(S).filter(i => i.day - S.d <= AHEAD_DAYS), some = Soon.someday(S);
-  const row = (i, ix) => `<button class="line ahead${i.sure ? "" : " maybe"}" data-ahead="${ix}"><i class="want-ic">${i.ic || "·"}</i><span class="grow"><b>${esc(i.tx)}</b><small class="sub">${esc(fmtDate(i.day))} · ${i.sure ? "a set day" : "maybe"}${i.sub ? " · " + esc(i.sub) : ""}</small></span></button>`;
+  // kiri: sisa hari sebagai angka (bukan ikon), judul diawali satu konteks besar ("PROMOTION: ...") supaya yang malas baca langsung tahu (26 Okt)
+  const left = n => n <= 0 ? `<i class="days"><b>now</b><small>today</small></i>` : `<i class="days"><b>${n}</b><small>${n === 1 ? "day" : "days"}</small></i>`;
+  const title = i => `<b><em class="k">${esc(i.lbl || "SOON")}:</em> ${esc(i.tx)}</b>`;
+  const row = (i, ix) => `<button class="line ahead${i.sure ? "" : " maybe"}" data-ahead="${ix}">${left(i.day - S.d)}<span class="grow">${title(i)}<small class="sub">${esc(fmtDate(i.day))} · ${i.sure ? "a set day" : "maybe"}${i.sub ? " · " + esc(i.sub) : ""}</small></span></button>`;
   openSheet("ahead", `
     <span class="ribbon" style="background: var(--sky)">WHAT'S AHEAD</span>
     <h2>Soon</h2>
     ${soon.length ? `<div class="list">${soon.map(row).join("")}</div>` : `<p>Nothing with a date in the next ${AHEAD_DAYS} days. Quiet times are when ${esc(cur.nama)} picks up new habits.</p>`}
     <p class="muted">A set day is a real day on your calendar. <i>Maybe</i> means the day is set but getting it is not.</p>
     <h2>Someday</h2>
-    ${some ? `<div class="list"><button class="line ahead" data-someday="1"><i class="want-ic">${some.ic || "·"}</i><span class="grow"><b>${esc(some.tx)}</b><small class="sub">A hope without a date yet.</small></span></button></div>` : `<p>No big hope on the horizon right now. Dreams and big wishes show up here when ${esc(cur.nama)} has one.</p>`}
+    ${some ? `<div class="list"><button class="line ahead" data-someday="1"><i class="days none"><b>?</b><small>no date</small></i><span class="grow">${title(some)}<small class="sub">A hope without a date yet.</small></span></button></div>` : `<p>No big hope on the horizon right now. Dreams and big wishes show up here when ${esc(cur.nama)} has one.</p>`}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
   sheet.querySelectorAll("[data-ahead]").forEach(b => b.onclick = () => { const it = soon[+b.dataset.ahead]; Tele.ev("soon", { k: it.k.split(":")[0], a: "buka" }); aheadGo(it); });

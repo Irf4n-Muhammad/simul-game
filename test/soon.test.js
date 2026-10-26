@@ -108,3 +108,18 @@ test("Someday: Kindred tanpa tanggal > keinginan besar > cita-cita; kosong kalau
   // Kindred pasangan makhluk lain tidak jadi Someday makhluk ini
   assert.equal(Soon.someday(base({ kindred: [{ cid: "m2", nama: "Nana", label: "Could get married", wait: 0, asked: false }] })), null);
 });
+
+test("lbl (26 Okt): tiap item punya satu konteks besar kapital di depan kalimat", () => {
+  const S = base({ members: [{ ...mochi, info: { ujian: { hari: D + 3, belajar: 2, jenis: "akhir" }, lahir_hari: D + 12, kelas: { label: "Pottery", end: D + 6 }, maraton: { day: D + 9 } }, st: { next_review: D + 20, next_comp: D + 15, job: { id: "chef", level: 1 } } }],
+    prize: () => true, moments: [{ id: "x1", day: D + 2, cid: "m1", label: "Job interview", kind: "interview" }, { id: "x2", day: D + 4, cid: "m1", label: "Audition", kind: "lain" }],
+    world: [{ mulai: D + 4, selesai: D + 6, nama: "Lantern Festival", ikon: "🏮", jenis: "festival" }, { mulai: D + 5, selesai: D + 5, nama: "Heat wave", ikon: "☀️", jenis: "cuaca" }, { mulai: D + 7, selesai: D + 7, nama: "Something", ikon: "" }],
+    mag: D + 5, build: { done: D + 8, label: "cottage" }, drops: [{ start: D + 3, label: "Print", soon: true }], kindred: [{ cid: "m1", nama: "Nana", label: "Could get engaged", wait: 12, asked: false }] });
+  const L = Object.fromEntries(Soon.items(S).map(i => [i.k, i.lbl]));
+  assert.deepEqual(L, { "ujian:m1": "FINAL EXAMS", "lahir:m1": "BABIES", "kelas:m1": "CLASS", "maraton:m1": "MARATHON", "review:m1": "PROMOTION", "comp:m1": "COMPETITION",
+    "fase:m1": "GROWING UP", "ultah:m1": "BIRTHDAY", "momen:x1": "INTERVIEW", "momen:x2": "AUDITION", "dunia:Lantern Festival": "FESTIVAL", "dunia:Heat wave": "WEATHER", "dunia:Something": "TOWN",
+    "mag": "MAGAZINE", "bangun": "BUILDING", "drop:Print": "DROP", "kindred:m1:Nana": "KINDRED" });
+  for (const i of Soon.items(S)) assert.match(i.lbl, /^[A-Z ]+$/, i.k);
+  assert.equal(Soon.someday(base({ kindred: [{ cid: "m1", nama: "Nana", label: "Could get engaged", wait: 0, asked: false }] })).lbl, "KINDRED");
+  assert.equal(Soon.someday(base({ wants: [{ id: "w1", ic: "🏠", label: "a house by the river", besar: true }] })).lbl, "WISH");
+  assert.equal(Soon.someday(base({ cita: "doctor" })).lbl, "DREAM");
+});
