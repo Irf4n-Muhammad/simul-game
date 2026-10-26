@@ -66,6 +66,8 @@ const TOURS = {
   ahead: { el: () => $("soon").hidden ? $("someday") : $("soon"), steps: n => [`<b>Soon</b> is what ${n}'s family is counting the days to: a quiz, a review, a birthday. Those are real days on your calendar.`, `A dotted line is a <i>maybe</i>: the day is set, getting it is not. <b>Someday</b> is a hope with no date yet. Tap either line to see everything ahead.`] },
   // v45: tonggak bayi (tonggak.js): muncul sendiri saat baris Soon pertama kali menampilkan tonggak; diulang lewat "?" di profil bayi
   tonggak: { el: () => $("soon"), steps: n => [`<b>Growing up</b>: ${n}'s first tooth, first word, first steps. Each one comes inside a window that is ${n}'s alone, so no two creatures match.`, `"Any day now" means the window is open. Nothing you do hurries it, and it can't be missed: it lands in the diary and on ${n}'s page.`] },
+  // v45.1: watak kebaca (tonggak.js): muncul sendiri saat baris Today pertama kali menampilkan pengamatan watak; diulang lewat "?" di kartu profil
+  watak: { el: () => (todayCache && /^momen:watak_/.test(todayCache.k)) ? $("today") : $("diaryBtn"), steps: n => [`<b>Getting to know ${n}</b>: six small things over the first weeks that say who ${n} is.${tour && tour.ulang ? "" : " The first one just happened; it's in the diary."}`, `Each one goes on ${n}'s page. It's not something you choose, it's something you get to know, and it will matter when ${n} starts saying no.`] },
 };
 const TOUR_VIS = { burrow: () => cur && phKind(game.home.get(cur.id)) !== "tablet", bazaar: () => cur && phKind(game.home.get(cur.id)) !== "tablet" };
 let tour = null;

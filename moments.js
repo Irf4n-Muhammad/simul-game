@@ -15,6 +15,9 @@
   gigi_pertama: ["puncak", 2], makan_padat: ["puncak", 1], benda_kesayangan: ["puncak", 1], merangkak: ["puncak", 2], berdiri: ["puncak", 2],
   potong_rambut: ["puncak", 1], kalimat_pertama: ["puncak", 2], lompat_pertama: ["puncak", 1], pispot: ["puncak", 1], kasur_sendiri: ["puncak", 1],
   suntik_1: ["tegang", 1], suntik_2: ["tegang", 1], suntik_3: ["lega", 1],
+  // v45.1: watak kebaca, sakit ringan, orang (tonggak.js)
+  watak_tidur: ["puncak", 2], watak_mandi: ["puncak", 2], watak_orang: ["puncak", 2], watak_makan: ["puncak", 2], watak_gigih: ["puncak", 2], watak_balok: ["puncak", 2],  // 2: masuk baris Today
+  ruam_popok: ["tegang", 1], gigi_rewel: ["tegang", 1], pilek_pertama: ["tegang", 1], cemas_ditinggal: ["tegang", 1], tetangga_nengok: ["puncak", 1], bayi_lain: ["puncak", 1],
   gap_puncak: ["puncak", 2], kampus_organisasi: ["puncak", 1], kampus_skripsi: ["tegang", 2], tulis_memoar: ["puncak", 1], memoar_selesai: ["puncak", 2], warisan_resep: ["puncak", 1],
     kelahiran: ["puncak", 3], pernikahan: ["puncak", 3], wisuda: ["puncak", 3], biz_buka: ["puncak", 3], adopsi_sendiri: ["puncak", 3], telur_warisan: ["puncak", 3], pulang_kampung: ["sedih", 2], masalah_di_pesta: ["tegang", 2],
     lamaran: ["puncak", 2], jadian: ["puncak", 2], kata_pertama: ["puncak", 2], langkah_pertama: ["puncak", 2], hari_pertama_sekolah: ["puncak", 2],

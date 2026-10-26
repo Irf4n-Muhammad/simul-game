@@ -7,17 +7,33 @@ function tonggakBox(id) {
   const rows = bayi ? V : V.filter(v => v.done);
   if (!rows.length) return "";
   const nextIx = rows.findIndex(v => !v.done && !v.fixed), cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const TB = c.info.timbang || {};
   const when = v => {
-    if (v.done) return v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done";
+    if (v.done) { const m = TB[v.id]; return (v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done") + (m ? ` · ${m.kg} kg, ${m.cm} cm` : ""); }
     if (v.fixed) return c.born + v.lo <= d ? "any day now · a clinic date" : `${fmtWhen(c.born + v.lo).toLowerCase()} · a clinic date`;
     return v.open ? `any day now · usually by ${v.hi} days old` : `usually at ${v.lo}–${v.hi} days old`;
   };
   const row = (v, i) => `<div class="line ${v.done ? "tg-done" : i === nextIx ? "tg-next" : "tg-later"}"><i class="tg-ic">${v.done ? "✓" : v.ic}</i><span class="grow"><b>${esc(cap(v.label))}</b><small class="sub">${esc(when(v))}</small></span></div>`;
   const n = rows.filter(v => v.done).length;
-  Tele.ev("tonggak", { a: "lihat", sudah: n, fase: bayi ? "bayi" : "lewat" });
+  Tele.ev("tonggak", { a: "lihat", sudah: n, fase: bayi ? "bayi" : "lewat", watak: Tonggak.watak(c, d).filter(v => v.done).length });
   return `<div class="fieldset" id="tonggakBox"><span class="lbl">Growing up · ${n} of ${V.length}</span><div class="list">${rows.map(row).join("")}</div>
     ${bayi ? `<span class="sub">Each one comes in its own time, inside ${esc(c.name)}'s own window. Nothing you do hurries it, and it can't be missed.</span>` : ""}</div>`;
 }
+
+// ---- v45.1: kartu "Getting to know": enam pengamatan watak (Tonggak.watak). Yang sudah kebaca pakai kalimatnya, yang belum pakai topiknya
+// dengan jendelanya; sesudah bayi cuma yang sudah. Sifatnya nggak diubah pemain, cuma dibaca: nanti kepake waktu makhluknya nolak saran.
+function watakBox(id) {
+  const c = game.home.get(id); if (!c || !globalThis.Tonggak) return "";
+  const d = today(), V = Tonggak.watak(c, d), bayi = Engine.phase_of(c.age(d)) === "bayi";
+  const rows = bayi ? V : V.filter(v => v.done);
+  if (!rows.length) return "";
+  const n = rows.filter(v => v.done).length, nm = esc(c.name);
+  const row = v => `<div class="line ${v.done ? "tg-done" : v.open ? "tg-next" : "tg-later"}"><i class="tg-ic">${v.done ? v.ic : "?"}</i><span class="grow"><b>${esc(v.done ? v.kata : v.topic)}</b><small class="sub">${esc(v.done ? `${v.topic} · seen at ${fmtAge(v.at)} old` : v.open ? "any day now" : `usually at ${v.lo}–${v.hi} days old`)}</small></span></div>`;
+  return `<div class="fieldset" id="watakBox"><span class="lbl">Getting to know ${nm} · ${n} of ${V.length}<button class="qmini" data-tour="watak" aria-label="How this works">?</button></span><div class="list">${rows.map(row).join("")}</div>
+    ${bayi ? `<span class="sub">Who ${nm} is, read from small things. Not something you choose: something you get to know. It will matter when ${nm} starts saying no.</span>` : ""}</div>`;
+}
+// tur: begitu pengamatan pertama ada (hari itu di baris Today kalau nggak ada momen lebih besar; kalau nggak, di catatan hari)
+EXTRA_TOURS.push({ id: "watak", when: () => { const c = cur && game && game.home.get(cur.id); return !!(c && c.info.watak); } });
 
 // ---- rak "Later": pintu dihitung dari umur makhluk pertama (aturan Wants.doors), app dewasa dari umur makhluk ini (Market.MIN_AGE)
 function phLater(c) {
