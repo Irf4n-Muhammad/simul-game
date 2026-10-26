@@ -637,6 +637,15 @@ svg { stroke: currentColor; }
 .line.ahead.maybe .days { background: rgba(141,169,189,.14); color: var(--sky); border: 1.5px dashed var(--sky); }
 .line.ahead .days.none { background: rgba(46,42,38,.06); color: var(--ink-soft); }
 .line.ahead .k { font-style: normal; color: var(--accent); letter-spacing: .05em; }
+/* v45: tonggak tumbuh (ui/35-tonggak.js): tangga di profil, rak "Later" di layar depan tablet/HP */
+.line.tg-done { opacity: .72; } .line.tg-later { opacity: .55; border-style: dashed; }
+.line.tg-next { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(194,112,79,.14); }
+.tg-ic { flex: none; width: 28px; text-align: center; font-style: normal; font-size: 17px; } .line.tg-done .tg-ic { color: var(--accent); font-weight: 800; }
+.ph-later { display: flex; flex-direction: column; gap: 10px; }
+.ph-later-h { color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; text-shadow: 0 1px 3px rgba(0,0,0,.45); }
+.ph-app.locked .pi { filter: grayscale(1) brightness(.8); opacity: .62; }
+.ph-app.locked .pi::after { content: "🔒"; position: absolute; right: 3px; bottom: 2px; font-size: 13px; }
+.ph-app.locked span { opacity: .8; } .ph-app.locked small { font-size: 10px; font-weight: 600; opacity: .85; margin-top: -3px; }
 /* v44.1: focus session (ui/32-focus.js) */
 .focus-clock { font-size: 58px; font-weight: 800; letter-spacing: -.03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; padding: 6px 0 2px; }
 /* v44.1: weather as a skin (ui/33-weather.js): rain, snow and fog drawn over the room, under the HUD; never over a sheet */
@@ -1097,6 +1106,7 @@ svg { stroke: currentColor; }
 <script src="pets.js"></script>
 <script src="mag.js"></script>
 <script src="wants.js"></script>
+<script src="tonggak.js"></script>
 <script src="game.js"></script>
 <script src="net.js"></script>
 <script src="today.js"></script>

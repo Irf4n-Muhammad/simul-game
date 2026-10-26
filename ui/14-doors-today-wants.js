@@ -64,6 +64,8 @@ const TOURS = {
   balik: { el: () => $("today"), steps: n => [`Once a week ${n} turns it around and asks about <b>you</b>. One tap to answer, nothing to get right.`, `It's not for points. ${n} just wants to know, and reacts the way ${n} would. Your answers stay on this phone.`] },
   cuaca: { el: () => null, steps: n => [`The sky in the window follows the real weather where you are. Rain outside, rain over Old Town.`, `It's only the sky: nothing in ${n}'s life changes with it. Change or turn it off in <b>Family → Sky & weather</b>.`] },
   ahead: { el: () => $("soon").hidden ? $("someday") : $("soon"), steps: n => [`<b>Soon</b> is what ${n}'s family is counting the days to: a quiz, a review, a birthday. Those are real days on your calendar.`, `A dotted line is a <i>maybe</i>: the day is set, getting it is not. <b>Someday</b> is a hope with no date yet. Tap either line to see everything ahead.`] },
+  // v45: tonggak bayi (tonggak.js): muncul sendiri saat baris Soon pertama kali menampilkan tonggak; diulang lewat "?" di profil bayi
+  tonggak: { el: () => $("soon"), steps: n => [`<b>Growing up</b>: ${n}'s first tooth, first word, first steps. Each one comes inside a window that is ${n}'s alone, so no two creatures match.`, `"Any day now" means the window is open. Nothing you do hurries it, and it can't be missed: it lands in the diary and on ${n}'s page.`] },
 };
 const TOUR_VIS = { burrow: () => cur && phKind(game.home.get(cur.id)) !== "tablet", bazaar: () => cur && phKind(game.home.get(cur.id)) !== "tablet" };
 let tour = null;
@@ -95,8 +97,9 @@ function tourEnd(how) {
   tour = null; coachHide();
 }
 const SHEET_TOUR = { plan: "plan", dice: "dadu", ahead: "ahead", fokus: "fokus", sky: "cuaca", balik: "balik" };
-function sheetQ(kind) {
-  const id = SHEET_TOUR[kind]; if (!id || !TOURS[id]) return;
+function sheetQ(kind, force) {
+  const id = force || SHEET_TOUR[kind]; if (!id || !TOURS[id]) return;
+  const old = sheet.querySelector(".card > .qmark"); if (old) old.remove();
   const b = document.createElement("button"); b.className = "qmark"; b.textContent = "?"; b.setAttribute("aria-label", "How this works");
   b.onclick = () => tourStart(id, true);
   const card = sheet.querySelector(".card"); if (card) card.appendChild(b);
@@ -109,9 +112,10 @@ const PH_INTRO = {
   stars: n => [["✨", "Stars", `${n}'s talents, drawn as constellations.`], ["🔭", "Light one up", `Points come from what ${n} actually does. Tap a star next to a lit one to light it.`]],
   mag: () => [["📰", "The Magazine", "A new issue every month: the town, its people, and sometimes your family."]],
   burrow: n => [["🐾", "Burrow", `The town's work network: a profile, job offers, and news from people ${n} knows.`], ["🤝", "You suggest, they decide", `Point ${n} at a job. They apply if they like it.`]],
-  bazaar: n => [["🛍️", "The Bazaar", "New things, second-hand finds and limited drops."], ["🪙", "Their money", `It's ${n}'s wallet. Suggest a buy; they can say no.`]],
+  bazaar: n => [["🛍️", "The Bazaar", "New things, second-hand finds and limited drops."], ["🪙", "Their money", `It's ${n}'s wallet. Suggest a buy; they can say no.`]],  // v45: rak "Later" di layar depan tablet/HP (ui/35-tonggak.js)
+  later: n => [["🔒", "Later", `The grey apps open when ${n} is older. The day is written under each one. Nothing to buy, just time.`]],
 };
-const PH_INTRO_COL = { chirp: ["#D99A12", "#FFF1CC"], stars: ["#2B3270", "#E6E8F5"], mag: ["#C8102E", "#FBE3E6"], burrow: ["#1F7A6B", "#DDF0EC"], bazaar: ["#222", "#ECECEC"] };
+const PH_INTRO_COL = { chirp: ["#D99A12", "#FFF1CC"], stars: ["#2B3270", "#E6E8F5"], mag: ["#C8102E", "#FBE3E6"], burrow: ["#1F7A6B", "#DDF0EC"], bazaar: ["#222", "#ECECEC"], later: ["#5B5650", "#ECE9E4"] };
 function phIntroFor(id) {
   if (!PH || !PH_INTRO[id]) return;
   const html = baIntro(id, PH_INTRO[id](cur ? cur.nama : "they"));
@@ -121,9 +125,10 @@ function phIntroFor(id) {
 function phIntroAfter(view, arg) {
   if (!PH) return;
   if (view === "chirp" || view === "mag") return phIntroFor(view);
+  if (view === "home" && PH.el.querySelector(".ph-later")) return phIntroFor("later");
   if (PH.introKey) phQ(PH.introKey, () => phGo(view, arg));
 }
-const PH_Q_TOP = { stars: 108, mag: 84, burrow: 5, bazaar: 6 };
+const PH_Q_TOP = { stars: 108, mag: 84, burrow: 5, bazaar: 6, later: 70 };
 function phQ(k, again) {
   if (!PH) return;
   PH.screen.querySelectorAll(":scope > .ph-q").forEach(e => e.remove());

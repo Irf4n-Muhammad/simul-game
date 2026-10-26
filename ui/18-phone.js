@@ -179,6 +179,7 @@ function phBindIn(v) {
 }
 function phBind(v) {
   v.querySelectorAll("[data-app]").forEach(b => b.onclick = () => phOpen(b.dataset.app));
+  v.querySelectorAll("[data-later]").forEach(b => b.onclick = () => phLaterTap(b.dataset.later, v));
   v.querySelectorAll("[data-note]").forEach(b => b.onclick = () => {
     const n = phNotes(PH.c)[+b.dataset.note]; if (!n) return;
     Tele.notif("klik", n.app, +b.dataset.note);
@@ -223,9 +224,11 @@ function phLock(c) {
     <button class="ph-unlock">Swipe up to open</button></div>`;
 }
 function phHomeScreen(c) {
-  const s = statusOf(c.id), P = Career.profile(c, game.home, today()), kid = phKind(c) === "tablet";
+  const s = statusOf(c.id), P = Career.profile(c, game.home, today()), kid = phKind(c) === "tablet", later = phLater(c);
+  phLaterSeen(later);
   return `<div class="ph-home"><div class="ph-widget"><span class="ph-face" style="background:${colorOf(cur)}">${esc(c.name[0])}</span><span><b>${esc(c.name)}</b><small>${esc(kid ? (PHASE_EN[cur.fase] || "") + " · " + fmtAge(cur.umur) : P.headline)}</small>${kid ? "" : `<small>${coins(s.wallet)}</small>`}</span></div>
     <div class="ph-grid">${phApps(c).map(a => { const n = phBadge(a.id, c); return `<button class="ph-app" data-app="${a.id}">${phIcon(a)}${n ? `<i class="ph-badge">${n}</i>` : ""}<span>${a.name}</span></button>`; }).join("")}</div>
-    ${kid ? `<p class="ph-kid">Family tablet. ${esc(c.name)} gets a phone of their own when they buy one in the teen years.</p>` : ""}</div>`;
+    ${later.length ? `<div class="ph-later"><small class="ph-later-h">Later</small><div class="ph-grid">${later.map(a => `<button class="ph-app locked" data-later="${a.id}" aria-label="${esc(a.name)} opens ${esc(phLaterWhen(a.day))}">${phIcon(a)}<span>${a.name}</span><small>${esc(phLaterWhen(a.day))}</small></button>`).join("")}</div></div>` : ""}
+    ${kid ? `<p class="ph-kid">Family tablet. ${esc(c.name)} gets a phone of their own in the teen years.</p>` : ""}</div>`;
 }
 const phHead = (title, sub = "") => `<header class="pa-head"><h1>${esc(title)}</h1>${sub ? `<small>${sub}</small>` : ""}</header>`;
