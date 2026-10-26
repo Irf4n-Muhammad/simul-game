@@ -11,3 +11,4 @@ shots*/
 *.log
 ui.probe.js
 _pages/
+__pycache__/
