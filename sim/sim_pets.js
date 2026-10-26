@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); const CR = require("../career.js"); require("../market.js"); require("../venture.js"); require("../work.js"); const PT = require("../pets.js");
+const E = require("../engine.js"); require("../storylets.js"); require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); require("../venture.js"); require("../work.js"); const PT = require("../pets.js");
 const G = require("../game.js");
 const N = +(process.env.N || 6), DAYS = +(process.env.DAYS || 1500), OFF = +(process.env.OFF || 0);
 const tot = { pets: 0, died: {}, life: [], ages: [], bond: [], tricks: 0, ribbons: 0, cards: {}, adopt: 0, refused: 0 };

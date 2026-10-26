@@ -2,9 +2,9 @@
 // Lima kolom: hari ini (yang DIKETAHUI akan terjadi hari ini), sebentar lagi (<=14 hari), suatu hari (>14 hari / tanpa tanggal, ada jalur),
 // ketidakpastian (hasil terbuka), hal baru (muncul 7 hari terakhir). Tiap item ditandai sekali/berulang dan punya rutinitas atau nggak.
 const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); const Tree = require("../tree.js"); require("../agenda.js");
-const Career = require("../career.js"); const Market = require("../market.js"); const Wants = require("../wants.js"); const Mag = require("../mag.js");
-const Moments = require("../moments.js"); const Work = require("../work.js"); let Venture = null; try { Venture = require("../venture.js"); } catch (e) {}
-let Pets = null; try { Pets = require("../pets.js"); } catch (e) {}
+require("../career.js"); const Market = require("../market.js"); const Wants = require("../wants.js"); const Mag = require("../mag.js");
+require("../moments.js"); const Work = require("../work.js"); try { require("../venture.js"); } catch (e) {}
+try { require("../pets.js"); } catch (e) {}
 const G = require("../game.js");
 const SEEDS = (process.env.SEEDS || "w1,w2,w3,w4,w5,w6,w7,w8").split(","), DAYS = +(process.env.DAYS || 1500), DUMP = process.env.DUMP ? process.env.DUMP.split(",").map(Number) : [];
 const dow = d => new Date(E.START_DATE + d * 86400000).getUTCDay();

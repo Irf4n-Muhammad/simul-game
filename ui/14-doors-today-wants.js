@@ -14,6 +14,8 @@ function todayLine() {
   const d = today();
   const L = Today.line({
     cur, pending: game.pending, feed, d,
+    fokus: focusView(),
+    balik: balikView,
     doors: doorsNow,
     care: () => canCare() ? careView() : null,
     next: nextMoment,
@@ -23,6 +25,8 @@ function todayLine() {
   if (!L || !L.go) return L;
   const GO = {
     dilema: () => showDilemma,
+    fokus: () => showFocus,
+    balik: () => showBalik,
     tur: () => () => tourStart(L.id, true),
     diary: () => showDiary,
     rawat: () => () => { const b = $("careStrip").querySelector(`[data-care="${L.id}"]`); if (b) b.click(); },
@@ -55,6 +59,11 @@ const TOURS = {
   mag: { el: () => $("lifeBtn"), steps: () => [`The <b>Magazine</b> is on the phone: a new issue every month about the town, and sometimes about your family.`] },
   burrow: { el: () => $("lifeBtn"), steps: n => [`${n} has a phone of their own now. <b>Burrow</b> is where the town's jobs are: a profile, offers, and news from people they know.`, `You can suggest a job. ${n} decides whether to apply.`] },
   bazaar: { el: () => $("lifeBtn"), steps: n => [`The <b>Bazaar</b> is open on the phone: things to buy, new and second-hand, and limited drops.`, `It's ${n}'s money. You can suggest; they can say no.`] },
+  // v44.1: bukan pintu, tapi tur yang sama: baris Soon/Someday (muncul sendiri saat barisnya pertama tampil, diulang lewat "?" di lembar What's ahead)
+  fokus: { el: () => $("planBtn"), steps: n => [`<b>Focus together</b> is in the daily plan now: ${FOCUS_MIN} minutes, your work next to ${n}'s. Put the phone down; ${n} stays on screen.`, `Finish the clock before a quiz and it counts as a study evening, the same as the Study button. No quiz? Then it's just company.`] },
+  balik: { el: () => $("today"), steps: n => [`Once a week ${n} turns it around and asks about <b>you</b>. One tap to answer, nothing to get right.`, `It's not for points. ${n} just wants to know, and reacts the way ${n} would. Your answers stay on this phone.`] },
+  cuaca: { el: () => null, steps: n => [`The sky in the window follows the real weather where you are. Rain outside, rain over Old Town.`, `It's only the sky: nothing in ${n}'s life changes with it. Change or turn it off in <b>Family → Sky & weather</b>.`] },
+  ahead: { el: () => $("soon").hidden ? $("someday") : $("soon"), steps: n => [`<b>Soon</b> is what ${n}'s family is counting the days to: a quiz, a review, a birthday. Those are real days on your calendar.`, `A dotted line is a <i>maybe</i>: the day is set, getting it is not. <b>Someday</b> is a hope with no date yet. Tap either line to see everything ahead.`] },
 };
 const TOUR_VIS = { burrow: () => cur && phKind(game.home.get(cur.id)) !== "tablet", bazaar: () => cur && phKind(game.home.get(cur.id)) !== "tablet" };
 let tour = null;
@@ -85,7 +94,7 @@ function tourEnd(how) {
   (state.tur_pintu ||= {})[tour.id] = 1; save();
   tour = null; coachHide();
 }
-const SHEET_TOUR = { plan: "plan", dice: "dadu" };
+const SHEET_TOUR = { plan: "plan", dice: "dadu", ahead: "ahead", fokus: "fokus", sky: "cuaca", balik: "balik" };
 function sheetQ(kind) {
   const id = SHEET_TOUR[kind]; if (!id || !TOURS[id]) return;
   const b = document.createElement("button"); b.className = "qmark"; b.textContent = "?"; b.setAttribute("aria-label", "How this works");

@@ -1,5 +1,6 @@
 # Setiap push dan pull request: lint + tes + build situs + build rilis (periksa saja).
-# Hanya push ke main yang menerbitkan hasil build (_site/) ke GitHub Pages.
+# Hanya push ke main yang menerbitkan ke GitHub Pages: build rilis (_release/, tanpa Dev tools) di akar situs,
+# build lengkap (_site/, Dev tools di balik ?dev=1) di /dev/. Keduanya satu origin, jadi save-nya sama.
 name: Check and deploy
 on:
   push:
@@ -26,11 +27,16 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      # Build rilis hanya untuk memastikan kode Dev bisa dibuang bersih; hasilnya tidak diterbitkan.
       - run: npm run build:release
+      # Susun folder Pages: rilis di akar, build lengkap di dev/.
+      - run: |
+          rm -rf _pages && mkdir -p _pages/dev
+          cp -R _release/. _pages/
+          cp -R _site/. _pages/dev/
+          test -f _pages/index.html && test -f _pages/dev/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: _pages
   deploy:
     if: github.event_name != 'pull_request'
     needs: check

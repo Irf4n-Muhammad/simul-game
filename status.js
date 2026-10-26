@@ -5,7 +5,7 @@
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const S = (typeof module !== "undefined") ? require("./storylets.js") : globalThis.Storylets;
-  const { HOOKS, REGISTRY, seed_rng, clamp, FOREVER, phase_of, Ctx, OLD_AGE } = E;
+  const { HOOKS, REGISTRY, seed_rng, clamp, FOREVER, phase_of, Ctx } = E;
 
   // ---------------------------------------------------------------- data
   const SKILLS = ["logic", "fitness", "charm", "creativity"];
@@ -315,7 +315,6 @@
   }
   let _bestAth = null;
   const bestNpcAthlete = () => (_bestAth ??= Math.max(...population().map(p => p.athlete)));
-  function rankOf(value, list) { return list.filter(v => v > value).length + 1; }
 
   function boards(home, day) {
     const pop = population();

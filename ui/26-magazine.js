@@ -220,7 +220,7 @@ const ART = {
   },
   // close up: all we see over the edge of the moving box are two sad eyes
   layoff(A) {
-    const r = A.rng, out = [`<rect width="400" height="500" fill="#D5DBE1"/>`];
+    const out = [`<rect width="400" height="500" fill="#D5DBE1"/>`];
     for (let row = 0; row < 7; row++) for (let c = 0; c < 6; c++) out.push(`<rect x="${14 + c * 66}" y="${40 + row * 52}" width="44" height="34" rx="3" fill="#C4CCD4"/>`);
     out.push(artCr(212, 470, 3.2, { col: A.hero, face: "sad", look: [0, 1] }));
     out.push(`<rect x="-10" y="372" width="420" height="140" fill="#C9A27A"/><rect x="-10" y="372" width="420" height="16" fill="#B58E66"/><path d="M200,388 V500" stroke="#B58E66" stroke-width="3"/>
@@ -359,7 +359,7 @@ function mgSay(I) {
 const mgMast = (I, ink) => { const mo = Mag.monthName(I.k); return `<div class="mgn-mast" style="color:${ink}"><b>Old Town Magazine</b><small>No. ${I.no} · ${esc(mo)}</small></div>`; };
 function mgFace(I) {
   const s = mgSpec(I), h = hashStr("face|" + I.k + "|" + I.cover.who.name);
-  const fam = I.cover.fam, crop = I.cover.kind === "couple" ? null : ["tight", "half", "low", "bust"][h % 4];
+  const crop = I.cover.kind === "couple" ? null : ["tight", "half", "low", "bust"][h % 4];
   const moods = [{ bg: "#141414", bw: true }, { bg: "#2A2622", bw: false }, { bg: "#8E8A84", bw: true }, { bg: "#C8102E", bw: false }, { bg: "#E9E4DA", bw: true }];
   const m = moods[(h >>> 4) % moods.length];
   Object.assign(s, { crop, mood: true, bg: m.bg, floor: m.bg, disc: null, key: s.key + "|nyt|" + crop + m.bg, pose: ["cool", "glance", "soft", "proud"][(h >>> 8) % 4] });
@@ -550,22 +550,6 @@ const HERO_SCENES = {
     return heroShoot(sc, cam);
   },
 };
-function mgCoverOld(I) {
-  const C = I.cover, mo = Mag.monthName(I.k).split(" "), kind = C.kind || "portrait";
-  const lk = mgLook(I);
-  const head = `<b class="mgc-logo">OLD TOWN</b><span class="mgc-no"><span>No. ${I.no}</span><span>${esc(mo[0])} ${esc(mo[1])}</span><span>${coins(Math.max(4, 4 + Math.floor(I.k / 12)))}</span></span>`;
-  if (kind === "type") return `<div class="mgc mgc-type${C.big.length <= 2 ? " num" : ""}" style="--bg:${lk.typeBg};--ink:${lk.typeInk}">${head}
-    <b class="mgc-big">${esc(C.big)}</b><div class="mgc-star"><small>${esc(C.kicker)}</small><b>${esc(C.title)}</b><span>${esc(C.dek)}</span></div>
-    <div class="mgc-lines">${I.lines.slice(-2).map(l => `<span>${esc(l)}</span>`).join("")}</div></div>`;
-  if (kind === "object") return `<div class="mgc mgc-object" style="--bg:${lk.bg}">${mgObj(I, lk.bg)}${head}
-    <div class="mgc-lines">${I.lines.map(l => `<span>${esc(l)}</span>`).join("")}</div>
-    <div class="mgc-star"><small>${esc(C.kicker)}</small><b>${esc(C.title)}</b><span>${esc(C.dek)}</span></div></div>`;
-  return `<div class="mgc mgc-${lk.layout}" style="--bg:${lk.bg}">${mgPhoto(I)}<i class="mgc-shade"></i>
-    <b class="mgc-logo">OLD TOWN</b><span class="mgc-no"><span>No. ${I.no}</span><span>${esc(mo[0])} ${esc(mo[1])}</span><span>${coins(Math.max(4, 4 + Math.floor(I.k / 12)))}</span></span>
-    <div class="mgc-lines">${I.lines.map(l => `<span>${esc(l)}</span>`).join("")}</div>
-    ${I.yearly ? `<i class="mgc-flag">THE<br>OLD TOWN<br>10</i>` : C.fam ? `<i class="mgc-fam">Your family</i>` : ""}
-    <div class="mgc-star"><small>${esc(C.kicker)}</small><b>${esc(kind === "couple" ? `${C.who.name} & ${C.partner}` : C.who.name)}</b><span>${esc(C.dek)}</span></div></div>`;
-}
 function phMag(c) {
   const day = today(), L = Mag.latest(day), I = Mag.issue(game.home, L), fresh = L > mgRead();
   const back = Array.from({ length: Math.min(L, 24) }, (_, i) => L - 1 - i).map(k => Mag.issue(game.home, k));
@@ -607,7 +591,6 @@ function phIssue(c, k) {
   const art = artPick(I);
   const toc = [["On the cover", `“${art.title}” by ${art.by}, ${art.about}.`], [onCover ? "The cover story" : "The profile", S.title], I.list && ["The Old Town 10", "The richest creatures in town, this year"], ["Society", "Weddings, births, and goodbyes"],
     ["Careers", "Who moved up, who opened, who closed"], ["Property", "New addresses"], ["Market", "Limited drops and a collector's find"]].filter(Boolean);
-  const famIds = new Set(game.home.members.map(m => m.id));
   const ten = I.list ? I.list.top.map(e => `<div class="mg-trow${e.you ? " you" : ""}"><b class="mg-num">${e.rank}</b><span><b>${esc(e.name)}</b><small>${esc(e.sub || "")}</small></span><em>${coins(e.value)}</em></div>`).join("") : "";
   const famIn = I.list ? I.list.top.filter(e => e.you) : [];
   const dropTxt = D => D.soldIn == null ? `${D.made} made. Some still left.` : D.soldIn === 0 ? `${D.made} made. Gone the same day.` : `${D.made} made. Sold out in ${D.soldIn} day${D.soldIn === 1 ? "" : "s"}.`;

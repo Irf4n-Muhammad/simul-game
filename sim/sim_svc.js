@@ -1,7 +1,6 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
 const G = require("../game.js");
 const N = +(process.env.N || 8), DAYS = +(process.env.DAYS || 1600);
-const out = [];
 for (let i = +(process.env.OFF || 0); i < +(process.env.OFF || 0) + N; i++) {
   const akun = "akun-biz" + i;
   const g = new G.Game({ akun, nama: null, aturan: { sekolah: "wajib" }, wakil: "aman", hadir: Array.from({ length: DAYS + 5 }, (_, i) => i), jawaban: {}, aksi: [], dilihat: 1e9, rawat_from: null, jam: {} });
@@ -16,6 +15,6 @@ for (let i = +(process.env.OFF || 0); i < +(process.env.OFF || 0) + N; i++) {
   let rep = "";
   if (process.env.REPLAY) { const g2 = new G.Game(JSON.parse(JSON.stringify(g.state))); g2.advance(g.home.last_day, null); rep = " replay " + (g2.home.snapshot() === g.home.snapshot()); }
   console.log("=== " + akun + rep);
-  for (const b of S.list) { const v = V.view ? null : null; console.log(`  ${b.tpl} ${b.name} lvl${b.level} days ${(b.closedD || b.end || DAYS) - b.since} total ${Math.round(b.total||0)} rep ${Math.round(b.rep||0)} why ${b.why||"open"} niche ${b.niche||"-"} crises ${b.crises||0} edge ${Math.round(b.edge||0)}`); }
+  for (const b of S.list) { console.log(`  ${b.tpl} ${b.name} lvl${b.level} days ${(b.closedD || b.end || DAYS) - b.since} total ${Math.round(b.total||0)} rep ${Math.round(b.rep||0)} why ${b.why||"open"} niche ${b.niche||"-"} crises ${b.crises||0} edge ${Math.round(b.edge||0)}`); }
   if (process.env.EV) for (const e of ev.slice(0, 12)) console.log("   ", e);
 }

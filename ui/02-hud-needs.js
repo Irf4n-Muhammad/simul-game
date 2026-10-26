@@ -12,7 +12,7 @@ function drawHud() {
   const gone = cur.fase === "meninggal" || cur.fase === "merantau";
   for (const n of NEEDS) {
     const v = Math.max(0, Math.min(100, n.k === "ikatan" ? cur.ikatan : cur.needs[n.k]));
-    const el = $("need-" + n.k), f = el.firstChild;
+    const el = $("need-" + n.k);
     el.style.setProperty("--v", v.toFixed(0));
     el.style.setProperty("--c", n.k === "ikatan" ? "var(--rose)" : v > 60 ? "var(--good)" : v > 30 ? "var(--mid)" : "var(--low)");
     el.classList.toggle("low", !gone && n.k !== "ikatan" && v <= 30);
@@ -24,6 +24,6 @@ function drawHud() {
   $("ageLbl").textContent = `${PHASE_EN[cur.fase] || cur.fase} · ${fmtAge(cur.umur)} · Day ${game.home.last_day + 1}`;
   $("face").style.background = "#" + (COLOR[cur.rupa.warna] || 0xcccccc).toString(16).padStart(6, "0");
   $("bottom").style.opacity = gone ? 0.5 : 1;
-  drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe();
+  drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead();
 }
 

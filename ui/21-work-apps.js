@@ -154,7 +154,7 @@ function baMarket(c, b, v, owner) {
     <p class="vn-fact">Firms that are just as good split the ${v.t.fund ? "opportunities" : "customers"}. Being stronger, or in a quieter ${v.t.fund ? "style" : "niche"}, gets a bigger slice.</p></div>`;
 }
 function baTrack(b, v) {
-  const T = v.track, day = today(), next = b.since + 365 * ((T.n || 0) + 1);
+  const T = v.track, next = b.since + 365 * ((T.n || 0) + 1);
   if (!T.n) return `<h4 class="pa-h">Track record</h4><div class="vn-card"><p class="vn-fact">No full year yet. The first one ends ${fmtDate(next)}. ${v.t.fund ? "Outside investors only put money in after a year of results." : "Serious investors want to see at least one good year."}</p></div>`;
   const key = T.fund ? "r" : "p", mx = Math.max(1, ...T.years.map(o => Math.abs(o[key])));
   return `<h4 class="pa-h">Track record · ${T.n} year${T.n > 1 ? "s" : ""}</h4><div class="vn-card"><div class="ba-yrs">${T.years.map(o => `<span><i class="${o[key] >= 0 ? "up" : "down"}" style="height:${Math.max(4, Math.round(Math.abs(o[key]) / mx * 46))}px"></i><small>Y${o.y}</small></span>`).join("")}</div>
@@ -225,7 +225,7 @@ function baPartners(c, b, v, T, owner) {
 
 // ---- alumni: read-only memory of a place they used to work
 function baAlumni(c, b, v, T) {
-  const a = (c.st.alumni || []).filter(x => x.biz === b.id).slice(-1)[0] || {}, day = today();
+  const a = (c.st.alumni || []).filter(x => x.biz === b.id).slice(-1)[0] || {};
   return `<div class="ba old" style="--ba:#8e8e93;--ba-soft:#f2f2f7"><header class="ba-head"><span class="ba-ic">${T.ic}</span><span class="pa-grow"><b>${esc(a.name || b.name)}</b><small>Alumni · read only</small></span></header>
     <div class="ba-body"><div class="vn-card"><div class="vn-row"><span>${esc(c.name)} was</span><b>${esc(a.role || "Staff")}</b></div><div class="vn-row"><span>From</span><b>${fmtDate(a.from)}</b></div><div class="vn-row"><span>Until</span><b>${fmtDate(a.to)}</b></div><div class="vn-row"><span>Why it ended</span><b>${esc(a.why || "Moved on")}</b></div></div>
     <div class="vn-card"><div class="vn-row"><span>The place now</span><b>${b.closed ? "Closed" : `${esc(v.lvl)}, run by ${esc(v.owner)}`}</b></div>${!b.closed ? `<div class="vn-row"><span>Reputation</span><b>${Math.round(b.rep || 0)}/100</b></div>` : ""}</div>

@@ -266,7 +266,7 @@
   }
   for (const [rid, , skill, , , , fields] of ROOTS) {
     const icons = [];
-    for (const [fid, fl, , specs] of fields) {
+    for (const [fid, , , specs] of fields) {
       const masters = [];
       for (const [sid, sl, , niches] of specs) {
         const legends = niches.map(([nid, nl]) => add({ id: nid + "_legend", label: "Legendary " + lower(nl), tier: "legend", root: rid, field: fid, spec: sid,

@@ -19,7 +19,7 @@ for (const [k, o] of Object.entries(CH_ORG)) Brands.bind(o, Brands.reg("org:" + 
 function chAcct(key) {
   const [kind, ...rest] = key.split(":"), id = rest.join(":");
   if (kind === "fam") {
-    const h = game.home.get(id), m = member(id), s = h && h.st ? statusOf(id) : null, pr = h && h.st ? Status.prestige(h, game.home, today()) : 0;
+    const h = game.home.get(id), m = member(id), pr = h && h.st ? Status.prestige(h, game.home, today()) : 0;
     return { key, kind, name: h ? h.name : "Someone", handle: chSlug(h ? h.name : "x") + (h && h.gen > 1 ? h.gen : ""), rupa: h && h.rupa, fam: true,
       bio: h && h.st ? Career.profile(h, game.home, today()).headline : PHASE_EN[m && m.fase] || "", joined: h ? h.born : 0,
       followers: Math.round(12 + pr * 9 + chH(key) * 40 + Object.keys(h ? h.relations : {}).length * 6), following: 40 + Math.floor(chH(key, "f") * 160), pr };
@@ -200,7 +200,7 @@ function chImg(key) {
   return `<span class="ch-img${sp && sp.mono ? " mono" : ""}"><img data-mgc="${esc(key)}" alt="" ${u ? `src="${u}"` : ""}></span>`;
 }
 function chPost(p, big) {
-  const a = p.a, s = chStats(p), liked = CH.likes[p.id], rp = CH.rps[p.id];
+  const a = p.a, s = chStats(p), liked = CH.likes[p.id];
   const ptag = p.partner ? `<small class="ch-ptag">Partner</small>` : "";
   if (p.partner) Tele.brand(p.partner + ":chirp", "tampil", 2);
   const head = `<span class="ch-name"><b data-chu="${esc(a.key)}">${esc(a.name)}</b>${a.org ? CH_SEAL : ""}<small>@${esc(a.handle)}${big ? "" : ` · ${chAgo(p)}`}</small></span>`;
@@ -340,18 +340,6 @@ async function chPublish(c, t) {
   if (!texts || !texts.length) texts = pick.map((k, i) => ({ by: k, t: chPick(k.startsWith("pal:") ? ["haha love this 😄", "omg yes", "this is so you 😂", "❤️"] : ["real", "so true", "lol", "big if true 👀", "Old Town needed to hear this"], id, i) }));
   p.re = texts.map((x, i) => ({ ...x, ts: at(i) })); chSave();
   if (PH && PH.view === "chirpp" && PH.ch.id === id) phGo("chirpp", id);
-}
-async function chReplyTo(c, id, t) {
-  let p = CH.mine.find(x => x.id === id);
-  if (!p) { const src = chFind(id); if (!src) return; p = { id: src.id + "-r" + Date.now().toString(36), by: "fam:" + c.id, d: today(), m: chNow(), ts: Date.now(), t: `@${src.a.handle} ${t}`, re: [], reTo: src.by }; CH.mine.push(p); chSave(); PH.ch.id = p.id; phGo("chirpp", p.id); }
-  else { p.re.push({ by: "fam:" + c.id, t, ts: Date.now() }); chSave(); phGo("chirpp", id); }
-  // the one you answered answers back
-  const other = p.reTo || (p.re.filter(r => r.by !== "fam:" + c.id).slice(-1)[0] || {}).by;
-  if (!other || other.startsWith("org:") || other.startsWith("co:")) return;
-  const o = chAcct(other);
-  let back = null;
-  if (sampleFn) { try { back = (await sampleFn(`You are ${o.name} (${o.bio}) on Chirp, the social network of Old Town, a cozy life game about small creatures. ${c.name} replied to you: "${t}". Write your one short reply (under 20 words, casual, emojis ok, same language). Never mention being an AI.`, { modelTier: "quick", cache: false })).text.trim().replace(/^"|"$/g, ""); } catch (e) { failHard(e); } }
-  p.re.push({ by: other, t: back || chPick(["haha fair 😄", "100%", "you get it", "lol okay okay"], id, t), ts: Date.now() + 45000 }); chSave();
 }
 // a parent's comment under their creature's post; the creature answers in its own voice (embarrassed, sweet or blunt, as it likes)
 async function chComment(id, t) {

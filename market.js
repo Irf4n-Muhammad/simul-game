@@ -9,7 +9,6 @@
   const B = (typeof module !== "undefined") ? require("./brands.js") : globalThis.Brands;
   const { HOOKS, seed_rng, Ctx, YEAR } = E;
   const CITY = "old-town";
-  const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // umur makhluk 3 sampai 4 tahun, jadi skala waktunya dipadatkan: vintage mulai 1 tahun, antik 4 tahun

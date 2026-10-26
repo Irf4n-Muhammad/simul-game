@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); const CR = require("../career.js"); require("../market.js"); const V = require("../venture.js"); const WK = require("../work.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); const CR = require("../career.js"); require("../market.js"); require("../venture.js"); require("../work.js");
 const G = require("../game.js");
 const J = process.env.JOB || "office", N = +(process.env.N || 4), DAYS = +(process.env.DAYS || 1300);
 const tot = { g: {}, fired: 0, burn: 0, inc: 0, days: 0, done: 0, sat: 0, stress: 0 };

@@ -123,7 +123,7 @@ function makeCreature(m, parent) {
 }
 // ---- cosmetics on the body. Every shape lives in body space, so it scales with the life phase. Nothing here is ever read by the game.
 function wearItem(slot, x, P) {
-  const { body, m } = P, L = x.look || {}, col = L.color ?? 0xC8674F, col2 = L.color2 ?? 0xF2C94C;
+  const { body } = P, L = x.look || {}, col = L.color ?? 0xC8674F, col2 = L.color2 ?? 0xF2C94C;
   const mat = (c, o) => M(c, Object.assign({ roughness: 0.8 }, o || {}));
   const OCYL = (a, b, h, n = 40) => new THREE.CylinderGeometry(a, b, h, n, 1, true);
   const ring = (r, t, y, c, o) => { const q = mesh(new THREE.TorusGeometry(r, t, 10, 48), mat(c, o), 0, y, 0, body); q.rotation.x = Math.PI / 2; return q; };

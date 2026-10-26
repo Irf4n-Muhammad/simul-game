@@ -2,9 +2,11 @@
 
 A small creature-raising game that runs entirely in the browser. This repository is the
 static build served through GitHub Pages. Play it at
-https://irf4n-muhammad.github.io/simul-game/ on your phone.
+https://irf4n-muhammad.github.io/simul-game/ on your phone. The same game with the Dev tools
+(`?dev=1`, or seven taps on the version label) is at https://irf4n-muhammad.github.io/simul-game/dev/;
+both share one save, so you can switch between them.
 
-Build: **v44**. The game clock runs in real time (one real day = one game day), so a
+Build: **v44.1**. The game clock runs in real time (one real day = one game day), so a
 creature grows over weeks, not minutes.
 
 ## Install it like an app
@@ -30,14 +32,16 @@ keep separate saves. If you already started in the browser, use **Back up** ther
 This repository is now the **source** of the game; GitHub Pages serves the build.
 
 - `index.html` — page shell (markup and CSS); loads the modules and `ui.js`
-- `ui/*.js` — the UI script in 31 fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed)
+- `ui/*.js` — the UI script in 35 fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed)
 - `*.js` — game modules (engine, storylets, town, cosmetics, ...); see `MODULES.md`
-- `today.js` — the "Today" line, a pure module with tests
+- `today.js`, `soon.js`, `weather.js`, `balik.js` — the Today, Soon and Someday lines, the weather-skin rules and the
+  weekly reverse-care questions: pure modules (snapshot in, text out) with tests
 - `sim/` — Node simulators and browser harnesses, with last results in `sim/last/` (see `sim/README.md`)
 - `test/` — unit tests for pure functions (`npm test`)
 - `tools/` — `build_ui.py` (stitch UI, `--release` strips Dev code) and `build_site.py` (assemble `_site/`)
 - `lib/` — three.js r128 (MIT, see `lib/LICENSE.three.txt`)
-- `.github/workflows/pages.yml` — lint, test and build on every push and PR; deploys `_site/` from `main`
+- `.github/workflows/pages.yml` — lint, test and build on every push and PR; deploys from `main`: the release build (`_release/`, no Dev
+  code) at the root of the site and the full build (`_site/`) under `/dev/`
 
 ## Untuk pengembang
 
@@ -47,8 +51,8 @@ Dokumen pengembang ditulis dalam bahasa Indonesia; teks yang dilihat pemain teta
 npm install            # eslint, terser, globals
 npm run lint           # gabung ui.js lalu ESLint (no-undef = error, no-unused-vars = peringatan)
 npm test               # tes unit Node (node --test test/*.test.js)
-npm run build          # _site/   : situs seperti yang di-deploy Pages (CDN three.js diganti lib/)
-npm run build:release  # _release/: build tanpa kode Dev; ditolak kalau masih ada jejak Dev
+npm run build          # _site/   : build lengkap, Dev tools di balik ?dev=1 (CDN three.js diganti lib/); Pages: /dev/
+npm run build:release  # _release/: build tanpa kode Dev, ditolak kalau masih ada jejak Dev; Pages: akar situs
 npm run check          # keempatnya berurutan
 ```
 

@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); const CR = require("../career.js"); require("../market.js"); const V = require("../venture.js"); require("../work.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); require("../venture.js"); require("../work.js");
 const G = require("../game.js");
 const N = +(process.env.N || 8), DAYS = +(process.env.DAYS || 1600);
 const U = {}, opened = {}; let same = 0;

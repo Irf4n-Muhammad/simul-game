@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
 const G = require("../game.js");
 function run(mode) {
   const state = { akun: "akun-c1", nama: "Mochi", aturan: { sekolah: "wajib" }, wakil: "aman", hadir: Array.from({ length: 1600 }, (_, i) => i), jawaban: {}, aksi: [], dilihat: 1e9, res_seen: [], rawat_from: 0, jam: { base_ts: 0, base_day: 0, ms: 86400000 } };

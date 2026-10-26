@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
 try { require("../work.js"); } catch (e) { if (!/Cannot find module/.test(e.message)) throw e; }
 const G = require("../game.js");
 const N = +(process.env.N || 4), DAYS = +(process.env.DAYS || 1500), PLAY = +(process.env.PLAY ?? 1);

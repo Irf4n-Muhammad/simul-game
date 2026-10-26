@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
+require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js"); const V = require("../venture.js");
 const G = require("../game.js");
 const N = +(process.env.N || 8), DAYS = +(process.env.DAYS || 1600), POLICY = process.env.POLICY || "fund";
 const stats = { open: 0, bank: 0, sold: 0, heir: 0, levels: {}, byTpl: {} };
@@ -13,7 +13,6 @@ for (let i = 0; i < N; i++) {
     if (POLICY === "fund") for (const b of V.active(g.home)) if (b.wish) { g.act(b.owner, "biz:go"); }
     if (d % 200 === 199) for (const b of V.active(g.home)) { const v = V.view(b, g.home, d); lines.push(`  [${d}] ${v.name} (${v.t.label}, ${v.lvl}) owner ${v.owner} fit ${v.fitNow.toFixed(2)} q ${b.q} rep ${Math.round(b.rep)} cash ${Math.round(b.cash)} 30d profit ${v.profit30} cust/day ${v.cust30}`); }
   }
-  for (const b of (ST.fam(g.home).biz || { list: [] }).list) for (const r of b.hist || []) {}
   const S = ST.fam(g.home).biz || { list: [] };
   for (const b of S.list) { stats.open++; stats.byTpl[b.tpl] = (stats.byTpl[b.tpl] || 0) + 1; if (b.why === "bankrupt") stats.bank++; if (b.why === "sold") stats.sold++; if (b.owners.length > 1) stats.heir++; stats.levels[b.level] = (stats.levels[b.level] || 0) + 1; }
   const g2 = new G.Game(JSON.parse(JSON.stringify(g.state))); g2.advance(g.home.last_day, null);

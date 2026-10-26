@@ -1,5 +1,5 @@
 const D = (process.env.CODE || __dirname + "/../") .replace(/\/?$/, "/");
-const E = require(D+"engine.js"); require(D+"storylets.js"); require(D+"agenda.js"); const ST = require(D+"status.js"); const TR=require(D+"tree.js"); const CR = require(D+"career.js"); const MK=require(D+"market.js"); const V=require(D+"venture.js"); const W=require(D+"work.js"); const PT = require(D+"pets.js");
+require(D+"engine.js"); require(D+"storylets.js"); require(D+"agenda.js"); require(D+"status.js"); const TR=require(D+"tree.js"); const CR = require(D+"career.js"); const MK=require(D+"market.js"); const V=require(D+"venture.js"); require(D+"work.js"); const PT = require(D+"pets.js");
 const G = require(D+"game.js");
 const N = +(process.env.N || 4), DAYS = +(process.env.DAYS || 1400), OFF=+(process.env.OFF||0);
 let r = 12345; const rnd = () => (r = (r * 1103515245 + 12345) % 2147483648) / 2147483648; const pick = a => a[Math.floor(rnd() * a.length)];
