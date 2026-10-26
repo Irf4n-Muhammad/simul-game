@@ -1,23 +1,28 @@
-// ================================================================ v45: tonggak tumbuh bayi (tonggak.js): tangga di profil, rak "Later" di tablet
+// ================================================================ v45: tonggak tumbuh bayi (tonggak.js) dan v46 tonggak anak (anak.js): tangga di profil, rak "Later" di tablet
 // Rancangan: riset/fase-kehidupan.md (bagian bayi, 26 Okt). Tangga = semua tonggak dengan statusnya: yang sudah lewat pakai umur saat
 // terjadi, yang berikutnya disorot, yang jauh diredupkan. Rak "Later" = app yang belum kebuka, dengan harinya: yang nggak kelihatan nggak bisa ditunggu.
 function tonggakBox(id) {
   const c = game.home.get(id); if (!c || !globalThis.Tonggak) return "";
-  const d = today(), V = Tonggak.view(c, d), bayi = Engine.phase_of(c.age(d)) === "bayi";
-  const rows = bayi ? V : V.filter(v => v.done);
-  if (!rows.length) return "";
-  const nextIx = rows.findIndex(v => !v.done && !v.fixed), cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-  const TB = c.info.timbang || {};
+  const d = today(), age = c.age(d), ph = Engine.phase_of(age), cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  // v46: tangga penuh cuma buat fase yang sedang jalan (bayi: tonggak.js, anak: anak.js); fase yang sudah lewat jadi satu baris ringkas
+  const VB = Tonggak.view(c, d), VA = globalThis.Anak ? Anak.view(c, d) : [];
+  const V = ph === "bayi" ? VB : ph === "anak" ? VA : VA.some(v => v.done) ? VA : VB, live = ph === "bayi" || ph === "anak";
+  const rows = live ? V : V.filter(v => v.done);
+  if (!rows.length && !VB.some(v => v.done)) return "";
+  const nextIx = rows.findIndex(v => !v.done && !v.fixed);
+  const TB = c.info.timbang || {}, G = c.info.garis || [];
   const when = v => {
-    if (v.done) { const m = TB[v.id]; return (v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done") + (m ? ` · ${m.kg} kg, ${m.cm} cm` : ""); }
+    if (v.done) { const m = TB[v.id], g = v.id === "garis_pintu" && G[G.length - 1]; return (v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done") + (m ? ` · ${m.kg} kg, ${m.cm} cm` : g ? ` · ${g.cm} cm` : ""); }
     if (v.fixed) return c.born + v.lo <= d ? "any day now · a clinic date" : `${fmtWhen(c.born + v.lo).toLowerCase()} · a clinic date`;
     return v.open ? `any day now · usually by ${v.hi} days old` : `usually at ${v.lo}–${v.hi} days old`;
   };
   const row = (v, i) => `<div class="line ${v.done ? "tg-done" : i === nextIx ? "tg-next" : "tg-later"}"><i class="tg-ic">${v.done ? "✓" : v.ic}</i><span class="grow"><b>${esc(cap(v.label))}</b><small class="sub">${esc(when(v))}</small></span></div>`;
-  const n = rows.filter(v => v.done).length;
-  Tele.ev("tonggak", { a: "lihat", sudah: n, fase: bayi ? "bayi" : "lewat", watak: Tonggak.watak(c, d).filter(v => v.done).length });
-  return `<div class="fieldset" id="tonggakBox"><span class="lbl">Growing up · ${n} of ${V.length}</span><div class="list">${rows.map(row).join("")}</div>
-    ${bayi ? `<span class="sub">Each one comes in its own time, inside ${esc(c.name)}'s own window. Nothing you do hurries it, and it can't be missed.</span>` : ""}</div>`;
+  const n = rows.filter(v => v.done).length, nb = VB.filter(v => v.done).length;
+  // fase bayi yang sudah lewat: satu baris, dengan kata pertama dan benda kesayangan kalau ada
+  const bayi = V !== VB && nb ? `<span class="sub">As a baby: ${nb} of ${VB.length} firsts${c.info.kata_pertama ? `, first word “${esc(c.info.kata_pertama)}”` : ""}${c.info.kesayangan ? `, still fond of ${esc(c.info.kesayangan)}` : ""}.</span>` : "";
+  Tele.ev("tonggak", { a: "lihat", sudah: n, fase: live ? ph : "lewat", watak: Tonggak.watak(c, d).filter(v => v.done).length });
+  return `<div class="fieldset" id="tonggakBox"><span class="lbl">Growing up · ${n} of ${V.length}</span>${bayi}${rows.length ? `<div class="list">${rows.map(row).join("")}</div>` : ""}
+    ${live ? `<span class="sub">Each one comes in its own time, inside ${esc(c.name)}'s own window. Nothing you do hurries it, and it can't be missed.</span>` : ""}</div>`;
 }
 
 // ---- v45.1: kartu "Getting to know": enam pengamatan watak (Tonggak.watak). Yang sudah kebaca pakai kalimatnya, yang belum pakai topiknya

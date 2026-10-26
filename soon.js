@@ -30,7 +30,8 @@
 //   wants      keinginan aktif makhluk yang dilihat: [{ id, ic, label, besar }]
 //   cita       cita-cita makhluk yang dilihat, atau null
 //   tonggak    (v45) tonggak bayi berikutnya per makhluk dari Tonggak.upcoming: [{ cid, id, lbl, label, ic, lo, hi, fixed }], hari absolut;
-//              fixed = tanggal klinik (pasti), selain itu jendela (mungkin: "any day now" begitu lo lewat)
+//              fixed = tanggal klinik (pasti), selain itu jendela (mungkin: "any day now" begitu lo lewat);
+//              (v46) juga dari Anak.upcoming: tonggak anak, bakat, dan tanggal sekolah (fixed dengan key "sekolah", tx(n, kapan), sub)
 //   nameOf     cid => nama
 "use strict";
 (() => {
@@ -79,7 +80,8 @@
     // any: true buat lembar; win: true = item jendela, lembar menulis "it will come" bukan "maybe"). Tanggal klinik = pasti, seperti tanggal lain.
     for (const T of S.tonggak || []) {
       const n = nameOf(T.cid);
-      if (T.fixed) { if (T.lo > d) out.push({ k: "cek:" + T.cid + ":" + T.id, day: T.lo, lbl: T.lbl, ic: T.ic || "🩹", cid: T.cid, sure: true, go: "profil", tx: `${n}'s ${T.label} ${when(d, T.lo)}.`, sub: "A clinic date on the calendar. Expect one cry and a sticker." }); continue; }
+      // v46: tanggal tetap lain (kalender sekolah, anak.js) bawa kunci, kalimat, dan baris keduanya sendiri
+      if (T.fixed) { if (T.lo > d) out.push({ k: (T.key || "cek") + ":" + T.cid + ":" + T.id, day: T.lo, lbl: T.lbl, ic: T.ic || "🩹", cid: T.cid, sure: true, go: T.key === "sekolah" ? "school" : "profil", tx: T.tx ? T.tx(n, when(d, T.lo)) : `${n}'s ${T.label} ${when(d, T.lo)}.`, sub: T.sub || "A clinic date on the calendar. Expect one cry and a sticker." }); continue; }
       const open = d >= T.lo;
       out.push({ k: "tonggak:" + T.cid + ":" + T.id, day: open ? d + 1 : T.lo, lbl: T.lbl, ic: T.ic || "🌱", cid: T.cid, sure: false, any: open, win: true, go: "profil",
         tx: open ? `${n}'s ${T.label} could come any day now.` : `${n}'s ${T.label} usually comes in ${T.lo - d} to ${T.hi - d} days.`,
@@ -92,7 +94,9 @@
     const grown = (S.members || []).some(m => !gone(m) && !m.kid);
     if (grown) for (const D of S.drops || []) if (D.soon && D.start > d) out.push({ k: "drop:" + D.label, day: D.start, lbl: "DROP", ic: "🛍️", cid: null, sure: false, go: "bazaar", tx: `${D.label} drops ${when(d, D.start)}, if someone is quick.`, sub: "A Bazaar drop: the day is set, the stock runs out, so getting one is not." });
     for (const K of S.kindred || []) if (K.wait > 0 && !K.asked) out.push({ k: "kindred:" + K.cid + ":" + K.nama, day: d + K.wait, lbl: "KINDRED", ic: "💞", cid: K.cid, sure: false, go: "kindred", tx: `${nameOf(K.cid)} could ask ${K.nama} ${when(d, d + K.wait)} about ${gerund(K.label)}.`, sub: `${nameOf(K.cid)} decides when, and the other family has to say yes.` });
-    return out.sort((a, b) => a.day - b.day || (b.sure - a.sure));
+    // v46: yang pasti dan tinggal <= 3 hari menang dari jendela "any day now" (hari = besok), supaya ulangan/rapor sempat kelihatan di HUD
+    const near = i => i.sure && i.day - d <= 3 ? 0 : 1;
+    return out.sort((a, b) => near(a) - near(b) || a.day - b.day || (b.sure - a.sure));
   }
 
   function line(S) {

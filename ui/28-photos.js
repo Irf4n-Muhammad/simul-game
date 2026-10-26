@@ -25,6 +25,18 @@ const PHOTO = {
   // v45.1: orang di fase bayi (tonggak.js)
   tetangga_nengok: { place: "home", face: "surprise", cap: (n, w) => `${W_(w, "The neighbour")} came by to meet ${n}` },
   bayi_lain: { place: "park", face: "joy", cap: (n, w) => `${n} met ${W_(w, "another baby")} at the park` },
+  // v46: fase anak (anak.js): tonggak, sahabat, pentas
+  gigi_copot: { place: "home", face: "joy", cap: (n) => `${n}'s first tooth out` },
+  baca_sendiri: { place: "home", face: "calm", cap: (n) => `${n} read a whole book alone` },
+  naik_sepeda: { place: "park", face: "joy", cap: (n) => `${n} rode a bike, no stabilisers` },
+  berenang: { place: "park", face: "joy", cap: (n) => `${n}'s first swim` },
+  nginep: { place: "home", face: "joy", cap: (n) => `${n}'s first sleepover` },
+  sekolah_sendiri: { place: "school", face: "joy", cap: (n) => `${n} walked to school alone` },
+  garis_pintu: { place: "home", face: "calm", cap: (n) => `${n} at the door frame` },
+  sahabat_kenal: { place: "school", face: "joy", cap: (n, w) => `Best friends: ${n} and ${W_(w)}` },
+  sahabat_pindah: { place: "park", face: "sad", cap: (n, w) => `Saying goodbye to ${W_(w)}` },
+  sahabat_baru: { place: "school", face: "joy", cap: (n, w) => `A new best friend: ${W_(w)}` },
+  pentas_sekolah: { place: "school", face: "joy", cap: (n) => `${n} at the school show` },
   ulang_tahun: { place: "home", face: "joy", prop: "cake", cap: (n, w, l) => `${n} turns ${Math.max(1, Math.round(l.age / 365))}` },
   hari_pertama_sekolah: { place: "school", face: "surprise", cap: (n) => `First day of school` },
   teman_baru: { place: "park", face: "joy", cap: (n, w) => `Met ${W_(w, "a new friend")} for the first time` },

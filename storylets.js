@@ -179,7 +179,8 @@ storylet("berantem_sekolah", ["anak"], "sedang", { cooldown: 50, weight: x => x.
   }
 });
 
-storylet("ujian_diumumkan", ["anak", "remaja"], "kecil", { cooldown: 35,
+// v46: di fase anak ulangan ikut kalender sekolah tetap (anak.js); yang acak tinggal buat remaja sampai v47
+storylet("ujian_diumumkan", ["remaja"], "kecil", { cooldown: 35,
   cond: x => !("ujian" in x.c.info) && x.age < 245 }, x => {
   x.c.info.ujian = { hari: x.day + 3, belajar: 0, jenis: "ulangan" };
   x.say(`School news: ${x.n} has a quiz in 3 days. You can help them study anytime before then.`);
@@ -196,6 +197,8 @@ storylet("ujian", ["anak", "remaja"], "sedang", { priority: true, cooldown: 1,
   const u = x.c.info.ujian;
   delete x.c.info.ujian;
   const skor = (x.c.stats.kecerdasan * 0.6 + x.t("rajin") * 0.4 + u.belajar * 7 + (u.sendiri || 0) * 4 + x.rng.uniform(-12, 12));
+  // v46: ulangan dari kalender sekolah (u.kal) dicatat buat rapor dan app School (anak.js)
+  if (u.kal) (x.c.info.nilai ||= {})[u.kal] = { d: x.day, skor: Math.round(skor), g: skor > 58 ? "great" : skor > 38 ? "okay" : "bad", belajar: u.belajar, sendiri: u.sendiri || 0 };
   const bantu = (u.belajar ? ` You studied together ${u.belajar} time${u.belajar > 1 ? "s" : ""} before.` : "")
     + (u.sendiri ? ` ${x.n} also studied alone ${u.sendiri} time${u.sendiri > 1 ? "s" : ""}.` : "");
   if (u.jenis === "akhir") {
@@ -216,7 +219,9 @@ storylet("ujian", ["anak", "remaja"], "sedang", { priority: true, cooldown: 1,
 });
 
 const BAKAT_SKILL = { drawing: "creativity", music: "creativity", sports: "fitness", science: "logic" };
-storylet("bakat_ketahuan", ["anak"], "sedang", { once: true, cond: x => x.age >= 90 }, x => {
+// v46: harinya rentang 85–110 dari benih makhluk (bukan dadu director), prioritas supaya tepat hari itu; 95 dihindari (hari ulangan)
+const bakatDay = c => { const d = 85 + Math.floor(seed_rng(c.id, "anak", "bakat").random() * 26); return d === 95 ? 96 : d; };
+storylet("bakat_ketahuan", ["anak"], "sedang", { once: true, priority: true, cond: x => x.age >= bakatDay(x.c) }, x => {
   const t = x.c.traits, G = x.c.st ? x.c.st.genes.talent : null, gt = k => G ? G[k] * 6 : 0;
   const cands = [["drawing", t.kreatif + x.rng.uniform(0, 20) + gt("creativity")],
     ["music", (t.kreatif + t.ramah) / 2 + x.rng.uniform(0, 20) + gt("creativity")],
@@ -283,7 +288,8 @@ storylet("ketahuan_bolos", ["anak", "remaja"], "sedang", { cooldown: 10,
   x.remember("Got caught skipping school to go to the beach.");
 });
 
-storylet("lomba", ["anak", "remaja"], "sedang", { cooldown: 60,
+// v46: di fase anak lombanya terjadwal (pentas sekolah umur 165, anak.js); lomba acak tinggal buat remaja
+storylet("lomba", ["remaja"], "sedang", { cooldown: 60,
   cond: x => "bakat" in x.c.info, weight: x => 0.5 + x.c.info.bakat_level / 50 }, x => {
   const b = x.c.info.bakat;
   if (x.chance((x.c.info.bakat_level + x.t("rajin") / 2) / 140)) {
@@ -1734,7 +1740,7 @@ storylet("kebun_tua", ["tua"], "kecil", { cooldown: 25 }, x => {
   x.need("mood", 3);
 });
 
-const Storylets = { ALL, GROWN, married, kids_here, grandkids_here, _farewell };
+const Storylets = { ALL, GROWN, married, kids_here, grandkids_here, bakatDay, _farewell };
 if (typeof module !== "undefined") module.exports = Storylets;
 else globalThis.Storylets = Storylets;
 })();

@@ -18,6 +18,10 @@
   // v45.1: watak kebaca, sakit ringan, orang (tonggak.js)
   watak_tidur: ["puncak", 2], watak_mandi: ["puncak", 2], watak_orang: ["puncak", 2], watak_makan: ["puncak", 2], watak_gigih: ["puncak", 2], watak_balok: ["puncak", 2],  // 2: masuk baris Today
   ruam_popok: ["tegang", 1], gigi_rewel: ["tegang", 1], pilek_pertama: ["tegang", 1], cemas_ditinggal: ["tegang", 1], tetangga_nengok: ["puncak", 1], bayi_lain: ["puncak", 1],
+  // v46: fase anak (anak.js): kalender sekolah, tonggak anak, sahabat
+  ulangan_1_diumumkan: ["tegang", 2], ulangan_2_diumumkan: ["tegang", 2], libur_sekolah: ["puncak", 1], rapor_1: ["puncak", 2], rapor_2: ["puncak", 2],
+  gigi_copot: ["puncak", 2], baca_sendiri: ["puncak", 2], naik_sepeda: ["puncak", 2], berenang: ["puncak", 2], nginep: ["puncak", 2], uang_jajan: ["puncak", 1], sekolah_sendiri: ["puncak", 2], garis_pintu: ["puncak", 1],
+  sahabat_kenal: ["puncak", 2], ribut_sahabat: ["tegang", 1], baikan_sahabat: ["lega", 2], sahabat_pindah: ["sedih", 2], sahabat_baru: ["puncak", 2],
   gap_puncak: ["puncak", 2], kampus_organisasi: ["puncak", 1], kampus_skripsi: ["tegang", 2], tulis_memoar: ["puncak", 1], memoar_selesai: ["puncak", 2], warisan_resep: ["puncak", 1],
     kelahiran: ["puncak", 3], pernikahan: ["puncak", 3], wisuda: ["puncak", 3], biz_buka: ["puncak", 3], adopsi_sendiri: ["puncak", 3], telur_warisan: ["puncak", 3], pulang_kampung: ["sedih", 2], masalah_di_pesta: ["tegang", 2],
     lamaran: ["puncak", 2], jadian: ["puncak", 2], kata_pertama: ["puncak", 2], langkah_pertama: ["puncak", 2], hari_pertama_sekolah: ["puncak", 2],
@@ -38,6 +42,9 @@
     lamaran: [[/says yes, happy-crying/, "puncak", 3, "lamaran_diterima"], [/puts the ring away/, "sedih", 1, "lamaran_ditunda"]],
     maraton_hari_h: [[/in the top ten/, "puncak", 3, "maraton_top10"], [/slow and proud/, "puncak", 2, "maraton_selesai"], [/walks the last five/, "puncak", 1, "maraton_jalan"]],
     jadian_remaja: [[/slams the door/, "tegang", 1, "ribut_pacar_remaja"]],
+    pentas_sekolah: [[/loudest clap/, "puncak", 2, "pentas_bagus"], [/one wobble/, "puncak", 1, "pentas_biasa"], [/freezes/, "tegang", 1, "pentas_grogi"]],
+    rapor_1: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
+    rapor_2: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
   };
   // baris cerita -> momen (yang hasilnya cuma ketahuan dari teksnya: skor, bisnis, kerja)
   const LINES = [
