@@ -2,7 +2,7 @@
 // Undian ditanam dari (id makhluk, hari, jenis saran), jadi tabel diukur dengan menyapu banyak hari dan membandingkan frekuensinya.
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const E = require("../engine.js");
+require("../engine.js");
 require("../storylets.js"); require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
 const G = require("../game.js");
 

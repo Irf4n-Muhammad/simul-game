@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
+const E = require("../engine.js"); require("../storylets.js"); require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
 const G = require("../game.js");
 const mk = (akun, nama) => new G.Game({ akun, nama, aturan: { sekolah: "wajib" }, wakil: "aman", hadir: Array.from({ length: 1600 }, (_, i) => i), jawaban: {}, aksi: [], dilihat: 1e9, res_seen: [], rawat_from: 0, jam: { base_ts: 0, base_day: 0, ms: 86400000 } });
 const A = mk("akun-aaa", "Mochi"), B = mk("akun-bbb", "Tofu");

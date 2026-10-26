@@ -59,7 +59,7 @@
     { label: "Chain", cap: 16, staff: 16, rent: 15, up: 18 },
   ];
   const FUND_LEVELS = [{ label: "Small fund", at: 0 }, { label: "Fund", at: 120000 }, { label: "Big fund", at: 400000 }, { label: "Giant fund", at: 1500000 }];
-  const WAGE = 22, MIN_AGE_DAYS = 0;
+  const WAGE = 22;
   // karyawan: jabatan per jenis bisnis, dan berapa orang yang muat di tiap level
   const ROLES_CAT = { raw: ["Farmhand", "Driver"], make: ["Machine operator", "Craftsperson"], dist: ["Driver", "Dispatcher"], svc: ["Associate", "Account manager"],
     shop: ["Shop assistant", "Cashier"], care: ["Assistant", "Receptionist"], media: ["Producer", "Editor"], tech: ["Developer", "Designer"], fin: ["Analyst", "Trader"] };
@@ -256,7 +256,6 @@
   }
 
   // ---------------------------------------------------------------- karyawan
-  const famStaff = (home, b) => (b.staff || []).filter(s => s.fam).map(s => home.get(s.fam)).filter(Boolean);
   function payOf(home, s) {
     if (!s.fam) return s.pay;
     const m = home.get(s.fam);
@@ -892,7 +891,6 @@
   }
   // pewaris: anak atau anggota keluarga dewasa yang mau dan cocok. Kalau nggak ada, bisnisnya dijual.
   function passOn(home, b, day, from) {
-    const t = TPL[b.tpl];
     const cands = home.members.filter(m => m.id !== b.owner && grown(m, day + 1) && !ownerBiz(home, m.id))
       .map(m => ({ m, f: fit(m, b.tpl), want: hash(home.id + b.id + m.id + "mau") < 0.25 + (m.traits.ambisius ?? 50) / 250 + fit(m, b.tpl) * 0.5 }))
       .filter(o => o.want).sort((a, b2) => b2.f - a.f + (home.children_of(from).includes(b2.m) ? 0.1 : 0) - (home.children_of(from).includes(a.m) ? 0.1 : 0));
@@ -1006,11 +1004,11 @@
       if (l0) x.say(l0);
       const l1 = day1(x, b);
       if (l1) x.say(l1);
-      const l2 = events(x, b);
+      events(x, b);
       if (TPL[b.tpl].fund && c.st.job) { c.st.job.level = lvlOf(b); c.info.kerja = ST.title(c.st.job); }
       if (b.wish && b.wish.k === "expand" && day - b.wish.d >= 5) act1(home, c, b, "go", day, true);
       else if (b.wish && b.wish.k === "close" && day - b.wish.d >= 7) act1(home, c, b, "go", day, true);
-      if (!b.closed && b.debt >= 30) { const s = close(home, b, day, "bankrupt"); x.say(`${b.name} runs out of money and closes for good.`); x.scar("bangkrut"); x.remember(`${b.name} went bankrupt.`); dramas.push("besar"); events_.push("biz_bangkrut"); }
+      if (!b.closed && b.debt >= 30) { close(home, b, day, "bankrupt"); x.say(`${b.name} runs out of money and closes for good.`); x.scar("bangkrut"); x.remember(`${b.name} went bankrupt.`); dramas.push("besar"); events_.push("biz_bangkrut"); }
       else decide(x, b);
       checkUnlocks(x);
       if (x.log.length > n0) { dramas.push(x.drama || "sedang"); events_.push("biz"); }
@@ -1058,7 +1056,7 @@
   // fund: kasih modal buat keinginan makhluk. suggest:<tpl>: usul buka (dia bisa nolak lewat game._refuse).
   // go / wait: jawab permintaan ekspansi atau tutup. price:<x>, focus:<x>, hire, close: saran (bisa ditolak). bail:<n>: suntik kas dari dompet keluarga.
   function act1(home, c, b, op, day, self) {
-    const t = TPL[b.tpl], x = new Ctx(c, day, seed_rng(c.id, day, "biz-act", op), home, true);
+    const x = new Ctx(c, day, seed_rng(c.id, day, "biz-act", op), home, true);
     if (op === "go" && b.wish) {
       const w = b.wish; b.wish = null;
       if (w.k === "expand" && b.cash >= w.cost && LEVELS[b.level + 1]) {

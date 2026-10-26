@@ -4,14 +4,11 @@
 "use strict";
 const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
 (function () {
-const { AMBIENT, FORCED, HOOKS, NAMES, YEAR, adult_age: AA, OLD_AGE, FOREVER, Creature, inherit, make_ctx, make_log, seed_rng, storylet, inc, lower } = E;
+const { AMBIENT, FORCED, HOOKS, NAMES, YEAR, adult_age: AA, OLD_AGE, FOREVER, Creature, inherit, make_ctx, make_log, seed_rng, storylet, inc } = E;
 
 const ALL = ["bayi", "anak", "remaja", "dewasa", "tua"];
 const GROWN = ["dewasa", "tua"];
 const FOREVER_ = FOREVER;
-
-// str.capitalize() versi Python: huruf pertama besar, sisanya kecil
-function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; }
 
 function married(x) {
   return x.c.info.menikah != null && x.c.partner() !== null;

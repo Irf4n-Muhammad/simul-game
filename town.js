@@ -43,7 +43,7 @@
     const walkers = [];
     const signs = [];
     let previewG = null, lastSite = 0;
-    let focusX = 0, built = false, on = false, focusZ = 0, zMin = 0, zMax = 0, built_day = -1;
+    let focusX = 0, built = false, focusZ = 0, zMin = 0, zMax = 0;
     const T = { on: false, scene, camera };
 
     // ---------------------------------------------------------------- Kenney models
@@ -74,7 +74,6 @@
     const winMat = () => { const m = M(0x8c9aa3, { roughness: 0.2, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(m); return m; };
 
     // ---------------------------------------------------------------- buildings made here (houses, villas, mansions)
-    const WALLS = [0xe9dfcf, 0xd9c7ae, 0xc9d1c6, 0xe3cfc4, 0xd6d9de, 0xefe6d6];
     const ROOFS = [0x8a5a44, 0x6d6460, 0x9b6b52, 0x5f6b72, 0x7a6a5a];
     function gable(w, h, d, mat) {
       const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.lineTo(-w / 2, 0);
@@ -159,7 +158,7 @@
         const h1 = hip(3.3, 1.4, 2.3, roof); h1.position.set(0, 3.0, -0.4); g.add(h1);
         for (const sx of [-1, 1]) {
           mesh(CYL(0.55, 0.55, 2.8, 20), wall, sx * 1.75, 1.4, 0.2, g);
-          const c = mesh(new THREE.ConeGeometry(0.68, 1.4, 20), roof, sx * 1.75, 3.5, 0.2, g);
+          mesh(new THREE.ConeGeometry(0.68, 1.4, 20), roof, sx * 1.75, 3.5, 0.2, g);
           for (const y of [0.9, 1.9]) mesh(RB(0.3, 0.42, 0.05, 0.02), winMat(), sx * 1.75, y, 0.76, g);
         }
         mesh(RB(0.6, 1.0, 0.06, 0.02), M(0x4a3a2c), 0, 0.5, 0.62, g);
@@ -250,7 +249,7 @@
       if (H.kind === "mansion") {   // a small crane for the big ones
         const crane = M(0xd4a853, { roughness: 0.6 });
         mesh(RB(0.12, 5.2, 0.12, 0.01), crane, x1 + 0.35, 2.6, z0 + 0.3, parent);
-        const jib = mesh(RB(3.4, 0.1, 0.1, 0.01), crane, x1 + 0.35 - 1.2, 5.2, z0 + 0.3, parent);
+        mesh(RB(3.4, 0.1, 0.1, 0.01), crane, x1 + 0.35 - 1.2, 5.2, z0 + 0.3, parent);
         mesh(CYL(0.01, 0.01, 1.6, 4), pole, x1 + 0.35 - 2.6, 4.4, z0 + 0.3, parent);
       }
       const w = walker(0xe0b07a); scene.remove(w); parent.add(w); w.scale.setScalar(0.85); w.position.set(s / 2 - 0.7, 0, 0.2);
@@ -376,7 +375,7 @@
         mesh(RB(0.78, 0.04, 0.12, 0.02), paint, 0, 0.5, -0.78, g);
         for (const x of [-0.39, 0.39]) for (const z of [-0.55, 0.55]) wheel(x, z, 0.12);
       } else {
-        const b = mesh(RB(0.9, 0.2, 1.85, 0.08), paint, 0, 0.2, 0, g); mesh(RB(0.6, 0.16, 0.6, 0.08), glass, 0, 0.36, 0.05, g);
+        mesh(RB(0.9, 0.2, 1.85, 0.08), paint, 0, 0.2, 0, g); mesh(RB(0.6, 0.16, 0.6, 0.08), glass, 0, 0.36, 0.05, g);
         mesh(RB(0.86, 0.03, 0.2, 0.01), M(0x2a2624), 0, 0.42, -0.86, g);
         for (const x of [-0.43, 0.43]) for (const z of [-0.58, 0.6]) wheel(x, z, 0.12);
       }
@@ -410,9 +409,7 @@
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
       lots.length = 0; walkers.length = 0; signs.length = 0; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
-      const order = HOODS.map(h => h.id);
       let z = 0;
-      const rngNpc = rnd("tetangga");
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
       // ---- the town square block, in front of Old Town
       {

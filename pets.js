@@ -201,7 +201,7 @@
     const C = P.card;
     if (!C || !CARDS[C.k].o.some(o => o[0] === opt)) return false;
     P.card = null;
-    const r = hash(P.id + C.d + opt), x = new E.Ctx(c, day, seed_rng(c.id, day, "petans"), home, true), K = KINDS[P.kind];
+    const r = hash(P.id + C.d + opt), x = new E.Ctx(c, day, seed_rng(c.id, day, "petans"), home, true);
     let t = "";
     if (C.k === "sick") {
       if (!P.sick) t = `${P.name} was already feeling better.`;

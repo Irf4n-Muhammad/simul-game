@@ -31,6 +31,12 @@ test("dilema menunggu: paling atas, ditandai baru", () => {
   assert.deepEqual(L, { k: "dilema", ic: "💬", tx: "Rara needs an answer", go: "dilema", now: true });
 });
 
+test("sesi fokus sedang jalan (v44.1): di bawah dilema, di atas pintu baru", () => {
+  const L = Today.line(base({ fokus: { min: 13, left: "12:30" }, feed: [doorLog], doors: () => ({ [door.id]: true }) }));
+  assert.deepEqual(L, { k: "fokus:13", ic: "⏳", tx: "Focus with Mochi: 12:30 left", go: "fokus", now: true });
+  assert.equal(Today.line(base({ fokus: { min: 13, left: "12:30" }, pending: { name: "Rara" } })).k, "dilema");
+});
+
 test("pintu baru hari ini: hanya kalau pintunya memang terbuka", () => {
   const L = Today.line(base({ feed: [doorLog], doors: () => ({ [door.id]: true }) }));
   assert.deepEqual(L, { k: "pintu:" + door.id, ic: "✨", tx: `New today: ${door.label}`, go: "tur", id: door.id, now: true });
@@ -51,6 +57,14 @@ test("rawat terbuka: item pertama, jumlah sisa, ikon pagi/malam", () => {
   assert.deepEqual(L, { k: "rawat:fruit:0", ic: "☀", tx: "Breakfast for Mochi · 2 to do", go: "rawat", id: "fruit" });
   const night = Today.line(base({ care: () => ({ half: 1, items: [{ id: "cuddle", label: "Cuddle", open: true, done: false }] }) }));
   assert.deepEqual(night, { k: "rawat:cuddle:1", ic: "☾", tx: "Cuddle for Mochi", go: "rawat", id: "cuddle" });
+});
+
+test("rawat terbalik (v44.1): sesudah rawat beres, sebelum momen terjadwal", () => {
+  const B = () => ({ id: "makan", ic: "🍚", q: "Mochi asks: have you eaten today?" });
+  const L = Today.line(base({ balik: B, next: () => soon }));
+  assert.deepEqual(L, { k: "balik:makan", ic: "🍚", tx: "Mochi asks: have you eaten today?", go: "balik", now: true });
+  assert.equal(Today.line(base({ balik: B, care: () => careOpen })).k, "rawat:fruit:0");
+  assert.equal(Today.line(base({ balik: () => null, next: () => soon })).k, "momen:iv1");
 });
 
 test("momen terjadwal: tampil kalau <= 2 hari lagi", () => {

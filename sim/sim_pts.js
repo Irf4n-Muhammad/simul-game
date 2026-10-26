@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); const T = require("../tree.js");
+require("../engine.js"); require("../storylets.js"); require("../status.js"); require("../tree.js");
 try { require("../agenda.js"); } catch (e) {}
 const G = require("../game.js");
 const seeds = process.argv.slice(2).length ? process.argv.slice(2) : ["a1","a2","a3","a4","a5","a6"];

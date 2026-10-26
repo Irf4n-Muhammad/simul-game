@@ -54,6 +54,7 @@ function showFamily() {
     ${awayBox()}
     <button class="secondary" id="closetBtn">${esc(cur.nama)}'s closet · ${Cosmetics.CURRENCY.ic} ${Cosmetics.saldo(state)}</button>
     <div class="row2"><button class="secondary" id="chronBtn">Family chronicle</button><button class="secondary" id="bkBtn">Back up${backupDue() ? " ⚠︎" : ""}</button></div>
+    <button class="secondary" id="skyBtn">Sky & weather${WX ? ` · ${Weather.label(WX)}` : wxCfg.on ? "" : " · off"}</button>
     ${DEV ? `<button class="secondary" id="devBtn">Dev tools${state.dev_stars ? " · stars open" : ""}</button>` : ""}
     <div class="row2"><button class="secondary" id="resetBtn">Start over</button><button class="close" data-close="1">Close</button></div>
     ${verLabel("verTap")}`);
@@ -63,6 +64,7 @@ function showFamily() {
   $("chronBtn").onclick = () => showChronicle(false);
   $("bkBtn").onclick = showBackup;
   $("closetBtn").onclick = () => showCloset("wear");
+  $("skyBtn").onclick = showSky;
   if (DEV) $("devBtn").onclick = () => showDev();
   // DEV-NEXT
   bindVerTap("verTap");

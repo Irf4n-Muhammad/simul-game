@@ -8,7 +8,7 @@ nama global (`Engine`, `Status`, ...). Modul bertanda ✓ di kolom Node bisa di-
 ## Urutan muat (index.html)
 
 three.js r128 (`lib/`) → brands → telemetry → moments → town-assets → town → engine → storylets → agenda → status → tree →
-cosmetics → career → market → venture → work → pets → mag → wants → game → net → today → **ui.js** (hasil gabungan `ui/*.js`).
+cosmetics → career → market → venture → work → pets → mag → wants → game → net → today → soon → weather → balik → **ui.js** (hasil gabungan `ui/*.js`).
 Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` menyalin tepat daftar itu ke `_site/`.
 
 ## Modul
@@ -36,6 +36,9 @@ Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` men
 | `game.js` | 687 | Lapisan pemain: state = pengaturan + catatan aksi; HumanGuardian (hadir, jawaban), advance/act/answer, rawat pagi/malam (CARE, noon), _refuse buat saran ke dewasa, event dunia dan kabar Kindred ke state.net, netRecord. | `Game` | state.aksi/hadir/jawaban/rawat_from/net; c.info.nolak/siang | HOOKS.act, care_on, care_night, cover | ✓ |
 | `net.js` | 366 | Kindred: kenalan → jadian → tunangan → nikah antar keluarga pemain; tiap pemain nulis dokumen net/<uid> di db artifact; semua tawaran; disepakati → game.netRecord. | `Net { init, sync, view, setOpen, introduce, answer, bless, hold, breakUp, GAP, state }` | state.net, db artifact | — | — |
 | `today.js` | 45 | Baris "Today" di layar utama: satu kalimat per hari dari urutan prioritas tetap (dilema, pintu baru, momen hari ini, rawat, momen terjadwal, keinginan, selesai, sepi). Dipindah dari skrip UI saat perapian L9; teks dan urutan sama dengan v44. | `Today { line }` | — (hanya membaca potret yang diberikan UI) | — | ✓ |
+| `soon.js` | 101 | Baris "Soon" dan "Someday" (v44.1, daftar-saran 2–4): mengumpulkan tanggal yang sudah ada (ujian, review, kompetisi, kelahiran, kelas, maraton, ganti fase, ulang tahun, momen terjadwal, event dunia, drop Bazaar, majalah, bangunan, Kindred), yang terdekat ≤60 hari jadi satu kalimat dengan rutinitasnya; pasti vs mungkin; satu harapan tanpa tanggal. | `Soon { items, line, someday, HORIZON }` | — (potret dari UI) | — | ✓ |
+| `weather.js` | 61 | Cuaca asli jadi kulit langit (v44.1, daftar-saran 33): kode WMO → 6 kulit, zona waktu → kota, URL Open-Meteo, umur cache. Kulit saja; tidak ada yang di engine/game/replay membacanya. | `Weather { SKINS, skin, place, cityOf, url, parse, fresh, label, round1 }` | — (cache di localStorage `mk-cuaca`, bukan save) | — | ✓ |
+| `balik.js` | 74 | Rawat terbalik (v44.1, daftar-saran 32): seminggu sekali makhluk bertanya tentang pemain (8 pertanyaan bergilir), reaksi ikut sifat yang menonjol. Teks ditulis manusia. | `Balik { Q, due, react, EVERY, TRAITS }` | — (jawaban di state.balik, bukan aksi) | — | ✓ |
 
 `town-assets.js` adalah data (model kota) dan tidak di-lint. `net.js` dan `town.js` butuh browser (db artifact, three.js).
 
@@ -78,7 +81,11 @@ dengan skrip inline v44. `ui.js` adalah file hasil (di-gitignore); yang diedit a
 | `ui/27-bazaar.js` | 6287–6467 | **Bazaar** (6287): toko kota: barang baru, drop terbatas, bekas |
 | `ui/28-photos.js` | 6468–6755 | **foto kenangan** (6468): foto = kejadian nyata (siapa, di mana, kenapa); studio (6565) |
 | `ui/29-town.js` | 6756–6987 | **kota** (6756): masuk/keluar kota, HUD disembunyiin (#app.in-town) |
-| `ui/30-start.js` | 6988–6990 | pemanggilan boot() |
+| `ui/31-ahead.js` | baru (v44.1) | **Soon/Someday** di HUD: potret untuk soon.js, baris #soon/#someday, lembar "What's ahead", tur `ahead`; `EXTRA_TOURS` (tur non-pintu) + `aheadTourMaybe` |
+| `ui/32-focus.js` | baru (v44.1) | **sesi fokus** 25 menit (belajar/kerja bareng): timer di localStorage, HP terkunci, selesai = satu ketukan `belajar` (mekanik lama); tur `fokus` |
+| `ui/33-weather.js` | baru (v44.1) | **cuaca asli** jadi kulit: ambil Open-Meteo per 10 menit (cache 1 jam), `wxApply` → `applyLight`, lembar "Sky & weather" (zona waktu / lokasi / mati); tur `cuaca` |
+| `ui/34-balik.js` | baru (v44.1) | **rawat terbalik**: potret untuk balik.js, lembar tiga pilihan, jawaban ke `state.balik`; tur `balik` |
+| `ui/39-start.js` | 6988–6990 | pemanggilan boot() (dulu `30-start.js`; dinomori 39 supaya tetap terakhir) |
 
 ## Penanda blok Dev (build rilis)
 

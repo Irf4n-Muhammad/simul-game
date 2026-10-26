@@ -9,9 +9,9 @@
   let buf = [], ver = "", ctx = () => ({}), on = true;
   try { const s = store(); on = !(s && s.getItem(OFF) === "1"); buf = s ? JSON.parse(s.getItem(KEY) || "[]") : []; if (!Array.isArray(buf)) buf = []; } catch (e) { buf = []; }
   const S = { id: null, t0: 0, away: 0, pausedAt: 0, endIx: -1, layar: 0, aksi: 0, last: null, lastAt: 0, seen: new Set(), err: 0, cari: {} };
-  let dirty = false, saveT = null;
-  const save = () => { dirty = false; if (saveT) { clearTimeout(saveT); saveT = null; } try { const s = store(); if (s) s.setItem(KEY, JSON.stringify(buf)); } catch (e) { /* penuh: tetap di memori */ } };
-  const queue = () => { dirty = true; if (!saveT) saveT = setTimeout(save, 1500); };
+  let saveT = null;
+  const save = () => { if (saveT) { clearTimeout(saveT); saveT = null; } try { const s = store(); if (s) s.setItem(KEY, JSON.stringify(buf)); } catch (e) { /* penuh: tetap di memori */ } };
+  const queue = () => { if (!saveT) saveT = setTimeout(save, 1500); };
   const now = () => Date.now();
   const sid = () => Math.random().toString(36).slice(2, 8);
   function ev(n, data) {

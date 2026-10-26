@@ -107,7 +107,7 @@ function baDo(cmd) {
   if (op === "tab") { PH.ba = { ...A, tab: arg }; phGo("biz", PH.ba); return; }
   const keep = () => { const sc = PH.el.querySelector("#phView .pa")?.scrollTop || 0; phGo("biz", PH.ba); const bd = PH.el.querySelector("#phView .pa"); if (bd) bd.scrollTop = sc; };
   // tomorrow's bake: change the draft on the phone first, send it as one suggestion
-  if (op === "dq") { const [, i, d] = cmd.split(":"), P = Venture.view(b, game.home, today()).bakeProds, Bk = b.bake;
+  if (op === "dq") { const [, i, d] = cmd.split(":"), Bk = b.bake;
     const base = A.draft[+i] ?? (Bk && Bk.rows[+i] ? Bk.rows[+i].plan : 20); A.draft[+i] = Math.max(0, Math.min(400, base + +d)); keep(); return; }
   if (op === "planauto") { A.draft = A.draft.map(() => null); }
   let kind = arg != null ? `biz:${op}:${arg}` : `biz:${op}`;

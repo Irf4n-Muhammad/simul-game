@@ -127,7 +127,7 @@ function buildSet(place) {
     mesh(RB(6, 1.3, 1.0, 0.06), SM(0x7a5a43), 0, 0.65, -2.6, g); mesh(RB(6.2, 0.1, 1.1, 0.03), SM(0xefe7dc), 0, 1.33, -2.6, g);
     mesh(RB(5.5, 0.08, 0.4, 0.02), SM(0xa47a55), 0, 3.4, -3.0, g);
     for (let i = 0; i < 6; i++) mesh(CYL(0.13, 0.11, 0.3), SM([0xf3ede4, 0xc2704f, 0x8fa287][i % 3]), -2.2 + i * 0.85, 3.6, -3.0, g);
-    for (const x of [-2, 2]) { mesh(CYL(0.01, 0.01, 1.4, 6), SM(0x333333), x, 5.3, -1.6, g); const l = mesh(SPH(0.22, 14, 10), M(0xfff1d6, { emissive: 0xffd9a0, emissiveIntensity: 0.8 }), x, 4.55, -1.6, g); }
+    for (const x of [-2, 2]) { mesh(CYL(0.01, 0.01, 1.4, 6), SM(0x333333), x, 5.3, -1.6, g); mesh(SPH(0.22, 14, 10), M(0xfff1d6, { emissive: 0xffd9a0, emissiveIntensity: 0.8 }), x, 4.55, -1.6, g); }
   } else if (place === "office") {
     floor(0x9ea6ad); wall(0xe4e7ea);
     for (let i = 0; i < 2; i++) { mesh(new THREE.PlaneGeometry(2.0, 2.4), SM(0xcfe0ea, { roughness: 0.3 }), -2.6 + i * 5.2, 3.6, -3.15, g); for (let k = 0; k < 7; k++) mesh(RB(2.1, 0.06, 0.04, 0.01), SM(0xf6f6f4), -2.6 + i * 5.2, 2.5 + k * 0.33, -3.1, g); }
@@ -148,7 +148,7 @@ function buildSet(place) {
 function addProp(g, prop, parts) {
   if (prop === "cake") { mesh(CYL(0.55, 0.55, 0.45, 28), SM(0xf6efe6), 0, 0.23, 1.6, g); mesh(CYL(0.4, 0.4, 0.3, 28), SM(0xe9b8b0), 0, 0.6, 1.6, g); mesh(CYL(0.03, 0.03, 0.28, 8), SM(0xfaf6ef), 0, 0.89, 1.6, g); mesh(SPH(0.06, 10, 8), M(0xffd27a, { emissive: 0xffb347, emissiveIntensity: 1.2 }), 0, 1.07, 1.6, g); }
   if (prop === "balloons") [[-2.4, 3.9, 0xc2704f], [-1.9, 4.4, 0xd4a853], [-2.9, 4.5, 0x7e9cb3]].forEach(([x, y, c]) => { mesh(SPH(0.4, 20, 16), SM(c, { roughness: 0.4 }), x, y, -1, g).scale.y = 1.15; mesh(CYL(0.01, 0.01, y - 0.5, 4), SM(0x777777), x, (y - 0.5) / 2, -1, g); });
-  if (prop === "arch") { const a = mesh(new THREE.TorusGeometry(2.6, 0.09, 8, 40, Math.PI), SM(0xf6efe6), 0, 0, -1.6, g); for (let i = 0; i <= 14; i++) { const t = i / 14 * Math.PI; mesh(SPH(0.2, 12, 10), SM([0xe9b8b0, 0xfaf6ef, 0xd4a853][i % 3]), Math.cos(t) * 2.6, Math.sin(t) * 2.6, -1.5, g); } }
+  if (prop === "arch") { mesh(new THREE.TorusGeometry(2.6, 0.09, 8, 40, Math.PI), SM(0xf6efe6), 0, 0, -1.6, g); for (let i = 0; i <= 14; i++) { const t = i / 14 * Math.PI; mesh(SPH(0.2, 12, 10), SM([0xe9b8b0, 0xfaf6ef, 0xd4a853][i % 3]), Math.cos(t) * 2.6, Math.sin(t) * 2.6, -1.5, g); } }
   if (prop === "boxes") [[2.6, 0.4, -0.6, 0.8], [2.9, 1.1, -0.7, 0.6], [-2.8, 0.35, -0.4, 0.7]].forEach(([x, y, z, s]) => mesh(RB(s, s * 0.9, s, 0.03), SM(0xc9a27a), x, y, z, g));
   if (prop === "cap" && parts) { const c = new THREE.Group(); c.position.set(0, 2.42, 0.1); c.rotation.z = -0.12; parts.body.add(c); mesh(CYL(0.42, 0.45, 0.25, 24), SM(0x2f3438), 0, 0, 0, c); mesh(RB(1.1, 0.06, 1.1, 0.02), SM(0x2f3438), 0, 0.15, 0, c).rotation.y = 0.6; mesh(CYL(0.012, 0.012, 0.5, 6), SM(0xd4a853), 0.5, -0.05, 0.2, c); }
 }

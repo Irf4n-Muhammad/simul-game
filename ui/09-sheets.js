@@ -87,9 +87,11 @@ function showPlan() {
       ${opts.map(([id, label]) => `<button class="chip" data-plan="${esc(id)}" aria-pressed="${cur.rencana === id}" ${canCare() ? "" : "disabled"}>${esc(label)}</button>`).join("")}
     </div>
     ${cur.ujian ? `<p>Test on ${fmtDate(cur.ujian.hari)}. Studied together: ${cur.ujian.belajar}/3${cur.ujian.sendiri ? ` · on their own: ${cur.ujian.sendiri}` : ""}.</p><button class="secondary" id="studyBtn" ${cur.ujian.belajar >= 3 || !canCare() ? "disabled" : ""}>Study together</button>` : ""}
+    <button class="secondary" id="focusBtn" ${canCare() || focus ? "" : "disabled"}>${focus ? `Focus session running · ${focusClock(focusLeftMs())}` : cur.ujian && cur.ujian.belajar < 3 ? `Study together for ${FOCUS_MIN} minutes` : `Work side by side for ${FOCUS_MIN} minutes`}</button>
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelectorAll("[data-plan]").forEach(b => b.onclick = () => { if (game.act(selected, "rencana:" + b.dataset.plan)) { save(); refresh(); showPlan(); } });
   const sb = $("studyBtn"); if (sb) sb.onclick = () => { if (game.act(selected, "belajar")) { save(); refresh(); say("I'll ace it!"); showPlan(); } };
+  $("focusBtn").onclick = () => { Tele.ev("fokus", { a: "buka" }); showFocus(); };
   sheet.querySelector("[data-close]").onclick = closeSheet;
 }
 

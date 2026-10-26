@@ -66,6 +66,7 @@ function showDev(tab = "main") {
       <button class="secondary" id="devIntroBtn">Show the app intro cards again</button>
       <div class="row2"><button class="secondary" id="devDoorBtn">Open every door ${state.dev_pintu ? "(on)" : "(off)"}</button><button class="secondary" id="devTourBtn">Replay door tours</button></div>
       <button class="secondary" id="devWorldBtn">Fire a test world event (${(game.home.world.events || []).length} so far)</button>
+      <div class="fieldset"><span class="lbl">Sky preview (weather skin, until the next check)</span><div class="chips">${["", ...Weather.SKINS].map(s => `<button class="chip" data-devwx="${s}" aria-pressed="${(WX || "") === s}">${s ? Weather.label(s) : "Real"}</button>`).join("")}</div></div>
       <div class="row2"><button class="secondary" id="devBtnTop">+100 ${Cosmetics.CURRENCY.label} (${Cosmetics.saldo(state)})</button><button class="secondary" id="devCosAll">Own every cosmetic</button></div>
       <button class="secondary" id="devCosClear">Reset the closet</button>
       <p class="muted">Day ${liveDay()} · ${state.hadir.length} days visited · ${state.aksi.length} actions · save ${Math.round(JSON.stringify(state).length / 1024)} KB</p>` : ""}
@@ -98,6 +99,7 @@ function showDev(tab = "main") {
     $("devBtnTop").onclick = () => { Cosmetics.topUp(state, 100, "dev"); save(); showDev("main"); };
     $("devCosAll").onclick = () => { let n = 0; for (const x of Cosmetics.ITEMS) if (Cosmetics.grant(state, x.id, "dev")) n++; save(); say(`${n} items added to the closet.`); showDev("main"); };
     $("devCosClear").onclick = () => { Cosmetics.reset(state); save(); applyHome(); refresh(); showDev("main"); };
+    sheet.querySelectorAll("[data-devwx]").forEach(b => b.onclick = () => { if (b.dataset.devwx) wxApply(b.dataset.devwx); else wxSync(true); showDev("main"); });
     $("devWorldBtn").onclick = () => {
       const n = (game.home.world.events || []).length, P = DEV_DUNIA[n % DEV_DUNIA.length];
       const ok = worldRecord(`dev-dunia-${n}-${liveDay()}`, P);

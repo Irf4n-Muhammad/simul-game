@@ -122,16 +122,34 @@ function win(g, x, z, y, w, h, onLeft, curtain) {
     mesh(CYL(0.025, 0.025, w + 1.1, 10), M(0x3a332d, { metalness: 0.4, roughness: 0.5 }), 0, h / 2 + 0.28, 0.22, grp).rotation.z = Math.PI / 2;
   }
 }
+// v44.1: langit per kulit cuaca (ui/33-weather.js): warna siang/malam, awan, garis hujan, titik salju, kilat. Tanpa cuaca = langit lama.
+const WX_SKY = {
+  cloud: { day: ["#A9B4BF", "#DDE3E8"], night: ["#232838", "#3A4252"], cloud: "rgba(255,255,255,.55)", n: 4 },
+  rain: { day: ["#7F8A98", "#B3BCC6"], night: ["#1B2030", "#2F3648"], cloud: "rgba(90,98,110,.6)", n: 4, rain: true },
+  snow: { day: ["#C9D3DC", "#EEF2F5"], night: ["#2A3040", "#4A5266"], cloud: "rgba(255,255,255,.8)", n: 3, snow: true },
+  fog: { day: ["#CFD4D8", "#E6E9EC"], night: ["#2C3038", "#454A54"], cloud: "rgba(255,255,255,.35)", n: 2, fog: true },
+  storm: { day: ["#4A515F", "#7A8290"], night: ["#141824", "#2A3040"], cloud: "rgba(40,44,56,.7)", n: 5, rain: true, bolt: true },
+};
 const skyTexCache = {};
-function skyTex(period) {
-  if (skyTexCache[period]) return skyTexCache[period];
-  const [top, bottom, kind] = SKY[period];
-  return skyTexCache[period] = canvasTex((g, w, h) => {
+function skyTex(period, wx) {
+  const key = period + "|" + (wx || "");
+  if (skyTexCache[key]) return skyTexCache[key];
+  const [top0, bottom0, kind] = SKY[period], X = wx && WX_SKY[wx], night = period === "night";
+  const [top, bottom] = X ? X[night ? "night" : "day"] : [top0, bottom0];
+  return skyTexCache[key] = canvasTex((g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, top); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    if (kind === 2) { g.fillStyle = "rgba(255,246,220,.9)"; for (let i = 0; i < 18; i++) { g.beginPath(); g.arc((i * 71) % w, (i * 53) % (h * 0.8) + 6, 1 + (i % 3) * 0.7, 0, 7); g.fill(); } g.beginPath(); g.arc(w * 0.7, h * 0.3, 18, 0, 7); g.fillStyle = "#F4EBD0"; g.fill(); }
-    else { g.fillStyle = kind === 1 ? "rgba(255,210,170,.5)" : "rgba(255,255,255,.75)"; for (const [x, y, s] of [[50, 80, 1], [170, 140, 0.8]]) { g.beginPath(); g.ellipse(x, y, 40 * s, 12 * s, 0, 0, 7); g.ellipse(x + 20 * s, y - 8 * s, 26 * s, 12 * s, 0, 0, 7); g.fill(); } }
+    if (!X && kind === 2) { g.fillStyle = "rgba(255,246,220,.9)"; for (let i = 0; i < 18; i++) { g.beginPath(); g.arc((i * 71) % w, (i * 53) % (h * 0.8) + 6, 1 + (i % 3) * 0.7, 0, 7); g.fill(); } g.beginPath(); g.arc(w * 0.7, h * 0.3, 18, 0, 7); g.fillStyle = "#F4EBD0"; g.fill(); }
+    else if (!X) { g.fillStyle = kind === 1 ? "rgba(255,210,170,.5)" : "rgba(255,255,255,.75)"; for (const [x, y, s] of [[50, 80, 1], [170, 140, 0.8]]) { g.beginPath(); g.ellipse(x, y, 40 * s, 12 * s, 0, 0, 7); g.ellipse(x + 20 * s, y - 8 * s, 26 * s, 12 * s, 0, 0, 7); g.fill(); } }
+    else {
+      g.fillStyle = X.cloud;
+      for (let i = 0; i < X.n; i++) { const x = (i * 97 + 30) % w, y = 50 + (i * 61) % 110, s = 0.8 + (i % 3) * 0.25; g.beginPath(); g.ellipse(x, y, 46 * s, 13 * s, 0, 0, 7); g.ellipse(x + 24 * s, y - 9 * s, 30 * s, 13 * s, 0, 0, 7); g.ellipse(x - 20 * s, y - 5 * s, 24 * s, 10 * s, 0, 0, 7); g.fill(); }
+      if (X.rain) { g.strokeStyle = night ? "rgba(200,210,230,.35)" : "rgba(255,255,255,.5)"; g.lineWidth = 1.5; for (let i = 0; i < 40; i++) { const x = (i * 53) % w, y = (i * 37) % h; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 4, y + 14); g.stroke(); } }
+      if (X.snow) { g.fillStyle = "rgba(255,255,255,.9)"; for (let i = 0; i < 40; i++) { g.beginPath(); g.arc((i * 59) % w, (i * 43) % h, 1.2 + (i % 3) * 0.6, 0, 7); g.fill(); } }
+      if (X.bolt) { g.fillStyle = "#FFE28A"; g.beginPath(); g.moveTo(150, 40); g.lineTo(132, 96); g.lineTo(150, 92); g.lineTo(136, 150); g.lineTo(172, 84); g.lineTo(154, 88); g.lineTo(168, 40); g.closePath(); g.fill(); }
+      if (X.fog) { g.fillStyle = night ? "rgba(70,76,90,.6)" : "rgba(225,228,232,.75)"; g.fillRect(0, h * 0.45, w, h * 0.55); }
+    }
     // distant rooftops
-    g.fillStyle = kind === 2 ? "#2a2f4a" : kind === 1 ? "#7b6a78" : "#a7b8c4";
+    g.fillStyle = kind === 2 ? "#2a2f4a" : kind === 1 ? "#7b6a78" : X ? "#8f99a6" : "#a7b8c4";
     for (let i = 0; i < 6; i++) g.fillRect(i * 46, h - 30 - (i % 3) * 14, 40, 40 + (i % 3) * 14);
   }, 256, 256);
 }
@@ -179,7 +197,7 @@ function room(name, action, act, bg, build) {
   const g = new THREE.Group(); scene.add(g); g.visible = false; build(g);
   ROOMS.push({ name, action, act, bg, g });
 }
-const wood = 0xa47a55, oat = 0xe7dccb, cream = 0xf3ede4, ink = 0x3a332d, brass = 0xb8945a;
+const wood = 0xa47a55, cream = 0xf3ede4, ink = 0x3a332d, brass = 0xb8945a;
 room("Kitchen", "Feed", "makan", ["#EFE4D2", "#D9C9B0"], g => {
   shell(g, wallTex(0xeee4d4, 0x9dae95, "panel"), floorTex("terra", 0xc58b67, 0xb47657), 0x8c6a4f, cream);
   win(g, -0.6, R0 + 0.06, 2.9, 1.5, 1.2, false, 0xd8c7ae);
@@ -310,13 +328,13 @@ const PERIODS = {
   night: { env: 0.28, sun: 0x9fb0d9, sunI: 0.35, hemi: 0.14, lamp: 2.6, exp: 0.95, pos: [-4, 8, 6], tint: ["#3B4158", "#232738"] },
 };
 const periodOf = (h = new Date().getHours()) => h >= 5 && h < 10 ? "morning" : h < 16 ? (h >= 10 ? "day" : "night") : h < 20 ? "evening" : "night";
-let LIT = PERIODS.day, litName = "";
+let LIT = PERIODS.day, litName = "", litKey = "";
 function applyLight(force) {
-  const p = periodOf();
-  if (p === litName && !force) return;
-  litName = p; LIT = PERIODS[p];
+  const p = periodOf(), wx = typeof WX === "string" ? WX : null, key = p + "|" + (wx || "");
+  if (key === litKey && !force) return;
+  litName = p; litKey = key; LIT = PERIODS[p];
   sun.color.setHex(LIT.sun); sun.position.set(...LIT.pos); renderer.toneMappingExposure = LIT.exp;
-  windows.forEach(w => { w.material.map = skyTex(p); w.material.needsUpdate = true; });
+  windows.forEach(w => { w.material.map = skyTex(p, wx); w.material.needsUpdate = true; });
   scene.traverse(envScale);
   paintBg();
 }
@@ -326,7 +344,8 @@ function envScale(o) {
   for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * LIT.env; }
 }
 function paintBg() {
-  const r = ROOMS[roomIx] || ROOMS[0], t = LIT.tint || r.bg;
+  // v44.1: latar sedikit mengabu saat cuaca mendung/hujan (kulit saja)
+  const X = typeof WX === "string" && WX !== "clear" ? WX_SKY[WX] : null, r = ROOMS[roomIx] || ROOMS[0], t0 = LIT.tint || r.bg, t = X ? [artShade(t0[0], 0.92), artShade(t0[1], 0.9)] : t0;
   app.style.background = `radial-gradient(120% 80% at 50% 40%, ${t[0]} 0%, ${t[1]} 100%)`;
   document.body.style.background = t[1]; app.classList.toggle("night", litName === "night");
 }

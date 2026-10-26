@@ -624,6 +624,30 @@ svg { stroke: currentColor; }
 .today span { overflow: hidden; text-overflow: ellipsis; }
 .today.new { box-shadow: 0 0 0 2px var(--gold), 0 4px 14px rgba(212,168,83,.35); }
 .today.quiet { background: var(--glass); color: var(--ink-soft); font-weight: 600; }
+/* v44.1: Soon and Someday rows under Today (soon.js); a dashed edge marks a "maybe" */
+.today.soon { background: var(--glass); color: var(--ink-soft); font-weight: 600; font-size: 12px; padding: 5px 12px 5px 9px; margin-top: -8px; box-shadow: 0 1px 6px rgba(60,40,20,.1); }
+.today.soon i { font-size: 13px; }
+.today.soon.maybe { outline: 1.5px dashed rgba(46,42,38,.3); outline-offset: -1.5px; }
+.today.someday { font-style: italic; }
+.line.ahead { text-align: left; } .line.ahead.maybe { border-style: dashed; }
+/* What's ahead: kiri sisa hari (angka besar), judul diawali konteks besar (26 Okt) */
+.line.ahead .days { flex: none; width: 54px; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: var(--sky); color: #fff; font-style: normal; line-height: 1; }
+.line.ahead .days b { font-size: 21px; font-weight: 800; }
+.line.ahead .days small { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-top: 3px; opacity: .92; }
+.line.ahead.maybe .days { background: rgba(141,169,189,.14); color: var(--sky); border: 1.5px dashed var(--sky); }
+.line.ahead .days.none { background: rgba(46,42,38,.06); color: var(--ink-soft); }
+.line.ahead .k { font-style: normal; color: var(--accent); letter-spacing: .05em; }
+/* v44.1: focus session (ui/32-focus.js) */
+.focus-clock { font-size: 58px; font-weight: 800; letter-spacing: -.03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; padding: 6px 0 2px; }
+/* v44.1: weather as a skin (ui/33-weather.js): rain, snow and fog drawn over the room, under the HUD; never over a sheet */
+.wx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s; }
+#app[data-wx="rain"] .wx, #app[data-wx="storm"] .wx { opacity: .45; background: repeating-linear-gradient(100deg, transparent 0 16px, rgba(255,255,255,.4) 16px 17px, transparent 17px 30px); background-size: 100% 180px; animation: wxRain .45s linear infinite; }
+#app[data-wx="storm"] .wx { opacity: .6; }
+#app[data-wx="snow"] .wx { opacity: .75; background: radial-gradient(circle, #fff 1.3px, transparent 1.8px) 0 0 / 30px 30px, radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 1.5px) 15px 12px / 44px 44px; animation: wxSnow 7s linear infinite; }
+#app[data-wx="fog"] .wx { opacity: .4; background: linear-gradient(180deg, rgba(222,226,230,.95), rgba(222,226,230,0) 55%); }
+@keyframes wxRain { to { background-position: 0 180px; } }
+@keyframes wxSnow { to { background-position: 0 30px, 15px 56px; } }
+@media (prefers-reduced-motion: reduce) { .wx { animation: none !important; } }
 .qmark { position: absolute; top: 14px; right: 14px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(46,42,38,.08); color: var(--ink-soft); font-weight: 800; font-size: 14px; display: grid; place-items: center; padding: 0; }
 .town-q { position: absolute; top: 76px; right: 16px; pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--ink-soft); font-weight: 800; font-size: 15px; display: grid; place-items: center; padding: 0; box-shadow: var(--shadow); }
 .ptag { display: inline-block; font-style: normal; font-weight: 700; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.08); color: #5A544C; vertical-align: 2px; margin-left: 5px; }
@@ -980,6 +1004,7 @@ svg { stroke: currentColor; }
 <div id="app">
   <canvas id="scene" aria-label="Your creature in its room. Tap to poke, swipe to change room."></canvas>
   <div class="fade" id="fade"></div>
+  <div class="wx" id="wx" aria-hidden="true"></div>
 
   <div class="hud-top">
     <div class="row">
@@ -1005,6 +1030,8 @@ svg { stroke: currentColor; }
     <div class="needs" id="needs"></div>
     <div class="care" id="careStrip" hidden></div>
     <button class="today" id="today" hidden><i id="todayIc"></i><span id="todayTx"></span></button>
+    <button class="today soon" id="soon" hidden><i id="soonIc"></i><span id="soonTx"></span></button>
+    <button class="today soon someday" id="someday" hidden><i id="somedayIc"></i><span id="somedayTx"></span></button>
     <button class="moment" id="momentPill" hidden></button>
   </div>
 
@@ -1073,4 +1100,7 @@ svg { stroke: currentColor; }
 <script src="game.js"></script>
 <script src="net.js"></script>
 <script src="today.js"></script>
+<script src="soon.js"></script>
+<script src="weather.js"></script>
+<script src="balik.js"></script>
 <script src="ui.js"></script>

@@ -1,4 +1,4 @@
-const E = require("../engine.js"); require("../storylets.js"); const ST = require("../status.js"); const T = require("../tree.js"); require("../agenda.js");
+require("../engine.js"); require("../storylets.js"); require("../status.js"); const T = require("../tree.js"); require("../agenda.js");
 const G = require("../game.js");
 const PREF = { creativity: ["latihan", "hobi", "bebas", "main"], fitness: ["olahraga", "jalan", "jalan_pagi"], logic: ["belajar", "dongeng"], charm: ["teman", "sosial"] };
 const [seed, skill, tal] = [process.argv[2] || "f1", process.argv[3] || "creativity", +(process.argv[4] || 10)];
