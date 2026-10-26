@@ -76,7 +76,8 @@ function showDev(tab = "main") {
     ${tab === "tele" ? `<p class="muted">${S.event} events · ${S.sesi} sessions · stored on this device only (no server yet)</p>
       <div class="dev-tbl">${Object.entries(S.per).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span>${esc(k)}</span><b>${v}</b>`).join("")}</div>
       <textarea class="bk-code" id="devTele" readonly placeholder="Tap Show log to see the JSON"></textarea>
-      <div class="row2"><button class="secondary" id="devTeleCopy">Show log JSON</button><button class="secondary" id="devTeleClear">Clear log</button></div>` : ""}
+      <div class="row2"><button class="secondary" id="devTeleCopy">Show log JSON</button><button class="secondary" id="devTeleClear">Clear log</button></div>
+      <button class="secondary" id="devTeleFile">Save log file (for the team dashboard)</button>` : ""}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
   sheet.querySelectorAll("[data-devtab]").forEach(b => b.onclick = () => showDev(b.dataset.devtab));
@@ -113,7 +114,22 @@ function showDev(tab = "main") {
   if (tab === "tele") {
     $("devTeleCopy").onclick = () => { const t = $("devTele"); t.value = Tele.dump(); t.select(); try { navigator.clipboard.writeText(t.value).then(() => say("Copied!"), () => {}); } catch (e) {} };
     $("devTeleClear").onclick = () => { Tele.clear(); showDev("tele"); };
+    $("devTeleFile").onclick = saveTeleFile;
   }
+}
+// log telemetry jadi file (buat agregator tim: tools/tele_agregat.py). Isinya Tele.payload(): tanpa nama, tanpa isi chat
+async function saveTeleFile() {
+  const data = Tele.dump(), d = new Date(), akun = String(state.akun || "anon").slice(-6);
+  const name = `old-town-tele-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}-${akun}.json`;
+  if (DL) {
+    try { await DL.save({ filename: name, data }); return say("Log saved."); }
+    catch (e) { if (e && (e.code === "declined" || e.code === "rate_limited")) return; }
+  }
+  try {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "application/json" })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    say("Log saved.");
+  } catch (e) { $("devTeleCopy").click(); }
 }
 // DEV-END
 function showBackup(msg) {
