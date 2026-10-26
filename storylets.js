@@ -45,24 +45,6 @@ storylet("kotor_dekil", ALL, "kecil", { cooldown: 4,
 
 // ---------------------------------------------------------------- bayi
 
-storylet("kata_pertama", ["bayi"], "sedang", { once: true, cond: x => x.age >= 18,
-  weight: x => 1 + (x.age - 18) / 6 }, x => {
-  const kata = x.pick(["mama", "ball", "nom nom", "uwu", "guardian"]);
-  x.say(`${x.n} says their very first word: "${kata}"! Then they giggle and repeat it until they're all tired out.`);
-  x.stat("kecerdasan", 2);
-  x.remember(`First word: "${kata}".`);
-});
-
-storylet("langkah_pertama", ["bayi"], "sedang", { once: true, cond: x => x.age >= 25,
-  weight: x => 1 + (x.age - 25) / 5 }, x => {
-  if (x.attended) {
-    x.say(`${x.n} stands up, wobbles, then takes three steps toward you before plopping down. First steps!`);
-    x.bond(4);
-  } else {
-    x.say(`${x.n} walked for the first time today. Too bad you missed it; they walked to the door, waiting for you.`);
-  }
-  x.remember("First steps.");
-});
 
 storylet("demam", ["bayi", "anak"], "sedang", { cooldown: 60,
   weight: x => 0.1 + (100 - x.c.stats.kesehatan) / 50 }, x => {
@@ -1622,7 +1604,8 @@ storylet("anak_sakit_malam", GROWN, "sedang", { cooldown: 60, cond: x => working
 // ---------------------------------------------------------------- tambalan ritme (Blok A nomor 8)
 // Sim ritme nunjukin tiga lubang: 17 hari pertama tanpa momen positif (cuma 6 storylet bayi yang muter),
 // masa kuliah (hari ~330–480) hampir tanpa kejadian berarti, dan fase tua yang 71% harinya cuma ambient.
-// Tonggak bayi: sekali seumur hidup, hari-harinya hampir pasti (dua yang pertama prioritas), teksnya ikut sifat.
+// Tonggak bayi: malam pertama tetap di sini (hari 1). Senyum, ketawa, kenal nama, duduk, kata dan langkah pertama pindah ke tonggak.js (v45):
+// jendela umur per tonggak, harinya dari benih makhluk, tampil di baris Soon dan tangga profil.
 storylet("malam_pertama", ["bayi"], "sedang", { once: true, priority: true, cond: x => x.age >= 1 }, x => {
   const t = x.t("penakut") > 55;
   x.say(x.attended
@@ -1632,37 +1615,7 @@ storylet("malam_pertama", ["bayi"], "sedang", { once: true, priority: true, cond
   x.remember("First night home.");
 });
 
-storylet("senyum_pertama", ["bayi"], "sedang", { once: true, priority: true, cond: x => x.age >= 3 }, x => {
-  x.say(x.attended
-    ? `${x.n} looks up at you mid-yawn and smiles. A real one, gums and all. First smile!`
-    : `${x.n} smiled for the first time today, at the ceiling fan. You'll get the next one.`);
-  if (x.attended) x.bond(3);
-  x.need("mood", 6);
-  x.remember("First smile.");
-});
 
-storylet("ketawa_pertama", ["bayi"], "sedang", { once: true, cond: x => x.age >= 6, weight: x => 2 + (x.age - 6) }, x => {
-  const how = x.pick(["a game of peekaboo", "a sneeze", "the sound of the kettle", "their own hiccups"]);
-  x.say(`${x.n} laughs out loud for the first time, at ${how}. Then they laugh at themselves laughing.`);
-  x.need("mood", 8);
-  if (x.attended) x.bond(2);
-  x.remember(`First laugh, at ${how}.`);
-});
-
-storylet("kenal_nama", ["bayi"], "sedang", { once: true, cond: x => x.age >= 9, weight: x => 2 + (x.age - 9) }, x => {
-  x.say(x.attended
-    ? `You say "${x.n}" from across the room and a little head turns. They know their name now.`
-    : `${x.n} turns their head when the neighbor says their name. They know it now.`);
-  x.stat("kecerdasan", 1);
-  x.remember("Knew their own name.");
-});
-
-storylet("duduk_sendiri", ["bayi"], "sedang", { once: true, cond: x => x.age >= 13, weight: x => 2 + (x.age - 13) }, x => {
-  const toy = x.pick(["the rubber ball", "a wooden spoon", "your sock"]);
-  x.say(`${x.n} sits up all by themselves, wobbles, and grabs ${toy} to celebrate. Sitting up: done.`);
-  x.stat("kesehatan", 1);
-  x.remember("Sat up on their own.");
-});
 
 // variasi hari biasa bayi, supaya enam storylet lama nggak muter terus
 storylet("cermin", ["bayi"], "kecil", { cooldown: 12 }, x => {

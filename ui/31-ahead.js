@@ -15,6 +15,7 @@ function aheadSnap() {
     d, cur, members, moments: F.moments, world: game.home.world.events || [], drops: Market.drops(d),
     mag: Mag.issueDay(Mag.latest(d) + 1), build: F.build ? { done: F.build.done, label: F.build.item ? F.build.item.label : "" } : null,
     kindred, phases: Engine.PHASES, prize: id => !!(Status.JOBS[id] && Status.JOBS[id].prize),
+    tonggak: globalThis.Tonggak ? members.flatMap(m => { const h = game.home.get(m.id); return h && h.alive(d) ? Tonggak.upcoming(h, d) : []; }) : [],
     wants: c ? Wants.active(c, d, game.home) : [], cita: c ? c.info.cita || null : null, nameOf,
   };
 }
@@ -37,7 +38,8 @@ function drawAhead() {
 }
 // v44.1: tutorial fitur yang bukan pintu (aturan v43: tiap fitur baru punya tutorial, bisa diulang lewat "?"). Dicek setelah tur pintu;
 // fragmen lain menambah { id, when } ke daftar ini. Yang sudah dilihat tercatat di state.tur_pintu seperti tur pintu.
-const EXTRA_TOURS = [{ id: "ahead", when: () => !$("soon").hidden || !$("someday").hidden }];
+const EXTRA_TOURS = [{ id: "ahead", when: () => !$("soon").hidden || !$("someday").hidden },
+  { id: "tonggak", when: () => !!aheadCache && aheadCache.k.startsWith("tonggak:") }];
 function aheadTourMaybe() {
   if (!state || !game || !cur || tour || sheetKind || PH || (TOWN && TOWN.on) || coachEl || state.tut < COACH.length || game.pending) return;
   if (cur.fase === "meninggal" || cur.fase === "merantau") return;
@@ -63,14 +65,14 @@ function showAhead() {
   const S = aheadSnap(); if (!S) return;
   const soon = Soon.items(S).filter(i => i.day - S.d <= AHEAD_DAYS), some = Soon.someday(S);
   // kiri: sisa hari sebagai angka (bukan ikon), judul diawali satu konteks besar ("PROMOTION: ...") supaya yang malas baca langsung tahu (26 Okt)
-  const left = n => n <= 0 ? `<i class="days"><b>now</b><small>today</small></i>` : `<i class="days"><b>${n}</b><small>${n === 1 ? "day" : "days"}</small></i>`;
+  const left = (n, any) => any ? `<i class="days"><b>?</b><small>any day</small></i>` : n <= 0 ? `<i class="days"><b>now</b><small>today</small></i>` : `<i class="days"><b>${n}</b><small>${n === 1 ? "day" : "days"}</small></i>`;
   const title = i => `<b><em class="k">${esc(i.lbl || "SOON")}:</em> ${esc(i.tx)}</b>`;
-  const row = (i, ix) => `<button class="line ahead${i.sure ? "" : " maybe"}" data-ahead="${ix}">${left(i.day - S.d)}<span class="grow">${title(i)}<small class="sub">${esc(fmtDate(i.day))} · ${i.sure ? "a set day" : "maybe"}${i.sub ? " · " + esc(i.sub) : ""}</small></span></button>`;
+  const row = (i, ix) => `<button class="line ahead${i.sure ? "" : " maybe"}" data-ahead="${ix}">${left(i.day - S.d, i.any)}<span class="grow">${title(i)}<small class="sub">${i.win ? (i.any ? "no set day" : "window opens " + esc(fmtDate(i.day))) + " · it will come" : esc(fmtDate(i.day)) + " · " + (i.sure ? "a set day" : "maybe")}${i.sub ? " · " + esc(i.sub) : ""}</small></span></button>`;
   openSheet("ahead", `
     <span class="ribbon" style="background: var(--sky)">WHAT'S AHEAD</span>
     <h2>Soon</h2>
     ${soon.length ? `<div class="list">${soon.map(row).join("")}</div>` : `<p>Nothing with a date in the next ${AHEAD_DAYS} days. Quiet times are when ${esc(cur.nama)} picks up new habits.</p>`}
-    <p class="muted">A set day is a real day on your calendar. <i>Maybe</i> means the day is set but getting it is not.</p>
+    <p class="muted">A set day is a real day on your calendar. <i>Maybe</i> means the day is set but getting it is not. Growing-up firsts have no set day: they come inside a window and can't be missed.</p>
     <h2>Someday</h2>
     ${some ? `<div class="list"><button class="line ahead" data-someday="1"><i class="days none"><b>?</b><small>no date</small></i><span class="grow">${title(some)}<small class="sub">A hope without a date yet.</small></span></button></div>` : `<p>No big hope on the horizon right now. Dreams and big wishes show up here when ${esc(cur.nama)} has one.</p>`}
     <button class="close" data-close="1">Close</button>`);

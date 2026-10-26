@@ -2,7 +2,7 @@
 // fungsi murni yang menerima potret keadaan dan mengembalikan teks, supaya bisa di-require dan diuji di Node. Tidak membaca
 // dunia langsung, tidak menulis apa pun, dan tidak menambah konten simulasi: semua tanggal di sini SUDAH ADA di mesin
 // (ujian, momen terjadwal, kelahiran, kelas malam, maraton, review promosi, ganti fase, ulang tahun, majalah, drop Bazaar,
-// rumah yang sedang dibangun, kejadian dunia, langkah Kindred). Saran 2: tampilkan dulu yang ada sebelum nulis konten baru.
+// rumah yang sedang dibangun, kejadian dunia, langkah Kindred; v45: tonggak bayi dan tanggal klinik dari tonggak.js). Saran 2: tampilkan dulu yang ada sebelum nulis konten baru.
 //
 //   Soon.items(S)   -> semua hal bertanggal setelah hari ini, urut hari (yang pasti duluan kalau harinya sama):
 //                      [{ k, day, lbl, ic, tx, sub, sure, go, cid, id?, m? }]
@@ -29,6 +29,8 @@
 //   prize      jobId => true kalau pekerjaan itu punya kompetisi (Status.JOBS[id].prize)
 //   wants      keinginan aktif makhluk yang dilihat: [{ id, ic, label, besar }]
 //   cita       cita-cita makhluk yang dilihat, atau null
+//   tonggak    (v45) tonggak bayi berikutnya per makhluk dari Tonggak.upcoming: [{ cid, id, lbl, label, ic, lo, hi, fixed }], hari absolut;
+//              fixed = tanggal klinik (pasti), selain itu jendela (mungkin: "any day now" begitu lo lewat)
 //   nameOf     cid => nama
 "use strict";
 (() => {
@@ -72,6 +74,16 @@
         const y = Math.floor(m.umur / 365) + 1, bday = m.born + y * 365;
         if (bday > d) out.push({ k: "ultah:" + m.id, day: bday, lbl: "BIRTHDAY", ic: "🎂", cid: m.id, sure: true, go: "profil", tx: `${n} turns ${y} ${when(d, bday)}.`, sub: "A birthday a year, on the real calendar." });
       }
+    }
+    // v45: tonggak bayi (tonggak.js). Jendela = mungkin: sebelum jendela "in lo to hi days", di dalam jendela "any day now" (day = besok,
+    // any: true buat lembar; win: true = item jendela, lembar menulis "it will come" bukan "maybe"). Tanggal klinik = pasti, seperti tanggal lain.
+    for (const T of S.tonggak || []) {
+      const n = nameOf(T.cid);
+      if (T.fixed) { if (T.lo > d) out.push({ k: "cek:" + T.cid + ":" + T.id, day: T.lo, lbl: T.lbl, ic: T.ic || "🩹", cid: T.cid, sure: true, go: "profil", tx: `${n}'s ${T.label} ${when(d, T.lo)}.`, sub: "A clinic date on the calendar. Expect one cry and a sticker." }); continue; }
+      const open = d >= T.lo;
+      out.push({ k: "tonggak:" + T.cid + ":" + T.id, day: open ? d + 1 : T.lo, lbl: T.lbl, ic: T.ic || "🌱", cid: T.cid, sure: false, any: open, win: true, go: "profil",
+        tx: open ? `${n}'s ${T.label} could come any day now.` : `${n}'s ${T.label} usually comes in ${T.lo - d} to ${T.hi - d} days.`,
+        sub: "Every creature has its own day for this one. Care doesn't hurry it, and it can't be missed." });
     }
     for (const m of S.moments || []) if (m.day > d) out.push({ k: "momen:" + m.id, day: m.day, lbl: MOMENT_LBL[m.kind] || String(m.label || "moment").toUpperCase(), ic: "📌", cid: m.cid, sure: true, go: "momen", m, tx: `${nameOf(m.cid)}: ${m.label} ${when(d, m.day)}.`, sub: "The day is set. How it goes is not: dice, skill and condition decide." });
     for (const w of S.world || []) if (w.mulai > d) out.push({ k: "dunia:" + w.nama, day: w.mulai, lbl: WORLD_LBL[w.jenis] || "TOWN", ic: w.ikon || "🎪", cid: null, sure: true, go: "kalender", tx: `${w.nama} ${w.selesai > w.mulai ? "begins " : ""}${when(d, w.mulai)}.`, sub: w.selesai > w.mulai ? `${w.selesai - w.mulai + 1} days in Old Town, announced already.` : "One day in Old Town, announced already." });

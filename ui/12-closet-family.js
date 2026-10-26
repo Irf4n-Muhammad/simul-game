@@ -86,6 +86,7 @@ function showProfile(id) {
     <div>${habitsOf(id).map(h => `<span class="tag">${esc(HABITS[h].label)}</span>`).join("")}</div>
     ${tasteLine(m)}
     ${wantsBox(id, here)}
+    ${tonggakBox(id)}
     ${m.bekas.length ? `<div class="fieldset"><span class="lbl">Shaped by</span><div class="list">${m.bekas.map(b => `<div class="line"><span class="grow"><b>${esc(b.label)}</b><small class="sub">${esc(b.why || "")}${b.why ? " · " : ""}${fmtDate(b.d)}. Since then: ${esc(b.note)}.</small></span></div>`).join("")}</div></div>` : ""}
     ${s ? `<div class="box"><h3>${esc(s.best ? s.best.title : "No career yet")}</h3><small>${s.best ? esc(s.best.label) + " · " : ""}${coins(s.wallet)} · prestige ${s.prestige}</small></div>
       ${s.rares.length ? `<div>${s.rares.map(r => `<span class="tag rare">${esc(r.label)} · ${r.share}</span>`).join("")}</div>` : ""}
@@ -93,6 +94,7 @@ function showProfile(id) {
       <div class="fieldset"><span class="lbl">Achievements</span>${s.ach.length ? `<div class="list">${s.ach.slice().reverse().map(a => `<div class="line"><span class="grow"><b>${esc(a.label)}</b><small class="sub">${fmtDate(a.day)}</small></span></div>`).join("")}</div>` : `<span class="sub">Nothing yet. Every life writes its own list.</span>`}</div>` : ""}
     ${s && Tree.view(game.home.get(id), game.home, today()).have.length ? `<button class="close" id="seeTree">Constellations: ${esc(Tree.pathOf(game.home.get(id)).slice(-2).join(", ") || Tree.view(game.home.get(id), game.home, today()).have.length + " stars lit")}</button>` : ""}
     <div class="row2">${here ? `<button class="big" id="goTo">Go to ${esc(m.nama)}</button>` : ""}<button class="close" id="backTree">Back</button></div>`);
+  if ($("tonggakBox")) sheetQ("profile", "tonggak");
   const g = $("goTo"); if (g) g.onclick = () => { select(id); closeSheet(); };
   const st = $("seeTree"); if (st) st.onclick = () => showTree(id);
   $("backTree").onclick = showFamily;

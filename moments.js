@@ -11,6 +11,10 @@
   keinginan_tercapai: ["puncak", 1], keinginan_besar: ["puncak", 2],
   // tonggak bayi minggu 1–2 dan tambalan kuliah/tua (Blok A nomor 8)
   malam_pertama: ["puncak", 1], senyum_pertama: ["puncak", 2], ketawa_pertama: ["puncak", 2], kenal_nama: ["puncak", 1], duduk_sendiri: ["puncak", 2],
+  // v45: tonggak bayi berjendela dan tanggal klinik (tonggak.js)
+  gigi_pertama: ["puncak", 2], makan_padat: ["puncak", 1], benda_kesayangan: ["puncak", 1], merangkak: ["puncak", 2], berdiri: ["puncak", 2],
+  potong_rambut: ["puncak", 1], kalimat_pertama: ["puncak", 2], lompat_pertama: ["puncak", 1], pispot: ["puncak", 1], kasur_sendiri: ["puncak", 1],
+  suntik_1: ["tegang", 1], suntik_2: ["tegang", 1], suntik_3: ["lega", 1],
   gap_puncak: ["puncak", 2], kampus_organisasi: ["puncak", 1], kampus_skripsi: ["tegang", 2], tulis_memoar: ["puncak", 1], memoar_selesai: ["puncak", 2], warisan_resep: ["puncak", 1],
     kelahiran: ["puncak", 3], pernikahan: ["puncak", 3], wisuda: ["puncak", 3], biz_buka: ["puncak", 3], adopsi_sendiri: ["puncak", 3], telur_warisan: ["puncak", 3], pulang_kampung: ["sedih", 2], masalah_di_pesta: ["tegang", 2],
     lamaran: ["puncak", 2], jadian: ["puncak", 2], kata_pertama: ["puncak", 2], langkah_pertama: ["puncak", 2], hari_pertama_sekolah: ["puncak", 2],
