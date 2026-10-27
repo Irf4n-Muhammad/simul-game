@@ -10,9 +10,9 @@ function tonggakBox(id) {
   const rows = live ? V : V.filter(v => v.done);
   if (!rows.length && !VB.some(v => v.done)) return "";
   const nextIx = rows.findIndex(v => !v.done && !v.fixed);
-  const TB = c.info.timbang || {}, G = c.info.garis || [];
+  const TB = c.info.timbang || {}, G = c.info.garis || [], KA = c.info.klinik_anak || {};   // v46.1: ringkasan klinik anak
   const when = v => {
-    if (v.done) { const m = TB[v.id], g = v.id === "garis_pintu" && G[G.length - 1]; return (v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done") + (m ? ` · ${m.kg} kg, ${m.cm} cm` : g ? ` · ${g.cm} cm` : ""); }
+    if (v.done) { const m = TB[v.id], g = v.id === "garis_pintu" && G[G.length - 1]; return (v.at >= 0 ? `at ${fmtAge(v.at)} old` : "done") + (m ? ` · ${m.kg} kg, ${m.cm} cm` : g ? ` · ${g.cm} cm` : KA[v.id] ? ` · ${KA[v.id].ringkas}` : ""); }
     if (v.fixed) return c.born + v.lo <= d ? "any day now · a clinic date" : `${fmtWhen(c.born + v.lo).toLowerCase()} · a clinic date`;
     return v.open ? `any day now · usually by ${v.hi} days old` : `usually at ${v.lo}–${v.hi} days old`;
   };

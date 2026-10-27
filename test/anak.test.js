@@ -19,7 +19,7 @@ test("daftar: delapan tonggak berjendela di fase anak, kalender tetap urut umur,
   for (const t of Anak.LIST) { assert.ok(t.lo >= 60 && t.lo < t.hi && t.hi <= 180, t.id); assert.ok(!ids.has(t.id), t.id); ids.add(t.id); }
   let last = 0;
   for (const k of Anak.KALENDER) { assert.ok(k.at >= 60 && k.at < 180 && k.at >= last, k.id); last = k.at; assert.ok(!ids.has(k.id) || k.id === "hari_pertama_sekolah", k.id); }
-  assert.deepEqual(Anak.KALENDER.filter(k => k.soon).map(k => k.at), [95, 120, 121, 150, 165, 178]);
+  assert.deepEqual(Anak.KALENDER.filter(k => k.soon).map(k => k.at), [95, 100, 120, 121, 130, 134, 142, 150, 160, 165, 178]);   // v46.1: klinik, field trip, lomba kota
 });
 
 test("kalender tetap: ulangan 95 dan 150 (diumumkan 3 hari sebelumnya, nilai tercatat), rapor 120 dan 178, libur 121, pentas 165; sama buat semua akun", () => {
@@ -113,12 +113,12 @@ test("view/calendar/upcoming: tangga, kalender app, dan baris Soon (ulangan yang
   // sesudah diumumkan: baris ujian dari c.info.ujian, kalender lompat ke rapor
   c.info.ujian = { hari: c.born + 95, belajar: 1, sendiri: 0, jenis: "ulangan", kal: "ulangan_1" };
   const U2 = Anak.upcoming(c, 92);
-  assert.deepEqual(U2.filter(u => u.fixed).map(u => u.id), ["rapor_1"]);
+  assert.deepEqual(U2.filter(u => u.fixed).map(u => u.id), ["klinik_gigi_1"]);   // v46.1: klinik gigi 100 sebelum rapor 120
   const both = Soon.items({ ...near, members: [{ ...mem, umur: 92, info: { ujian: c.info.ujian } }], tonggak: U2 });
   assert.equal(both.filter(i => /ulangan|ujian/.test(i.k)).length, 1);
   delete c.info.ujian;
   const K = Anak.calendar(c, 61);
-  assert.deepEqual(K.map(k => k.id), ["hari_pertama_sekolah", "ulangan_1", "rapor_1", "libur_sekolah", "ulangan_2", "pentas_sekolah", "rapor_2"]);
+  assert.deepEqual(K.map(k => k.id), ["hari_pertama_sekolah", "ulangan_1", "rapor_1", "libur_sekolah", "field_trip", "lomba_kota", "ulangan_2", "pentas_sekolah", "rapor_2"]);   // v46.1: + field trip, lomba kota
   assert.ok(K.every(k => k.day === c.born + Anak.KALENDER.find(x => x.id === k.id).at) && K[0].done && !K[1].done);
 });
 

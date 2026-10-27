@@ -22,6 +22,9 @@
   ulangan_1_diumumkan: ["tegang", 2], ulangan_2_diumumkan: ["tegang", 2], libur_sekolah: ["puncak", 1], rapor_1: ["puncak", 2], rapor_2: ["puncak", 2],
   gigi_copot: ["puncak", 2], baca_sendiri: ["puncak", 2], naik_sepeda: ["puncak", 2], berenang: ["puncak", 2], nginep: ["puncak", 2], uang_jajan: ["puncak", 1], sekolah_sendiri: ["puncak", 2], garis_pintu: ["puncak", 1],
   sahabat_kenal: ["puncak", 2], ribut_sahabat: ["tegang", 1], baikan_sahabat: ["lega", 2], sahabat_pindah: ["sedih", 2], sahabat_baru: ["puncak", 2],
+  // v46.1: pilihan lingkungan, klinik anak, lomba kota, liburan, field trip (anak.js)
+  pilih_sekolah: ["puncak", 1], tanya_liburan: ["puncak", 1], izin_field_trip: ["puncak", 1], liburan_berangkat: ["puncak", 2], liburan_tengah: ["puncak", 1], liburan_pulang: ["lega", 1],
+  field_trip: ["puncak", 2], lomba_kota: ["puncak", 2], klinik_gigi_1: ["lega", 1], klinik_mata: ["lega", 1], klinik_gigi_2: ["lega", 1],
   gap_puncak: ["puncak", 2], kampus_organisasi: ["puncak", 1], kampus_skripsi: ["tegang", 2], tulis_memoar: ["puncak", 1], memoar_selesai: ["puncak", 2], warisan_resep: ["puncak", 1],
     kelahiran: ["puncak", 3], pernikahan: ["puncak", 3], wisuda: ["puncak", 3], biz_buka: ["puncak", 3], adopsi_sendiri: ["puncak", 3], telur_warisan: ["puncak", 3], pulang_kampung: ["sedih", 2], masalah_di_pesta: ["tegang", 2],
     lamaran: ["puncak", 2], jadian: ["puncak", 2], kata_pertama: ["puncak", 2], langkah_pertama: ["puncak", 2], hari_pertama_sekolah: ["puncak", 2],
@@ -45,6 +48,9 @@
     pentas_sekolah: [[/loudest clap/, "puncak", 2, "pentas_bagus"], [/one wobble/, "puncak", 1, "pentas_biasa"], [/freezes/, "tegang", 1, "pentas_grogi"]],
     rapor_1: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
     rapor_2: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
+    field_trip: [[/goes to the lighthouse without/, "sedih", 1, "field_trip_tidak"]],
+    lomba_kota: [[/wins the under-tens/, "puncak", 2, "lomba_menang"], [/comes second/, "puncak", 1, "lomba_kedua"], [/first round/, "tegang", 1, "lomba_kalah"]],
+    klinik_mata: [[/Glasses, then/, "puncak", 2, "kacamata"]],
   };
   // baris cerita -> momen (yang hasilnya cuma ketahuan dari teksnya: skor, bisnis, kerja)
   const LINES = [

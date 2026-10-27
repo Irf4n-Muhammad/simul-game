@@ -126,10 +126,12 @@ storylet("ngompol_heboh", ["bayi"], "kecil", { cooldown: 10 }, x => {
 
 storylet("hari_pertama_sekolah", ["anak"], "sedang", { once: true, priority: true }, x => {
   x.c.info.sekolah = true;
+  // v46.1: nama sekolah dari pilihan (anak.js, c.info.sekolah_pilihan); nggak dipilih = yang dekat
+  const nm = { seni: "Hillside Arts & Sport", favorit: "Riverside Academy" }[(x.c.info.sekolah_pilihan || {}).id] || "Old Town Primary";
   if (x.t("penakut") > 55) {
-    x.say(`First day of school! ${x.n} cries at the gate, holding their bag tight. They come home bragging about a gold star sticker.`);
+    x.say(`First day at ${nm}! ${x.n} cries at the gate, holding their bag tight. They come home bragging about a gold star sticker.`);
   } else {
-    x.say(`First day of school! ${x.n} runs into class without looking back. They come home with three new friends.`);
+    x.say(`First day at ${nm}! ${x.n} runs into class without looking back. They come home with three new friends.`);
   }
   x.remember("First day of school.");
 });
@@ -196,7 +198,9 @@ storylet("ujian", ["anak", "remaja"], "sedang", { priority: true, cooldown: 1,
   cond: x => "ujian" in x.c.info && x.day >= x.c.info.ujian.hari }, x => {
   const u = x.c.info.ujian;
   delete x.c.info.ujian;
-  const skor = (x.c.stats.kecerdasan * 0.6 + x.t("rajin") * 0.4 + u.belajar * 7 + (u.sendiri || 0) * 4 + x.rng.uniform(-12, 12));
+  const sk = x.c.info.sekolah_pilihan;   // v46.1: sekolah favorit +6, les matematika +5 (anak.js, pilihan lingkungan)
+  const skor = (x.c.stats.kecerdasan * 0.6 + x.t("rajin") * 0.4 + u.belajar * 7 + (u.sendiri || 0) * 4 + x.rng.uniform(-12, 12)
+    + (sk && sk.id === "favorit" ? 6 : 0) + (x.has("les_aman") ? 5 : 0));
   // v46: ulangan dari kalender sekolah (u.kal) dicatat buat rapor dan app School (anak.js)
   if (u.kal) (x.c.info.nilai ||= {})[u.kal] = { d: x.day, skor: Math.round(skor), g: skor > 58 ? "great" : skor > 38 ? "okay" : "bad", belajar: u.belajar, sendiri: u.sendiri || 0 };
   const bantu = (u.belajar ? ` You studied together ${u.belajar} time${u.belajar > 1 ? "s" : ""} before.` : "")
@@ -235,13 +239,20 @@ storylet("bakat_ketahuan", ["anak"], "sedang", { once: true, priority: true, con
   const gifted = G && G[skill] >= 9;
   x.say(gifted ? `The teacher pulls you aside, almost whispering: ${x.n} has the kind of gift for ${bakat} they see once in a generation.`
     : `The teacher says ${x.n} has a talent for ${bakat}. Their eyes sparkle as they tell you.`);
-  const [, final] = x.ask(`Sign them up for ${bakat} lessons?`, { les: "Sign them up", nanti: "Maybe later" },
-    { suportif: "les", tegas: "nanti" },
-    x.t("ambisius") > 45 ? "les" : "nanti");
+  // v46.1: dilema "pilih les" (riset/fase-kehidupan.md, tambahan Muhammad): tiga pilihan, default les ngikut bakat; harinya dicatat buat
+  // pagar jarak dilema terjadwal (anak.js). Bayaran les nunggu keputusan uang, jadi belum dipotong dari mana-mana.
+  x.c.info.dilema_hari = x.day;
+  const seni = !!x.c.info.sekolah_pilihan && x.c.info.sekolah_pilihan.id === "seni";
+  const [, final] = x.ask(`Sign them up for ${bakat} lessons?`, { les: "Sign them up", aman: "Maths tutoring instead", nanti: "Maybe later" },
+    { suportif: "les", tegas: "aman" }, "les", { safe: "les" });   // dicuekin (wakil "aman" sekalipun) = les ngikut bakat
   if (final === "les") {
-    x.c.info.bakat_level = 25;
+    x.c.info.bakat_level = seni ? 30 : 25;
     x.flag("les");
-    x.say(`${x.n} starts ${bakat} lessons every week.`);
+    x.say(`${x.n} starts ${bakat} lessons every week${seni ? ", in the studio at the top of the hill" : ""}.`);
+  } else if (final === "aman") {
+    x.flag("les_aman");
+    x.stat("kecerdasan", 2);
+    x.say(`Maths tutoring on Tuesdays instead. ${x.n} practices ${bakat} alone, when they feel like it, and gets quicker at sums.`);
   } else {
     x.say(`${x.n} only practices ${bakat} alone when they feel like it.`);
     // bakat yang tidak dirawat meredup sedikit

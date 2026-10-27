@@ -11,7 +11,16 @@
 //      kalau ada), ritme Sabtu, berantem lalu baikan tiga hari kemudian (tanpa dilema; cuma sama NPC), pindah kota di 140–172 (NPC saja),
 //      sahabat baru 6–12 hari sesudahnya. Slot "pemain" nunggu backend (C1): yang pindah cuma NPC, jadi slotnya kebuka buat teman pemain.
 //   4. Bakat ketahuan tetap storylet (storylets.js), tapi harinya rentang 85–110 dari benih (Storylets.bakatDay), bukan dadu director.
-// Nggak ada dilema baru di sini (pagar overload bagian 7): pilih sekolah, les, izin field trip, liburan menyusul di v46.1.
+//   5. (v46.1) PILIHAN LINGKUNGAN: peran pemain di fase anak = milih lingkungan, bukan ngatur anaknya. Empat dilema terjadwal: pilih
+//      sekolah (umur 56, sebelum hari pertama), pilih les (di `bakat_ketahuan`, storylets.js, tiga pilihan), tujuan liburan (116, lima
+//      hari sebelum libur), izin field trip (131, tiga hari sebelum). Pagar (bagian 7): jarak minimal 14 hari dari dilema terjadwal
+//      sebelumnya (c.info.dilema_hari; yang kena pagar jalan sendiri pakai default, tanpa tanya), dan kalau dicuekin semua jalan sendiri:
+//      sekolah dekat rumah, les ngikut bakat, ikut field trip, liburan ke danau. Nggak ada pilihan yang salah: yang berubah teks
+//      hari-harinya; angkanya cuma sedikit (ulangan +6 di sekolah favorit, lomba +8% di sekolah seni/olahraga, les matematika +5 ulangan).
+//      Bayaran les nunggu keputusan uang (dompet rumah), jadi belum dipotong dari mana-mana.
+//   6. (v46.1) JAM TETAP LAIN: klinik gigi 100 dan 160, mata 130 (hasil dari benih: celah gigi, tambalan kecil, kacamata 1 dari 5;
+//      tercatat di c.info.klinik_anak buat tangga profil), lomba kota 142 (Young Talents, hasil dari latihan lawan satu angka benih),
+//      field trip 134, cerita liburan 122/125/127 ngikut tujuan yang dipilih.
 // UI membaca view() (tangga di profil), upcoming() (baris Soon lewat S.tonggak di soon.js), calendar() (app School, kalender HP).
 "use strict";
 (function () {
@@ -28,6 +37,7 @@
   const umumkan = (k, n) => x => {
     const hari = x.c.born + k;
     x.c.info.ujian = { hari, belajar: 0, sendiri: 0, jenis: "ulangan", kal: "ulangan_" + n };
+    if (sekolahOf(x.c).id === "favorit") x.need("mood", -2);   // v46.1: sekolah favorit = ulangannya kerasa
     return `School news: ${n === 1 ? "the first quiz of the year" : "the second quiz"} is in ${hari - x.day} days, the same morning for every class in Old Town. You can help ${x.n} study any evening before then.`;
   };
   const GRADE = { great: "Top marks", okay: "Middling marks", bad: "Marks that need work" };
@@ -65,15 +75,130 @@
     x.need("mood", -4); x.trait("ambisius", 1); x.remember(`Froze at the school show. "Next year."`);
     return `The school show. ${n} has ${part}, walks out, and freezes. A long five seconds. On the way home: "Next year." Said like a promise.`;
   }
+  // ---------------------------------------------------------------- 5. pilihan lingkungan (v46.1)
+  const SEKOLAH = {
+    dekat: { nama: "Old Town Primary", di: "round the corner", teks: n => `${n} is enrolled at Old Town Primary, two streets away. The neighbours' kids go there; now so does ${n}.` },
+    seni: { nama: "Hillside Arts & Sport", di: "up the hill", teks: n => `${n} is enrolled at Hillside Arts & Sport. A bus up the hill every morning, a studio and a running track at the top.` },
+    favorit: { nama: "Riverside Academy", di: "across the bridge", teks: n => `${n} is enrolled at Riverside Academy: the long way round, across the bridge, and the best report cards in town. We'll see.` },
+  };
+  // sekolah makhluk ini: yang dipilih, atau yang dekat kalau nggak pernah ditanya (save lama, atau kena pagar)
+  const sekolahOf = c => { const p = c.info.sekolah_pilihan, id = p && SEKOLAH[p.id] ? p.id : "dekat"; return { id, ...SEKOLAH[id], dipilih: !!p, oleh: p ? p.oleh : "default", d: p ? p.d : null }; };
+  const TUJUAN = { danau: "the lake cabins", pantai: "the seaside", rumah: "home, with day trips" };
+  const liburanOf = c => { const p = c.info.liburan; return p && TUJUAN[p.id] ? p : { id: "danau", d: null, oleh: "default" }; };
+  // pagar jarak: dilema terjadwal berikutnya cuma ditanya kalau yang sebelumnya >= 14 hari lalu; kalau nggak, jalan sendiri pakai default
+  const GAP = 14;
+  const gateOk = x => x.day - (x.c.info.dilema_hari ?? -GAP) >= GAP;
+  function tanya(x, q, opts, prefs, self, o) { x.c.info.dilema_hari = x.day; return x.ask(q, opts, prefs, self, o); }
+  // ask(): penjaga nggak buka app = default (self_pick) yang jalan; `safe` disamain dengan default supaya wakil "aman" nggak milih yang lain
+  const oleh = g => g === null ? "sendiri" : "wali";
+  const SEKOLAH_Q = n => `Which school for ${n}? Three letters came.`;
+  // pilih sekolah: umur 56–59 (bayi), di hari yang nggak ada tonggak bayi; lewat 60 nggak ditanya lagi (sekolahOf = dekat)
+  FORCED.push({ id: "pilih_sekolah",
+    cond: x => !x.c.fired.pilih_sekolah && !x.c.info.sekolah_pilihan && x.age >= 56 && x.age < 60 && x.c.info.tg_hari !== x.day && x.c.info.ex_hari !== x.day,
+    run: x => {
+      x.c.fired.pilih_sekolah = 1;
+      x.say(`Three letters on the mat, one from each school that takes creatures born this week. ${x.n} chews the corner of one. Enrolment closes tomorrow.`);
+      const [g, final] = tanya(x, SEKOLAH_Q(x.n), { dekat: "Old Town Primary, round the corner", seni: "Hillside Arts & Sport, up the hill", favorit: "Riverside Academy, across the bridge" },
+        { suportif: "dekat", tegas: "favorit" }, "dekat", { obey: false, safe: "dekat", alone: "so the form went in for the school round the corner, where the neighbours' kids go." });
+      x.c.info.sekolah_pilihan = { id: final, d: x.day, oleh: oleh(g) };
+      if (final === "dekat") x.trait("ramah", 1);
+      x.remember(`Enrolled at ${SEKOLAH[final].nama}.`);
+      return SEKOLAH[final].teks(x.n);
+    } });
+  // tujuan liburan: ditanya tepat umur 116 kalau pagarnya lolos; selain itu (save lama, kena pagar) ke danau tanpa tanya
+  function tanyaLiburan(x) {
+    if (x.age !== 116 || !gateOk(x)) { x.c.info.liburan = { id: "danau", d: x.day, oleh: "default" }; return `A week off school starts in five days. The lake cabins again, booked without much discussion. ${x.n} is already packing the fishing net.`; }
+    x.say(`${x.n} brings home a note: a week off school, starting in five days. The whole class is already trading plans.`);
+    const [g, final] = tanya(x, "A week off school starts in five days. Where to?", { danau: "The lake cabins, an hour away", pantai: "The seaside, a long drive", rumah: "Stay home, day trips" },
+      { suportif: "pantai", tegas: "rumah" }, "danau", { obey: false, safe: "danau", alone: "so it's the lake cabins, an hour away, like most years." });
+    x.c.info.liburan = { id: final, d: x.day, oleh: oleh(g) };
+    return { danau: `The lake cabins, then. ${x.n} starts packing that evening, five days early: net, torch, three books, no socks.`,
+      pantai: `The seaside, then. ${x.n} digs out the bucket from last summer and sleeps with it next to the bed.`,
+      rumah: `Home, then, with day trips. ${x.n} writes a list of seven places and tapes it to the fridge.` }[final];
+  }
+  const LIBURAN = {
+    berangkat: { danau: n => `Off to the lake. ${n} falls asleep in the car and wakes up to water on both sides of the road.`, pantai: n => `The long drive to the seaside. ${n} asks "are we there yet" eleven times, then goes quiet at the first sight of the sea.`, rumah: n => `Day one of the week at home: the pool in the morning, the library after, and then nothing at all, gloriously.` },
+    tengah: { danau: (n, t) => t ? `${n} won't go in the lake past the knees, so builds a harbour on the shore instead, with a lighthouse made of a torch.` : `${n} jumps off the jetty before anyone has checked the depth. Fine, as it turns out. Twelve more times.`,
+      pantai: (n, t) => t ? `${n} keeps to the rock pools all afternoon, naming every crab, and waves at the sea from a safe distance.` : `${n} is in the sea before the towels are down, and out only when their lips go blue, and in again.`,
+      rumah: (n, t) => t ? `Day four at home: ${n} spends it on the sofa with the three library books, and declares it the best day so far.` : `Day four: ${n} crosses off "the big slide" and "the market" in one morning and asks what's next.` },
+    pulang: { danau: n => `Home from the lake, smelling of woodsmoke, with a jar of pebbles and a sunburnt nose. ${n} sleeps eleven hours.`, pantai: n => `Home from the seaside with sand in the car for the rest of the year. ${n} puts a shell on the windowsill, "to hear it".`, rumah: n => `Last day of the week off. ${n} has done all seven things on the fridge list and adds an eighth: "same again next year".` },
+  };
+  // izin field trip: ditanya tepat umur 131 kalau pagarnya lolos; selain itu dianggap ditandatangani
+  function izinFieldTrip(x) {
+    if (x.age !== 131 || !gateOk(x)) { x.c.info.field_trip = { ikut: true, d: x.day, oleh: "default" }; return `A permission slip for the class trip to the lighthouse comes home, and goes back signed the same evening.`; }
+    x.say(`A permission slip comes home, crumpled: the class trip to the lighthouse and the rock pools, in three days. Lunch not provided.`);
+    const [g, final] = tanya(x, "Class trip to the lighthouse in three days. Sign the slip?", { ikut: "Sign it, pack a lunch", tidak: "Not this time" },
+      { suportif: "ikut", tegas: "ikut" }, "ikut", { obey: false, safe: "ikut", alone: `so the slip went back signed, and ${x.n} packed the lunch.` });
+    x.c.info.field_trip = { ikut: final === "ikut", d: x.day, oleh: oleh(g) };
+    return final === "ikut" ? `Signed. ${x.n} plans the lunch for three days: two sandwiches, an apple "for the crabs", and a biscuit that won't survive the bus.`
+      : `Not this time. ${x.n} nods, then asks four more times before bed, then stops asking, which is worse.`;
+  }
+  function fieldTrip(x) {
+    const ft = x.c.info.field_trip || { ikut: true }, s = sahabatOf(x.c);
+    if (!ft.ikut) { x.need("mood", -4); return `The class goes to the lighthouse without ${x.n}. A day in the library corner with the two others who stayed, and a long, quiet evening.`; }
+    x.need("mood", 8); x.stat("kesehatan", 1); x.remember("Class trip to the lighthouse. Sand in every pocket.");
+    const bus = s ? ` ${s.nama} saves the window seat on the bus.` : "";
+    const core = x.t("penakut") > 55 ? `${x.n} holds the teacher's hand on the headland path, then runs the whole length of the beach with everyone, shrieking.`
+      : x.t("ramah") > 55 ? `${x.n} shares the big lunchbox with the whole bus before it even reaches the headland.`
+      : `${x.n} finds a crab, names it, and is talked out of bringing it home in a jar.`;
+    return `Field trip day.${bus} ${core} Home with sand in every pocket and the tide times by heart.`;
+  }
+  // lomba kota (Young Talents, balai kota): hasil dari latihan (bakat_level, rajin, les, sekolah seni) lawan satu angka dari benih
+  function lombaKota(x) {
+    const b = x.c.info.bakat;
+    if (!b) { x.need("mood", 3); return `The Old Town Young Talents contest, in the town hall. ${x.n} goes to watch, and comes home having decided to be in it next year.`; }
+    const p = 0.25 + (x.c.info.bakat_level || 0) / 200 + x.t("rajin") / 400 + (x.has("les") ? 0.1 : 0) + (sekolahOf(x.c).id === "seni" ? 0.08 : 0) - x.t("penakut") / 600;
+    const r = seed_rng(x.c.id, "anak", "lomba_kota").random();
+    const hasil = r < p ? "menang" : r < p + 0.3 ? "kedua" : "kalah";
+    x.c.info.lomba_kota = { d: x.day, bakat: b, hasil };
+    if (hasil === "menang") { x.stat("reputasi", 5); x.need("mood", 12); x.c.info.menang_lomba = (x.c.info.menang_lomba ?? 0) + 1; x.remember(`Won the city ${b} contest, under-tens.`); return `The Old Town Young Talents contest, in the town hall. ${x.n} wins the under-tens for ${b}. A ribbon, a handshake from the mayor, and a photo on the School feed by teatime.`; }
+    if (hasil === "kedua") { x.need("mood", 6); x.remember(`Second at the city ${b} contest.`); return `The Old Town Young Talents contest. ${x.n} comes second in ${b}, by a whisker, to a creature a head taller. The ribbon goes on the wall anyway.`; }
+    x.need("mood", -3); x.trait("ambisius", 1); x.remember(`The city ${b} contest: not this year.`);
+    return `The Old Town Young Talents contest. ${x.n} goes out in the first round of ${b}, and is very quiet on the bus, and then says "next year", and then "I mean it".`;
+  }
+  // klinik anak (jam tetap): hasil dari benih, nggak pernah bikin cemas; ringkasannya ke tangga profil (c.info.klinik_anak)
+  function klinik(x, id) {
+    const r = seed_rng(x.c.id, "anak", "klinik", id).random(), n = x.n;
+    let teks, ringkas;
+    if (id === "klinik_gigi_1") {
+      const gaps = x.c.fired.gigi_copot ? 1 + (r < 0.5 ? 1 : 0) : 0, tambal = r > 0.75, warna = ["green", "orange", "purple"][Math.floor(r * 3)];
+      ringkas = `${gaps ? `${gaps} gap${gaps > 1 ? "s" : ""}` : "no gaps yet"}, ${tambal ? "one tiny filling" : "no fillings"}`;
+      teks = `Dentist check at Old Town General. ${gaps ? `${gaps === 1 ? "One gap" : "Two gaps"} counted and admired` : "One wobbly tooth, no gaps yet"}, ${tambal ? "and one tiny filling that takes four minutes and a lot of bravery" : "and nothing to fix"}. A sticker, and a new toothbrush in ${warna}.`;
+    } else if (id === "klinik_mata") {
+      const kacamata = r < 0.2, warna = ["red", "blue", "tortoiseshell"][Math.floor(r * 15) % 3];
+      if (kacamata) { x.c.info.kacamata = { d: x.day, warna }; x.remember(`Glasses: the ${warna} frames. "Leaves have edges."`); }
+      ringkas = kacamata ? `glasses, ${warna} frames` : "sharp eyes";
+      teks = kacamata ? `Eye test at Old Town General. ${n} reads down to the fourth line and stops. Glasses, then: ${n} picks the ${warna} frames and spends the walk home pointing at trees. "The leaves have edges."`
+        : `Eye test at Old Town General. ${n} reads the bottom line without squinting, then the poster on the wall, then the nurse's badge.`;
+    } else {
+      const k = 2 + Math.floor(r * 4), tambal = r > 0.85;
+      ringkas = `${k} grown-up teeth, ${tambal ? "one more small filling" : "nothing to fix"}`;
+      teks = `Second dentist check of the year. ${k} grown-up teeth through, ${tambal ? "and one more small filling" : "and nothing to fix"}. "See you in sixty days," says the dentist, as if that's soon.`;
+    }
+    (x.c.info.klinik_anak ||= {})[id] = { d: x.day, ringkas };
+    return teks;
+  }
+  const CEK = (id, at, lbl, label, ic, tx, sub) => K(id, at, lbl, label, ic, x => klinik(x, id), { key: "cek", app: false, tx, sub });
+
   const KALENDER = [
     K("hari_pertama_sekolah", 60, "SCHOOL", "first day of school", "🏫", null, { soon: false }),   // storylet di storylets.js
     K("ulangan_1_diumumkan", 92, "QUIZ", "quiz announced", "📚", umumkan(95, 1), { soon: false, app: false, until: 95 }),
     K("ulangan_1", 95, "QUIZ", "first quiz of the year", "📚", null, { tx: (n, w) => `${n}'s first quiz of the year is ${w}.`, sub: "A fixed morning for every class in town. The marks depend on the study evenings, and on the day." }),
+    CEK("klinik_gigi_1", 100, "DENTIST", "a dentist check", "🦷", (n, w) => `${n}'s dentist check is ${w}.`, "A fixed date at Old Town General. Expect a count, a sticker and a new toothbrush."),
+    K("tanya_liburan", 116, "WEEK OFF", "where to for the week off", "🧳", tanyaLiburan, { soon: false, app: false }),
     K("rapor_1", 120, "REPORT CARD", "first report card", "📋", x => rapor(x, 1), { tx: (n, w) => `${n}'s first report card comes home ${w}.`, sub: "Three lines in the teacher's hand: marks, friends, and a note. None of it is written yet." }),
     K("libur_sekolah", 121, "WEEK OFF", "a week off school", "🏖️", x => { x.flag("libur", 7); x.need("mood", 5); return `School's out for a week. ${x.n} is up at six anyway, out of habit, and spends the morning deciding what to do with a whole free day.`; },
       { tx: (n, w) => `A week off school starts ${w} for ${n}.`, sub: "Seven days with no plan on the fridge." }),
+    K("liburan_berangkat", 122, "WEEK OFF", "the week off begins", "🧳", x => { x.need("mood", 6); return LIBURAN.berangkat[liburanOf(x.c).id](x.n); }, { soon: false, app: false }),
+    K("liburan_tengah", 125, "WEEK OFF", "the middle of the week off", "🧳", x => { x.need("mood", 4); return LIBURAN.tengah[liburanOf(x.c).id](x.n, x.t("penakut") > 55); }, { soon: false, app: false }),
+    K("liburan_pulang", 127, "WEEK OFF", "home from the week off", "🏠", x => { const L = liburanOf(x.c); x.bond(2); x.need("mood", 4); x.remember(`A week off: ${TUJUAN[L.id]}.`); return LIBURAN.pulang[L.id](x.n); }, { soon: false, app: false }),
+    CEK("klinik_mata", 130, "EYE TEST", "an eye test", "👓", (n, w) => `${n}'s eye test is ${w}.`, "A fixed date. One creature in five comes home with frames to choose; the rest read the nurse's badge."),
+    K("izin_field_trip", 131, "FIELD TRIP", "the permission slip", "🚌", izinFieldTrip, { soon: false, app: false }),
+    K("field_trip", 134, "FIELD TRIP", "the class trip to the lighthouse", "🚌", fieldTrip, { tx: (n, w) => `${n}'s class trip to the lighthouse is ${w}.`, sub: "The slip comes home three days before. Unanswered means signed; the bus leaves either way." }),
+    K("lomba_kota", 142, "CITY CONTEST", "the city contest", "🏆", lombaKota, { tx: (n, w) => `The Old Town Young Talents contest is ${w}. ${n} is entered.`, sub: "Under-tens, in the town hall. Practice and lessons tilt it; nothing settles it." }),
     K("ulangan_2_diumumkan", 147, "QUIZ", "quiz announced", "📚", umumkan(150, 2), { soon: false, app: false, until: 150 }),
     K("ulangan_2", 150, "QUIZ", "second quiz", "📚", null, { tx: (n, w) => `${n}'s second quiz is ${w}.`, sub: "A fixed morning for every class in town. The marks depend on the study evenings, and on the day." }),
+    CEK("klinik_gigi_2", 160, "DENTIST", "the second dentist check", "🦷", (n, w) => `${n}'s second dentist check is ${w}.`, "A fixed date at Old Town General. Grown-up teeth get counted this time."),
     K("pentas_sekolah", 165, "SCHOOL SHOW", "the school show", "🎭", pentas, { tx: (n, w) => `The school show is ${w}. ${n} has a part.`, sub: "The day is set; the applause isn't. Practice helps." }),
     K("rapor_2", 178, "REPORT CARD", "end-of-year report card", "📋", x => rapor(x, 2), { tx: (n, w) => `${n}'s end-of-year report card comes home ${w}.`, sub: "Three lines in the teacher's hand: marks, friends, and a note. None of it is written yet." }),
   ];
@@ -206,7 +331,7 @@
         : `${s.nama} leaves a folded note in ${x.n}'s desk: "still friends?" ${x.n} writes "yes" and underlines it twice. Three days: that's how long it lasts at this age.`;
     } });
   // ritme Sabtu: hari 0 = Minggu 11 Okt 2026, jadi Sabtu = day % 7 === 6. Kecil, nggak masuk diary; cukup kerasa di baris cerita.
-  storylet("sabtu_sahabat", ["anak"], "kecil", { cooldown: 6, cond: x => !!sahabatOf(x.c) && x.day % 7 === 6 && !x.c.info.ribut, weight: () => 2.5 }, x => {
+  storylet("sabtu_sahabat", ["anak"], "kecil", { cooldown: 6, cond: x => !!sahabatOf(x.c) && x.day % 7 === 6 && !x.c.info.ribut && !x.has("libur"), weight: () => 2.5 }, x => {
     const s = sahabatOf(x.c);
     x.say(x.pick([`Saturday at ${s.nama}'s. ${x.n} comes home with grass stains and a plan for next Saturday.`,
       `${s.nama} comes over for the day. The living room becomes a fort, then a ship, then a fort again.`,
@@ -217,20 +342,26 @@
 
   // ---------------------------------------------------------------- untuk UI
   // Tangga: delapan tonggak anak dengan status (bentuk sama dengan Tonggak.view). at = umur saat terjadi, -1 = terjadi tanpa tanggal, null = belum
+  const KLINIK = KALENDER.filter(k => k.key === "cek");
   function view(c, day) {
     const age = c.age(day), done = c.info.tonggak || {};
-    return LIST.map(t => {
-      const at = done[t.id] != null ? done[t.id] - c.born : (c.fired[t.id] ? -1 : null);
-      return { id: t.id, label: t.label, lbl: t.lbl, ic: t.ic, lo: t.lo, hi: t.hi, fixed: false, done: at != null, at, open: at == null && age >= t.lo };
-    });
+    const row = (t, lo, hi, fixed) => { const at = done[t.id] != null ? done[t.id] - c.born : (c.fired[t.id] ? -1 : null); return { id: t.id, label: t.label, lbl: t.lbl, ic: t.ic, lo, hi, fixed, done: at != null, at, open: at == null && age >= lo }; };
+    return LIST.map(t => row(t, t.lo, t.hi, false)).concat(KLINIK.map(k => row(k, k.at, k.at, true))).sort((a, b) => a.lo - b.lo || a.hi - b.hi);
   }
   // Kalender sekolah buat app School dan kalender HP: hari absolut, status, nilai (buat ulangan). Penanda (run null) selesai kalau modul
   // lainnya sudah mencatat: hari pertama lewat storylet, ulangan lewat c.info.nilai.
+  const HASIL = (c, id) => {
+    const P = c.info.pentas, L = c.info.lomba_kota, F = c.info.field_trip;
+    if (id === "pentas_sekolah" && P) return { bagus: "the loudest clap", biasa: "fine, mostly", grogi: "froze; next year" }[P.hasil] || "";
+    if (id === "lomba_kota" && L) return { menang: "first, under-tens", kedua: "second", kalah: "first round" }[L.hasil] || "";
+    if (id === "field_trip" && F) return F.ikut ? "sand in every pocket" : "stayed behind";
+    return "";
+  };
   function calendar(c, day) {
     const N = c.info.nilai || {}, R = c.info.rapor || [];
     return KALENDER.filter(k => k.app).map(k => {
       const d = c.born + k.at, done = k.run ? !!c.fired[k.id] : k.id === "hari_pertama_sekolah" ? !!c.fired[k.id] || c.age(day) > 60 : !!N[k.id];
-      return { id: k.id, day: d, lbl: k.lbl, label: k.label, ic: k.ic, done, past: d < day, nilai: N[k.id] || null, rapor: R.find(r => r.kal === k.id) || null };
+      return { id: k.id, day: d, lbl: k.lbl, label: k.label, ic: k.ic, done, past: d < day, nilai: N[k.id] || null, rapor: R.find(r => r.kal === k.id) || null, hasil: done ? HASIL(c, k.id) : "" };
     });
   }
   // Buat baris Soon: tonggak berjendela berikutnya, bakat kalau belum ketahuan (jendela Storylets.bakatDay), tanggal sekolah berikutnya;
@@ -243,12 +374,12 @@
     if (rng) out.push({ cid: c.id, id: rng.id, lbl: rng.lbl, label: rng.label, ic: rng.ic, lo: c.born + rng.lo, hi: c.born + rng.hi, fixed: false });
     if (!c.info.bakat && !c.fired.bakat_ketahuan && age < 110) out.push({ cid: c.id, id: "bakat", lbl: "TALENT", label: "talent", ic: "✨", lo: c.born + 85, hi: c.born + 110, fixed: false });
     const fix = KALENDER.find(k => k.soon && c.born + k.at > day && !(u && k.id === u.kal));
-    if (fix) out.push({ cid: c.id, id: fix.id, lbl: fix.lbl, label: fix.label, ic: fix.ic, lo: c.born + fix.at, hi: c.born + fix.at, fixed: true, key: "sekolah", tx: fix.tx, sub: fix.sub });
+    if (fix) out.push({ cid: c.id, id: fix.id, lbl: fix.lbl, label: fix.label, ic: fix.ic, lo: c.born + fix.at, hi: c.born + fix.at, fixed: true, key: fix.key || "sekolah", tx: fix.tx, sub: fix.sub });
     return out;
   }
   const next = (c, day) => view(c, day).find(v => !v.done) || null;
 
-  const API = { KALENDER, LIST, ORANG, GRADE, dayOf, tinggi, view, calendar, upcoming, next, sahabatOf };
+  const API = { KALENDER, LIST, ORANG, GRADE, SEKOLAH, TUJUAN, dayOf, tinggi, view, calendar, upcoming, next, sahabatOf, sekolahOf, liburanOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Anak = API;
 })();

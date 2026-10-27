@@ -37,6 +37,10 @@ const PHOTO = {
   sahabat_pindah: { place: "park", face: "sad", cap: (n, w) => `Saying goodbye to ${W_(w)}` },
   sahabat_baru: { place: "school", face: "joy", cap: (n, w) => `A new best friend: ${W_(w)}` },
   pentas_sekolah: { place: "school", face: "joy", cap: (n) => `${n} at the school show` },
+  // v46.1: field trip, liburan, lomba kota (anak.js)
+  field_trip: { place: "park", face: "joy", cap: (n) => `${n} on the class trip, sand in every pocket` },
+  liburan_pulang: { place: "park", face: "calm", cap: (n) => `${n}'s week off, last day` },
+  lomba_kota: { place: "plaza", face: "joy", cap: (n) => `${n} at the city contest` },
   ulang_tahun: { place: "home", face: "joy", prop: "cake", cap: (n, w, l) => `${n} turns ${Math.max(1, Math.round(l.age / 365))}` },
   hari_pertama_sekolah: { place: "school", face: "surprise", cap: (n) => `First day of school` },
   teman_baru: { place: "park", face: "joy", cap: (n, w) => `Met ${W_(w, "a new friend")} for the first time` },

@@ -90,6 +90,8 @@
   HOOKS.agenda = x => {
     const c = x.c, opts = options(x);
     if (!opts.length) return;
+    // v46.1: minggu libur sekolah (anak.js): nggak ada rencana di kulkas, harinya diisi cerita liburan
+    if (x.phase === "anak" && x.has("libur")) { x.say(`_Week off school. ${x.n} does whatever the day brings._`); x.need("mood", 2); return; }
     const plan = c.info.rencana;
     const planned = opts.find(([id]) => id === plan);
     const streak = c.info.agenda_terakhir === plan ? (c.info.agenda_streak || 0) : 0;
