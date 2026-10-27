@@ -27,7 +27,7 @@ function phSchool(c) {
   const pil = (title, val, sub) => `<div class="pa-row"><span class="pa-grow"><b>${esc(title)}</b><small>${esc(val)}${sub ? " · " + esc(sub) : ""}</small></span></div>`;
   const choices = [
     pil("School", S.dipilih || age >= 60 ? `${S.nama}, ${S.di}` : "Three schools take creatures born this week", S.dipilih ? who(S) : age >= 60 ? "by default" : `letters come ${scWhen(c.born + 56, d)}`),
-    pil("Lessons", b ? (c.has("les", d) ? `${scCap(b)} lessons every week` : c.has("les_aman", d) ? "Maths tutoring on Tuesdays" : "None for now") : "Asked when the talent shows", b ? "" : "by 110 days old"),
+    pil("Lessons", b ? (c.has("les", d) ? `${scCap(b)} lessons every week` : c.has("les_aman", d) ? "Maths tutoring on Tuesdays" : "None for now") : "Asked when the talent shows", b ? (c.info.les_pilihan ? who(c.info.les_pilihan) : "") : "by 110 days old"),
     pil("Week off", L ? scCap(Anak.TUJUAN[L.id]) : age >= 121 ? scCap(Anak.TUJUAN.danau) : `Asked ${scWhen(c.born + 116, d)}`, L ? who(L) : age >= 121 ? "by default" : "five days before the week off"),
     pil("Class trip", FT ? (FT.ikut ? "Signed, lunch packed" : "Not this time") : age >= 134 ? "Signed" : `Slip comes home ${scWhen(c.born + 131, d)}`, FT ? who(FT) : age >= 134 ? "by default" : "three days before the trip"),
   ];

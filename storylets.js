@@ -243,8 +243,9 @@ storylet("bakat_ketahuan", ["anak"], "sedang", { once: true, priority: true, con
   // pagar jarak dilema terjadwal (anak.js). Bayaran les nunggu keputusan uang, jadi belum dipotong dari mana-mana.
   x.c.info.dilema_hari = x.day;
   const seni = !!x.c.info.sekolah_pilihan && x.c.info.sekolah_pilihan.id === "seni";
-  const [, final] = x.ask(`Sign them up for ${bakat} lessons?`, { les: "Sign them up", aman: "Maths tutoring instead", nanti: "Maybe later" },
+  const [g, final] = x.ask(`Sign them up for ${bakat} lessons?`, { les: "Sign them up", aman: "Maths tutoring instead", nanti: "Maybe later" },
     { suportif: "les", tegas: "aman" }, "les", { safe: "les" });   // dicuekin (wakil "aman" sekalipun) = les ngikut bakat
+  x.c.info.les_pilihan = { id: final, d: x.day, oleh: g === null ? "sendiri" : "wali" };   // siapa yang mutusin, buat app School (Your choices)
   if (final === "les") {
     x.c.info.bakat_level = seni ? 30 : 25;
     x.flag("les");

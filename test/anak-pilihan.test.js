@@ -48,6 +48,7 @@ test("dicuekin dengan wakil 'aman' (tegas, nggak pernah buka app): default tetap
   const { c, sink } = run("akun-w", 182, "tegas", 0), d = c.born + 181;
   assert.deepEqual(c.info.sekolah_pilihan, { id: "dekat", d: c.born + 56, oleh: "sendiri" });
   assert.ok(c.has("les", d) && !c.has("les_aman", d));
+  assert.deepEqual(c.info.les_pilihan, { id: "les", d: c.born + S.bakatDay(c), oleh: "sendiri" });
   assert.equal(c.info.liburan.id, "danau"); assert.equal(c.info.field_trip.ikut, true);
   assert.ok(sink.some(l => l.lines.some(t => /so the form went in for the school round the corner/.test(t))));
 });
@@ -56,6 +57,7 @@ test("les: tiga pilihan di hari bakat; suportif = les bakat, tegas = les matemat
   const a = run("akun-a", 182, "suportif", 1).c, b = run("akun-b", 182, "tegas", 1).c, d = 181;
   assert.ok(a.has("les", a.born + d) && !a.has("les_aman", a.born + d));
   assert.ok(b.has("les_aman", b.born + d) && !b.has("les", b.born + d));
+  assert.equal(a.info.les_pilihan.id, "les"); assert.deepEqual(b.info.les_pilihan, { id: "aman", d: b.born + S.bakatDay(b), oleh: "wali" });
   assert.ok(a.memory.concat(b.memory).some(m => /talent/.test(m.teks)) || a.memory.length === 20);
 });
 
