@@ -135,7 +135,8 @@
     x.need("mood", L === "great" ? 14 : 8); if (L === "great") x.stat("reputasi", 2);
     x.remember(`Finished school with ${L} grades.`);
     const b = q ? q.belajar || 0 : 0, s = q ? q.sendiri || 0 : 0;
-    const belajar = b || s ? ` ${b ? `${b} study evening${b > 1 ? "s" : ""} together` : ""}${b && s ? " and " : ""}${s ? `${s} alone` : ""}, and it shows.` : "";
+    const ev = n => `${n} study evening${n > 1 ? "s" : ""}`;
+    const belajar = b && s ? ` ${ev(b)} together and ${s} alone, and it shows.` : b ? ` ${ev(b)} together, and it shows.` : s ? ` ${ev(s)} alone, and it shows.` : "";
     return `Results day. ${x.n} passed their final exams with ${L} grades.${belajar} The whole year group is on the school steps, somebody throws a cap into the sky, and then everybody does.`;
   }
   function pestaKelulusan(x) {
