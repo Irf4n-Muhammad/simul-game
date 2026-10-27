@@ -28,6 +28,8 @@ function showSetup() {
     <button class="secondary" id="hasBackup">I have a backup</button>${verLabel("verTapS")}`);
   // DEV-NEXT
   bindVerTap("verTapS");
+  // DEV-NEXT
+  if (DEV) devClock();
   $("hasBackup").onclick = () => { draft.nama = $("nm").value; showBackup(); };
   sheet.querySelectorAll("[data-ms]").forEach(b => b.onclick = () => { draft.nama = $("nm").value; draft.ms = Number(b.dataset.ms); draft.open = true; showSetup(); });
   sheet.querySelectorAll("[data-wakil]").forEach(b => b.onclick = () => { draft.nama = $("nm").value; draft.wakil = b.dataset.wakil; draft.open = true; showSetup(); });

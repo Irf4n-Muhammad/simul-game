@@ -232,11 +232,14 @@ class Ctx {
   }
   with_npc(npc_id, text) { (this.world.npc_logs[npc_id] ||= []).push([this.day, this.c.id, text]); }
   obey_chance() {
-    const mult = { bayi: 1.6, anak: 1.2, remaja: 0.8, dewasa: 0.6, tua: 0.5 }[this.phase];
+    // v47: pengali remaja 0.8 -> 1.1 supaya penolakan saran remaja ±1 dari 5 (diukur test/remaja.test.js, wali yang selalu beda pendapat ±25%,
+    // wali dekat ±17%); sebelumnya ±45%. Urutannya tetap: makin tua makin jarang nurut
+    const mult = { bayi: 1.6, anak: 1.2, remaja: 1.1, dewasa: 0.6, tua: 0.5 }[this.phase];
     const base = this.c.bond / 100 * 0.55 + this.t("patuh") / 100 * 0.45;
     return clamp(0.15 + 0.85 * base * mult, 0, 1);
   }
-  rule(topic) { return this.guardian.rules[topic] ?? null; }
+  // v47: aturan rumah remaja (remaja.js, c.info.aturan_rumah) menang dari aturan penjaga selama remaja; sesudah dewasa nggak diatur lagi
+  rule(topic) { const a = this.phase === "remaja" ? this.c.info.aturan_rumah : null; return (a && a.rules ? a.rules[topic] : null) ?? this.guardian.rules[topic] ?? null; }
   by_rule(text, wanted, self_pick, options) {
     inc(this.home.stats, "diputus_aturan_rumah");
     if (wanted === self_pick) {
@@ -244,6 +247,7 @@ class Ctx {
       return [wanted, true];
     }
     const followed = this.chance(this.obey_chance());
+    inc(this.home.stats, followed ? "saran_diikuti" : "saran_ditolak");   // v47: persen penolakan buat dashboard
     this.say(`_House rule: ${text}. ` + (followed ? "They obeyed._" : `They broke it: ${lower(options[self_pick])}._`));
     return [followed ? wanted : self_pick, followed];
   }
@@ -283,6 +287,7 @@ class Ctx {
       return [choice, choice, true];
     }
     const followed = this.chance(this.obey_chance());
+    inc(stats, followed ? "saran_diikuti" : "saran_ditolak");   // v47: persen penolakan buat dashboard
     const final = followed ? choice : self_pick;
     const note = followed ? "they listened" : `they didn't listen and chose: ${lower(options[self_pick])}`;
     this.say(`_Decision: ${question} You chose: ${options[choice]}${when}; ${note}._`);
@@ -391,11 +396,11 @@ function make_log(c, day, x, phase, attended, lines, dramas, events, who = [], a
 
 function daily_rules(x) {
   if (x.phase !== "anak" && x.phase !== "remaja") return;
-  const rules = x.guardian.rules;
   let strict = 0, lenient = 0;
-  for (const [k, v] of Object.entries(STRICT)) {
-    if (rules[k] === v) strict++;
-    else if (rules[k] != null) lenient++;
+  for (const [k, v] of Object.entries(STRICT)) {   // v47: lewat x.rule() supaya paket aturan rumah remaja ikut kehitung
+    const r = x.rule(k);
+    if (r === v) strict++;
+    else if (r != null) lenient++;
   }
   const ob = x.obey_chance();
   x.trait("rajin", 0.03 * strict * ob);

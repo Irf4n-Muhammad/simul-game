@@ -20,6 +20,7 @@
     { id: "chirp", story: "pintu_chirp", hari: 7, label: "Chirp" },
     { id: "stars", story: "pintu_bintang", hari: 10, label: "the Stars" },
     { id: "mag", story: "pintu_majalah", hari: 30, label: "the Magazine" },
+    { id: "school", story: "pintu_sekolah", hari: 60, label: "School" },  // v46: app School (anak.js), kelihatan di rak Later dari bayi
     { id: "burrow", story: "pintu_burrow", hari: 180, label: "Burrow" },
     { id: "bazaar", story: "pintu_bazaar", hari: 200, label: "the Bazaar" },
   ];
@@ -30,6 +31,7 @@
     pintu_chirp: n => `The family tablet buzzes. Somebody in town set ${n} up with a Chirp feed.`,
     pintu_bintang: n => `${n} did something today that surprised everyone. Talents are starting to show, one star at a time.`,
     pintu_majalah: n => `The first issue of the Old Town magazine lands on the doormat. ${n} chews the corner.`,
+    pintu_sekolah: n => `${n} comes home from the first day with a timetable, a reading list and a form for you to sign. School has its own app on the tablet now.`,
     pintu_burrow: n => `${n} is old enough for a phone of their own. Burrow, where the town's jobs live, already wants a profile.`,
     pintu_bazaar: n => `${n} walks past the Bazaar and comes home with a wish list.`,
   };
@@ -86,7 +88,7 @@
       say: n => `${n} yawns and rubs their eyes.`, ok: n => `${n} sleeps like a stone.` }),
     // anak: teman, latihan, sedikit kebebasan
     W("teman", ["anak"], "a friend", "🧸", { n: 2, besar: true, w: c => 1 + t(c, "ramah") / 60,
-      prog: (c, A, day, home, out) => agendaIs(c, day, "teman") || firedToday(out, "teman_baru"),
+      prog: (c, A, day, home, out) => agendaIs(c, day, "teman") || firedToday(out, "teman_baru", "sahabat_kenal", "sahabat_baru"),
       say: n => `${n} watches the neighbour kids from the window.`, ok: n => `${n} came home with a friend's name to tell you.` }),
     W("latihan", ["anak"], "to practice", "🎵", { n: 3, w: c => 1 + t(c, "kreatif") / 60,
       prog: (c, A, day) => agendaIs(c, day, "latihan"),
@@ -116,7 +118,7 @@
       cond: c => !!c.st, measure: c => c.st ? c.st.wallet : 0, delta: 100,
       say: n => `${n} is saving up for something. Won't say what.`, ok: n => `${n} counted the coins twice. Enough.` }),
     W("hobi", ["remaja"], "a hobby of their own", "🎨", { n: 3, w: c => 1 + t(c, "kreatif") / 60,
-      prog: (c, A, day, home, out) => agendaIs(c, day, "latihan") || firedToday(out, "hobi_baru", "bakat_ketahuan"),
+      prog: (c, A, day, home, out) => agendaIs(c, day, "latihan") || firedToday(out, "hobi_baru", "bakat_ketahuan", "hobi_sendiri"),
       say: n => `${n} keeps doodling in the margins of everything.`, ok: n => `${n} found a thing that's theirs.` }),
     W("cinta", ["remaja"], "someone to like them back", "💌", { besar: true, ulang: 150, w: c => 1 + t(c, "ramah") / 80,
       measure: c => fired(c, "jadian_remaja", "cinta_monyet"), delta: 1,

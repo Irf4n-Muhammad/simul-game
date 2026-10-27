@@ -7,6 +7,8 @@
 // Jam tetap cuma buat kota: tiga tanggal suntik di klinik, sama buat semua, tampil sebagai "CHECKUP" yang pasti di baris Soon.
 // Catatan: c.info.tonggak[id] = hari kejadian; c.info.kesayangan dan c.info.kata_pertama dipakai teks sesudahnya.
 // UI membaca view() (tangga di profil) dan upcoming() (baris Soon lewat potret S.tonggak di soon.js).
+// v45.1 (bagian 5 poin 3-5): yang lain di fase bayi lewat mesin yang sama: watak kebaca (enam pengamatan, c.info.watak), sakit ringan,
+// orang (tetangga, bayi lain, cemas ditinggal), dan timbang di tiga hari klinik (c.info.timbang). UI: watak() dan timbang().
 "use strict";
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
@@ -119,12 +121,95 @@
   const BY_ID = Object.fromEntries(LIST.map(t => [t.id, t]));
   const fixed = t => t.lo === t.hi;
 
+  // ---------------------------------------------------------------- v45.1: watak kebaca, sakit ringan, orang
+  // Watak: tiap pengamatan membaca SATU sifat (traits) dan menulis c.info.watak[id] = "hi" | "mid" | "lo". Sifatnya tidak diubah:
+  // pemain cuma baca. Ini pertama kalinya pemain kenal watak makhluknya; nanti kepake waktu makhluknya mulai nolak saran (bagian 10).
+  // kata = kalimat pendek di kartu profil per tingkat [hi, mid, lo]. Ambang 58/42: sepertiga makhluk di tengah, biar "biasa" juga ada.
+  // Ingatannya kecil (x.drama = "kecil" sebelum remember): nggak masuk kronik keluarga, dan terbuang duluan dari 20 baris ingatan,
+  // supaya "First tooth." nggak kegeser sama "Inspects every spoon.". Kartunya sendiri baca c.info.watak, bukan ingatan.
+  const lvl = (x, trait) => { const v = x.t(trait); return v >= 58 ? "hi" : v <= 42 ? "lo" : "mid"; };
+  const IX = { hi: 0, mid: 1, lo: 2 };
+  const kecil = (x, text) => { x.drama = "kecil"; x.remember(text); };
+  const W = (id, lo, hi, topic, trait, ic, kata, lines) => ({ id, lo, hi, jenis: "watak", topic, trait, ic, kata, run: x => {
+    const v = lvl(x, trait); (x.c.info.watak ||= {})[id] = v;
+    x.need("mood", 2); kecil(x, kata[IX[v]] + ".");
+    return lines(x.n)[IX[v]];
+  } });
+  const X = (id, lo, hi, jenis, run, at) => ({ id, lo, hi, jenis, run, at });
+  const EXTRA = [
+    W("watak_tidur", 3, 10, "Sleep", "penakut", "🌙", ["A light sleeper", "Sleeps like most babies", "Sleeps through anything"], n => [
+      `The neighbour's drill starts at nine and ${n} is awake at the first buzz, eyes wide. A light sleeper, this one.`,
+      `The neighbour's drill starts at nine. ${n} stirs, grumbles, and goes back to sleep. Sleeps like most babies.`,
+      `The neighbour's drill runs all morning. ${n} sleeps through every minute of it, one ear twitching. Sleeps through anything.`]),
+    W("watak_mandi", 6, 14, "Bath time", "patuh", "🛁", ["Easy at bath time", "Puts up with the bath", "Hates the bath"], n => [
+      `Bath time. ${n} sits still in the warm water and lets you wash behind the ears, humming. Easy at bath time.`,
+      `Bath time. ${n} complains for a minute, then forgets to. Puts up with the bath, mostly.`,
+      `Bath time. ${n} goes stiff as a board, howls, and soaks the whole bathroom. Hates the bath, no doubt about it.`]),
+    W("watak_orang", 14, 26, "Strangers", "ramah", "👋", ["Smiles at strangers", "Warms up slowly", "Hides from strangers"], n => [
+      `The postman waves through the window and ${n} laughs out loud and waves both arms back. Smiles at strangers.`,
+      `The postman waves through the window. ${n} stares, and after a long minute, waves back. Warms up slowly.`,
+      `The postman waves through the window and ${n} buries their face in your shoulder until he's gone. Hides from strangers.`]),
+    W("watak_makan", 15, 24, "Food", "impulsif", "🥄", ["Eats anything, fast", "Eats most things", "Inspects every spoon"], n => [
+      `Lunch. ${n} grabs the spoon out of your hand and eats everything in reach, fast, including a corner of the bib. Eats anything.`,
+      `Lunch. ${n} eats most of it, pushes the peas to the edge of the bowl, and that's that. Eats most things.`,
+      `Lunch. ${n} looks at each spoonful from both sides before letting it anywhere near. Inspects every spoon.`]),
+    W("watak_gigih", 18, 30, "Trying", "rajin", "🎯", ["Keeps trying", "Tries a few times", "Tries once, moves on"], n => [
+      `The ball rolls under the chair. ${n} reaches, misses, reaches, misses, and keeps at it until it's theirs. Keeps trying.`,
+      `The ball rolls under the chair. ${n} reaches three times, then finds a spoon that's just as good. Tries a few times.`,
+      `The ball rolls under the chair. ${n} reaches once, shrugs, and finds a spoon instead. Tries once, moves on.`]),
+    W("watak_balok", 26, 38, "Blocks", "kreatif", "🧱", ["Builds strange things", "Stacks and knocks down", "Lines them up"], n => [
+      `${n} and the blocks: a leaning tower, then a bridge, then a hat. Builds strange things.`,
+      `${n} and the blocks: a stack, a crash, a stack, a crash, all afternoon. Stacks and knocks down.`,
+      `${n} and the blocks: a straight line, sorted by colour, every single time. Lines them up.`]),
+    // sakit ringan: satu hari, nggak ada keputusan (demam dengan dilemanya tetap di storylets.js). Rewel gigi = 1-2 hari sebelum gigi pertama
+    X("ruam_popok", 8, 20, "sakit", x => {
+      x.need("mood", -4); x.stat("kesehatan", -0.5);
+      return `${x.n} has a nappy rash: a red bottom and a cross face. A day without nappies, some cream, and a lot of air. Better by tomorrow.`;
+    }),
+    X("gigi_rewel", 7, 15, "sakit", x => {
+      x.need("mood", -3);
+      return `${x.n} drools on everything, chews the table leg, and is cross all day for no reason you can find. Something is on its way.`;
+    }, c => dayOf(c, "gigi_pertama") - 1 - Math.floor(seed_rng(c.id, "tonggak", "gigi_rewel").random() * 2)),
+    X("pilek_pertama", 20, 48, "sakit", x => {
+      x.need("mood", -3); x.stat("kesehatan", -1); kecil(x, "First cold. A cough like a tiny seal.");
+      return `${x.n}'s first cold: a red nose, a cough like a tiny seal, and a lot of sleep. Two days of cuddles and it's gone.`;
+    }),
+    // orang: tetangga dan bayi lain jadi NPC (bisa muncul lagi nanti: bayi lain = calon sahabat di fase anak, v46)
+    X("tetangga_nengok", 3, 12, "orang", x => {
+      const [nid, npc] = x.world.make_npc(x.c, x.day, "tetangga");
+      const gift = x.pick(["a knitted hat two sizes too big", "a jar of home-made jam, for you", "a rattle that once belonged to her own kids", "a tiny pair of socks"]);
+      x.c.relations[nid] = { nama: npc.nama, tipe: "tetangga", skor: 50, sejak: x.day }; x.c.info.tetangga = nid;
+      x.with_npc(nid, `Came by to meet ${x.n}. Brought ${gift}.`); x.need("mood", 3); kecil(x, `${npc.nama} from next door came by with ${gift}.`);
+      return `${npc.nama} from next door comes by to meet ${x.n}, with ${gift}. ${x.n} stares at the visitor's hat the entire time.`;
+    }),
+    X("bayi_lain", 24, 48, "orang", x => {
+      const [nid, npc] = x.world.make_npc(x.c, x.day, "teman_bayi");
+      x.c.relations[nid] = { nama: npc.nama, tipe: "teman_bayi", skor: 40, sejak: x.day }; x.c.info.kenalan_bayi = nid;
+      x.with_npc(nid, `Met ${x.n} at the park. Traded a leaf.`); x.need("mood", 4); kecil(x, `Met ${npc.nama} at the park.`);
+      return `At the park, another baby named ${npc.nama} crawls over and hands ${x.n} a leaf. ${x.t("ramah") >= 50 ? `${x.n} hands it back, and they trade it ten more times.` : `${x.n} holds it tight and looks at you.`} A first friend, maybe.`;
+    }),
+  ];
+  const EX_BY = Object.fromEntries(EXTRA.map(t => [t.id, t]));
+
   // hari (umur) tonggak ini buat makhluk ini: tetap seumur hidup, dari benih, bukan dari rawatan
   function dayOf(c, t) {
-    if (typeof t === "string") t = BY_ID[t];
+    if (typeof t === "string") t = BY_ID[t] || EX_BY[t];
     if (!t) return null;
-    return fixed(t) ? t.lo : t.lo + Math.floor(seed_rng(c.id, "tonggak", t.id).random() * (t.hi - t.lo + 1));
+    if (t.at) return t.at(c);
+    // yang lain (v45.1) ditarik dari [lo, hi-2]: sisa dua hari buat ngalah ke hari tonggak tanpa lewat dari jendelanya
+    const span = t.jenis ? Math.max(1, t.hi - t.lo - 1) : t.hi - t.lo + 1;
+    return fixed(t) ? t.lo : t.lo + Math.floor(seed_rng(c.id, "tonggak", t.id).random() * span);
   }
+
+  // Timbang di hari klinik: angka dari benih (lahir 2,7-4,0 kg, umur 60 hari 11-16 kg), cepat di awal lalu melandai. Buat dibandingin
+  // antar pemain ("punya gw 6,1 kg"), bukan buat dinilai: kalimat perawat nggak pernah bikin cemas, tiga versinya cuma soal ukuran.
+  function timbang(c, age) {
+    const r = seed_rng(c.id, "tonggak", "timbang");
+    const kg0 = 2.7 + r.random() * 1.3, kg60 = 11 + r.random() * 5, cm0 = 47 + r.random() * 6, cm60 = 86 + r.random() * 12;
+    const f = Math.sqrt(Math.min(1, Math.max(0, age) / 60)), j = seed_rng(c.id, "tonggak", "timbang", age).random() - 0.5;
+    return { kg: Math.round((kg0 + (kg60 - kg0) * f + j * 0.3) * 10) / 10, cm: Math.round(cm0 + (cm60 - cm0) * f), besar: kg60 >= 14.5 ? 1 : kg60 < 12 ? -1 : 0 };
+  }
+  const NURSE = ["A little one, growing just fine", "Right on track", "A big one"];
 
   // Di mesin: FORCED per tonggak. Tonggak berjendela paling banyak satu per hari (c.info.tg_hari), tanggal klinik boleh bareng.
   // Save lama yang tonggaknya sudah lewat tanpa tercatat: menyusul satu per hari (cond pakai >=, bukan ===).
@@ -134,8 +219,30 @@
     run: x => {
       x.c.fired[t.id] = 1;
       (x.c.info.tonggak ||= {})[t.id] = x.day;
-      if (!fixed(t)) x.c.info.tg_hari = x.day;
+      if (!fixed(t)) { x.c.info.tg_hari = x.day; return t.run(x); }
+      const m = timbang(x.c, x.age);
+      (x.c.info.timbang ||= {})[t.id] = { d: x.day, kg: m.kg, cm: m.cm };
+      return `${t.run(x)} On the scale: ${m.kg} kg, ${m.cm} cm. "${NURSE[m.besar + 1]}," says the nurse.`;
+    } });
+
+  // v45.1: yang lain. Paling banyak satu per hari (c.info.ex_hari), dan ngalah ke hari tonggak (c.info.tg_hari) selama jendelanya masih ada;
+  // di hari terakhir jendela tetap jalan, jadi tidak pernah lewat dari hi. Rewel gigi (punya `at`) jalan tepat di harinya tanpa ngalah,
+  // dan gugur kalau giginya keburu tumbuh (biar urutannya benar).
+  for (const t of [...EXTRA].sort((a, b) => a.hi - b.hi)) FORCED.push({ id: t.id,
+    cond: x => x.phase === "bayi" && !x.c.fired[t.id] && x.age >= dayOf(x.c, t)
+      && (t.at ? !x.c.fired.gigi_pertama : x.age >= t.hi || (x.c.info.ex_hari !== x.day && x.c.info.tg_hari !== x.day)),
+    run: x => {
+      x.c.fired[t.id] = 1;
+      (x.c.info.tonggak ||= {})[t.id] = x.day;
+      x.c.info.ex_hari = x.day;
       return t.run(x);
+    } });
+  // Cemas ditinggal: bukan jendela, tapi keadaan: dua hari nggak dibuka, lalu dibuka. Teks saja, bukan hukuman (ikatan sudah diurus mesin).
+  FORCED.push({ id: "cemas_ditinggal",
+    cond: x => x.phase === "bayi" && x.age >= 14 && x.attended && !x.has("cemas") && !x.guardian.attends(x.day - 1) && !x.guardian.attends(x.day - 2),
+    run: x => {
+      x.flag("cemas", 10); x.need("mood", 4);
+      return `${x.n} spots you and crawls over at top speed, then holds on to your leg for the whole morning. Two days is a long time when you're small.`;
     } });
 
   // ---------------------------------------------------------------- untuk UI
@@ -156,8 +263,16 @@
     return out;
   }
   const next = (c, day) => view(c, day).find(v => !v.done && !v.fixed) || null;
+  // Kartu "Getting to know": enam pengamatan watak dengan statusnya. kata = kalimat pendek hasilnya (null kalau belum), at = umur saat kebaca
+  function watak(c, day) {
+    const age = c.age(day), done = c.info.tonggak || {}, got = c.info.watak || {};
+    return EXTRA.filter(t => t.jenis === "watak").map(t => {
+      const v = got[t.id] || null, at = done[t.id] != null ? done[t.id] - c.born : null;
+      return { id: t.id, topic: t.topic, trait: t.trait, ic: t.ic, lo: t.lo, hi: t.hi, done: !!v, v, kata: v ? t.kata[IX[v]] : null, at, open: !v && age >= t.lo };
+    });
+  }
 
-  const API = { LIST, KESAYANGAN, dayOf, view, upcoming, next };
+  const API = { LIST, EXTRA, KESAYANGAN, dayOf, view, watak, timbang, upcoming, next };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Tonggak = API;
 })();

@@ -78,15 +78,17 @@ function showProfile(id) {
   const m = member(id), s = statusOf(id);
   if (!m) return;
   const parents = m.orang_tua.map(p => game.home.get(p)?.name || game.home.world.npcs[p]?.nama).filter(Boolean);
-  const here = m.fase !== "meninggal" && m.fase !== "merantau";
+  const here = m.fase !== "meninggal" && m.fase !== "merantau", sah = (game.home.get(id) || { info: {} }).info.sahabat;  // v46: sahabat (anak.js)
   openSheet("profile", `
     <span class="ribbon" style="background: var(--plum)">GEN ${m.gen} · ${esc((PHASE_EN[m.fase] || m.fase).toUpperCase())}</span>
     <div class="row"><h2>${esc(m.nama)}</h2><span class="dot" style="width:40px;height:40px;border-radius:50%;background:${colorOf(m)}"></span></div>
-    <p>${fmtAge(m.umur)} old${parents.length ? ` · child of ${esc(parents.join(" & "))}` : ""}${m.pasangan ? ` · with ${esc(m.pasangan)}` : ""}</p>
+    <p>${fmtAge(m.umur)} old${parents.length ? ` · child of ${esc(parents.join(" & "))}` : ""}${m.pasangan ? ` · with ${esc(m.pasangan)}` : ""}${sah ? ` · best friends with ${esc(sah.nama)}` : ""}</p>
     <div>${habitsOf(id).map(h => `<span class="tag">${esc(HABITS[h].label)}</span>`).join("")}</div>
     ${tasteLine(m)}
     ${wantsBox(id, here)}
     ${tonggakBox(id)}
+    ${siapaBox(id)}
+    ${watakBox(id)}
     ${m.bekas.length ? `<div class="fieldset"><span class="lbl">Shaped by</span><div class="list">${m.bekas.map(b => `<div class="line"><span class="grow"><b>${esc(b.label)}</b><small class="sub">${esc(b.why || "")}${b.why ? " · " : ""}${fmtDate(b.d)}. Since then: ${esc(b.note)}.</small></span></div>`).join("")}</div></div>` : ""}
     ${s ? `<div class="box"><h3>${esc(s.best ? s.best.title : "No career yet")}</h3><small>${s.best ? esc(s.best.label) + " · " : ""}${coins(s.wallet)} · prestige ${s.prestige}</small></div>
       ${s.rares.length ? `<div>${s.rares.map(r => `<span class="tag rare">${esc(r.label)} · ${r.share}</span>`).join("")}</div>` : ""}
@@ -95,6 +97,7 @@ function showProfile(id) {
     ${s && Tree.view(game.home.get(id), game.home, today()).have.length ? `<button class="close" id="seeTree">Constellations: ${esc(Tree.pathOf(game.home.get(id)).slice(-2).join(", ") || Tree.view(game.home.get(id), game.home, today()).have.length + " stars lit")}</button>` : ""}
     <div class="row2">${here ? `<button class="big" id="goTo">Go to ${esc(m.nama)}</button>` : ""}<button class="close" id="backTree">Back</button></div>`);
   if ($("tonggakBox")) sheetQ("profile", "tonggak");
+  sheet.querySelectorAll("[data-tour]").forEach(b => b.onclick = () => tourStart(b.dataset.tour, true));  // v45.1: "?" di kartu watak
   const g = $("goTo"); if (g) g.onclick = () => { select(id); closeSheet(); };
   const st = $("seeTree"); if (st) st.onclick = () => showTree(id);
   $("backTree").onclick = showFamily;

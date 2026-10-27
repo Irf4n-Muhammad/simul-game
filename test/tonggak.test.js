@@ -97,9 +97,10 @@ test("upcoming: tonggak berikutnya + tanggal klinik berikutnya, hanya saat bayi;
   const tg = items.find(i => i.k.startsWith("tonggak:")), ck = items.find(i => i.k.startsWith("cek:"));
   assert.equal(tg.tx, "Mochi's first smile could come any day now."); assert.equal(tg.sure, false); assert.equal(tg.any, true); assert.equal(tg.day, 4); assert.equal(tg.lbl, "FIRST SMILE"); assert.equal(tg.go, "profil");
   assert.equal(ck.tx, "Mochi's first shots at the clinic in 2 days."); assert.equal(ck.sure, true); assert.equal(ck.day, 5); assert.equal(ck.lbl, "CHECKUP");
-  assert.equal(Soon.line(S).k, tg.k);
+  assert.equal(Soon.line(S).k, ck.k);   // v46: tanggal pasti yang tinggal <= 3 hari menang dari "any day now"
   const S2 = { ...S, d: 1, members: [{ ...mem, umur: 1 }], tonggak: Tonggak.upcoming(c, 1) };
   const tg2 = Soon.items(S2).find(i => i.k.startsWith("tonggak:"));
+  assert.equal(Soon.line(S2).k, tg2.k);   // klinik masih 4 hari: jendela duluan
   assert.equal(tg2.tx, "Mochi's first smile usually comes in 1 to 4 days."); assert.equal(tg2.any, false); assert.equal(tg2.day, 2);
   // tanggal klinik hari ini sudah lewat (sudah terjadi pagi itu): tidak muncul
   assert.equal(Soon.items({ ...S, d: 5, tonggak: [{ cid: c.id, id: "suntik_1", lbl: "CHECKUP", label: "first shots", ic: "🩹", lo: 5, hi: 5, fixed: true }] }).some(i => i.k.startsWith("cek:")), false);

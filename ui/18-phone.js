@@ -12,6 +12,7 @@ const PH_ICON = {
   chat: `<svg viewBox="0 0 24 24" width="32" height="32"><path d="M4.2 12.6c.4 3.9 3.7 6.6 7.8 6.6s7.4-2.7 7.8-6.6z" fill="#fff"/><path d="M3.6 12.2c2.8-.9 5.6.6 8.4-.2 2.8.8 5.6-.7 8.4.2" fill="none" stroke="#8A3E1F" stroke-width="1.3" stroke-linecap="round"/><ellipse cx="9.4" cy="9.4" rx="2.3" ry="2.9" fill="#FFF4E6"/><ellipse cx="14.4" cy="8.6" rx="2.5" ry="3.1" fill="#fff"/><path d="M6.5 15.6q5.5 2 11 0" fill="none" stroke="#E9B48F" stroke-width="1" stroke-linecap="round"/></svg>`,
   homes: `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9H3z"/><path d="M10 20v-5h4v5"/></svg>`,
   ventures: `<svg viewBox="0 0 24 24" width="32" height="32"><path d="M4 10h16v10H4z" fill="#fff" opacity=".95"/><path d="M3 10l2-5h14l2 5z" fill="#FFD27A"/><path d="M3 10h18v1.6a2.2 2.2 0 0 1-4.5 0 2.2 2.2 0 0 1-4.5 0 2.2 2.2 0 0 1-4.5 0 2.2 2.2 0 0 1-4.5 0z" fill="#E8574A"/><rect x="10" y="14" width="4" height="6" rx=".6" fill="#2E8A66"/></svg>`,
+  school: `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M3 20V10l9-6 9 6v10z"/><path d="M12 4V2"/><path d="M9 20v-5h6v5"/><circle cx="12" cy="11.5" r="1.6" fill="#fff" stroke="none"/></svg>`,
   kindred: `<svg viewBox="0 0 24 24" width="32" height="32"><circle cx="9" cy="11" r="5" fill="#fff" opacity=".9"/><circle cx="15" cy="11" r="5" fill="#FFE1E7" opacity=".9"/><path d="M12 19.5l-1-1C8 15.8 6.3 14.2 6.3 12.4c0-1.4 1.1-2.5 2.5-2.5.8 0 1.6.4 2.1 1h.3c.5-.6 1.3-1 2.1-1 1.4 0 2.5 1.1 2.5 2.5 0 1.8-1.7 3.4-4.7 6.1z" fill="#D9466A"/></svg>`,
 };
 const PH_APPS = [
@@ -20,9 +21,10 @@ const PH_APPS = [
   { id: "burrow", name: "Burrow", bg: "#1F7A6B", adult: true },
   { id: "bazaar", name: "Bazaar", bg: "#111", adult: true },
   { id: "stars", name: "Stars", bg: "linear-gradient(160deg,#1a1f4d,#04050f)" },
+  { id: "school", name: "School", bg: "#3B7DD8", young: true },  // v46: anak dan remaja (anak.js); pintu umur 60 (wants.js)
   { id: "calendar", name: "Calendar", bg: "#fff" },
   { id: "photos", name: "Photos", bg: "#fff" },
-  { id: "wallet", name: "Wallet", bg: "#1d1d1b", adult: true },
+  { id: "wallet", name: "Wallet", bg: "#1d1d1b", adult: true },   // v47: app dewasa kebuka satu-satu (Remaja.LATER: Wallet 270, Homes 300, Kindred 330, Ventures 400)
   { id: "homes", name: "Homes", bg: "#E07A5F", adult: true },
   { id: "mag", name: "Magazine", bg: "#C8102E" },
   { id: "ventures", name: "Ventures", bg: "linear-gradient(160deg,#4CB386,#1E6B52)", adult: true },
@@ -43,7 +45,9 @@ function phWall(c) {
   const col = colorOf(member(c.id) || { rupa: c.rupa });
   return ph ? `url(${ph.img}) center/cover, ${col}` : `radial-gradient(circle at 30% 20%, ${col}, transparent 60%), radial-gradient(circle at 80% 90%, #2D3A63, transparent 55%), #1b1a24`;
 }
-function phApps(c) { const kid = phKind(c) === "tablet", P = doorsNow(); return PH_APPS.filter(a => !(kid && a.adult) && P[a.id] !== false).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets ? pwApp(c) : []); }
+// v47: app dewasa yang belum waktunya (Remaja.LATER) disembunyiin dan nggak ngirim notif; Paws ikut, kecuali sudah punya hewan
+const phLocked = (c, id) => !!globalThis.Remaja && c.age(today()) < Remaja.laterFrom(id);
+function phApps(c) { const kid = phKind(c) === "tablet", young = c.age(today()) < 270, P = doorsNow(); return PH_APPS.filter(a => !(kid && a.adult) && !(a.young && !young) && !phLocked(c, a.id) && P[a.id] !== false).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets && (!phLocked(c, "paws") || (c.st && c.st.pet)) ? pwApp(c) : []); }
 function pwApp(c) { const P = c.st && c.st.pet; return [{ id: "paws", name: "Paws", bg: PW_COL, html: `<b class="pi-txt" style="font-size:27px">${P ? Pets.KINDS[P.kind].ic : "🐾"}</b>` }]; }
 function wdApp(c) { const v = Work.view(c, game.home, today()); return v ? [{ id: "ward", name: v.P.app, bg: v.P.color, html: `<b class="pi-txt" style="font-size:27px">${v.P.ic}</b>`, adult: true }] : []; }
 function phBadge(id, c) {
@@ -56,19 +60,22 @@ function phBadge(id, c) {
   if (id === "bazaar") return Market.drops(day).filter(D => !D.soon && D.left > 0 && !Market.owned(c, day).drops.includes(D.key)).length;
   if (id === "stars") return treeReady(c) ? "•" : 0;
   if (id === "calendar") return statusOf(c.id).moments.filter(m => m.day - day <= 2).length;
+  if (id === "school") { const k = scNext(c, day); return k && k.day - day <= 2 ? 1 : 0; }
   if (id === "mag") return mgFresh() ? 1 : 0;
   if (id === "chirp") return chNotes(c).filter(n => n.ts > (CH.seen || 0)).length;
   if (id === "chat") { waSync(); return waThreads(c).reduce((a, T) => a + waUnread(c, T), 0); }
   if (id === "kindred") { const V = globalThis.Net ? Net.view(c) : null; return V && V.ready ? V.inbox.length : 0; }
   return 0;
 }
-function phNotes(c) { const P = doorsNow(); return phNotes0(c).filter(n => P[n.app] !== false); }
+function phNotes(c) { const P = doorsNow(); return phNotes0(c).filter(n => P[n.app] !== false && !phLocked(c, n.app)); }
 function phNotes0(c) {
   const day = today(), out = [];
   if (mgFresh()) {
     const I = Mag.issue(game.home, Mag.latest(day));
     out.push({ app: "mag", title: I.cover.fam ? `${I.cover.who.name} is on the cover!` : `New issue · ${I.month}`, text: I.cover.fam ? `${I.cover.kicker.charAt(0) + I.cover.kicker.slice(1).toLowerCase()}. ${I.cover.dek}` : (A => `On the cover: “${A.title}”, ${A.about}.`)(artPick(I)), go: ["issue", I.k] });
   }
+  // v46: tanggal sekolah dalam 3 hari (anak.js)
+  if (globalThis.Anak && c.age(day) < 270) { const k = scNext(c, day); if (k && k.day - day <= 3) out.push({ app: "school", title: "School", text: `${scCap(k.label)} ${scWhen(k.day, day)}.${/quiz/.test(k.label) ? " A study evening still counts." : ""}` }); }
   if (phKind(c) !== "tablet") {
     for (const L of Career.profile(c, game.home, day).offers) out.push({ app: "burrow", title: `${L.recruiter} · ${Career.coName(L.co)}`, text: `Hi ${c.name}! Are you open to a ${L.title} role? Would love to chat.`, go: ["jobs"] });
     const D = Market.drops(day).find(d => !d.soon && d.left > 0 && !Market.owned(c, day).drops.includes(d.key));
@@ -148,7 +155,7 @@ function phGo(view, arg) {
   else if (view === "mag" || view === "issue") v.innerHTML = (view === "mag" ? phMag : phIssue)(c, arg);
   else if (view.startsWith("chirp")) v.innerHTML = ({ chirp: phChirp, chirpp: phChirpPost, chirpu: phChirpUser, chirps: phChirpSearch, chirpn: phChirpNotes })[view](c, arg);
   else if (view === "chat" || view === "chatt") v.innerHTML = view === "chat" ? phChat(c) : phChatThread(c, arg);
-  else v.innerHTML = `<div class="pa${view === "calendar" ? " gc" : view === "biz" || view === "ward" || view === "paws" ? " ba-wrap" : ""}">${({ biz: phBizApp, ward: phWard, paws: phPaws, wallet: phWallet, calendar: phCalendar, photos: phPhotos, homes: phHomes, photo: phPhoto, kindred: phKindred, ventures: phVentures, venturesm: phMarket })[view](c, arg)}</div>`;
+  else v.innerHTML = `<div class="pa${view === "calendar" ? " gc" : view === "biz" || view === "ward" || view === "paws" ? " ba-wrap" : ""}">${({ biz: phBizApp, ward: phWard, paws: phPaws, wallet: phWallet, calendar: phCalendar, photos: phPhotos, homes: phHomes, photo: phPhoto, kindred: phKindred, ventures: phVentures, venturesm: phMarket, school: phSchool })[view](c, arg)}</div>`;
   v.style.background = view === "lock" || view === "home" ? phWall(c) : "";
   if (view === "kindred") kdLast = v.querySelector(".pa").innerHTML;
   if (view.startsWith("ventures")) vnBind(v);
@@ -209,6 +216,7 @@ function phBind(v) {
   v.querySelectorAll("[data-issue]").forEach(b => b.onclick = () => phGo("issue", b.dataset.issue));
   v.querySelectorAll("[data-ph]").forEach(b => b.onclick = () => phGo("photo", b.dataset.ph));
   v.querySelectorAll("[data-back]").forEach(b => b.onclick = () => phGo(b.dataset.back));
+  v.querySelectorAll("[data-tour]").forEach(b => b.onclick = () => tourStart(b.dataset.tour, true));   // v46.1: "?" di app School (tur nutup HP sendiri)
   v.querySelectorAll("[data-lot]").forEach(b => b.onclick = async () => { closePhone(true); await enterTown(); TOWN.focusHood(b.dataset.lot); say("Tap an empty lot to build."); });
   v.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => { if (game.act(selected, "beli:" + b.dataset.buy)) { save(); refresh(); burst(["★"], 6, "#D4A853"); say("Ooh, fancy!"); phGo("homes"); } });
   const u = v.querySelector(".ph-unlock"); if (u) u.onclick = () => phGo("home");

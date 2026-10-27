@@ -74,8 +74,8 @@
   AGENDA.remaja = Object.assign({}, AGENDA.anak, {
     teman: A("Hang out with friends", "{n} hangs out with their crew.", x => { x.trait("ramah", 0.05); x.need("mood", 4); },
       { teman_baru: 2.5, cinta_monyet: 2, pesta_pertama: 2, jadian_remaja: 1.5 }, x => x.t("ramah") / 40),
-    kerja_sambilan: A("Part-time job", "{n} works a part-time job after school.", x => { x.stat("uang", 0.5); x.trait("rajin", 0.03); x.need("energi", -6); },
-      { kerja_sambilan: 3 }, x => x.t("ambisius") / 60),
+    kerja_sambilan: A("Part-time job", "{n} works a part-time job after school.", x => { x.stat("uang", 0.2); x.trait("rajin", 0.03); x.need("energi", -6); },
+      { kerja_sambilan: 3 }, x => x.t("ambisius") / 60, x => !!x.c.info.sambilan && x.day >= (x.c.info.sambilan_mulai ?? 0)),   // v47: cuma kalau kerjanya sudah ada (remaja.js)
   });
 
   function options(x) {
@@ -90,6 +90,11 @@
   HOOKS.agenda = x => {
     const c = x.c, opts = options(x);
     if (!opts.length) return;
+    // v46.1: minggu libur sekolah (anak.js): nggak ada rencana di kulkas, harinya diisi cerita liburan
+    if (x.phase === "anak" && x.has("libur")) { x.say(`_Week off school. ${x.n} does whatever the day brings._`); x.need("mood", 2); return; }
+    // v47: study tour (3 hari) dan pekan ujian (remaja.js): nggak ada rencana di kulkas yang bisa jalan
+    if (x.phase === "remaja" && x.has("study_tour")) { x.say(`_Study tour. ${x.n} is away with the year group._`); x.need("mood", 2); return; }
+    if (x.phase === "remaja" && x.has("ujian_pekan")) { x.say(`_Exam week. ${x.n} is at the dining table till late, papers everywhere._`); x.need("energi", -3); return; }
     const plan = c.info.rencana;
     const planned = opts.find(([id]) => id === plan);
     const streak = c.info.agenda_terakhir === plan ? (c.info.agenda_streak || 0) : 0;

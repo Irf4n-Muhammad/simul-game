@@ -225,3 +225,47 @@ function tasteLine(m) {
   if (!like.length && !no.length) return "";
   return `<p class="sub">${like.length ? `Loves ${like.map(k => F[k]).join(" and ")}.` : ""}${no.length ? ` Not a fan of ${no.map(k => F[k]).join(" or ")}.` : ""}</p>`;
 }
+// DEV-BEGIN
+// pil jam Dev di layar (kiri, di atas panah kamar): jeda/lanjut, ketuk kecepatan buat ganti, "+1 day" buat lompat sehari,
+// jadi nggak perlu buka lembar Dev tiap kali. Jeda = state.jam.pause (hari dibekukan), dibaca dayFloat, jadi seluruh game ikut diam.
+const devJamSet = (ms, from) => {
+  if (ms === 86400000) { const d0 = new Date(); d0.setHours(0, 0, 0, 0); state.jam = { base_ts: d0.getTime(), base_day: Math.floor(from), ms, mid: true }; }
+  else state.jam = { base_ts: Date.now(), base_day: from, ms };
+};
+function devClock() {
+  let el = $("devClock");
+  if (!el) {
+    const st = document.createElement("style");
+    st.textContent = `#devClock{position:absolute;left:12px;bottom:calc(150px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:2px;padding:3px;border-radius:999px;font-size:12px;font-weight:700;pointer-events:auto}
+#devClock[data-paused="1"]{background:rgba(255,222,170,.94)}
+#devClock button{border:0;background:transparent;color:inherit;font:inherit;padding:5px 9px;border-radius:999px;min-width:30px;box-shadow:none;display:inline-flex;align-items:center;justify-content:center}
+#devClock button[aria-pressed="true"]{background:#2b2420;color:#fff}
+#app.in-town #devClock{display:none}`;
+    document.head.appendChild(st);
+    el = document.createElement("div"); el.id = "devClock"; el.className = "glass";
+    el.innerHTML = `<button id="devPause" aria-label="Pause time"></button><button id="devSpeed" aria-label="Change time speed"></button><button id="devStep" aria-label="Skip one day">+1 day</button>`;
+    const top = document.querySelector(".hud-top"); top.parentNode.insertBefore(el, top.nextSibling);
+    $("devPause").onclick = () => {
+      if (state.jam.pause != null) devJamSet(state.jam.ms, state.jam.pause); else state.jam.pause = dayFloat();
+      save(); tick();
+    };
+    $("devSpeed").onclick = () => {
+      const i = SPEEDS.findIndex(s => s[1] === state.jam.ms), ms = SPEEDS[(i + 1) % SPEEDS.length][1];
+      if (state.jam.pause != null) state.jam.ms = ms; else devJamSet(ms, dayFloat());
+      save(); tick();
+    };
+    $("devStep").onclick = () => { if (state.jam.pause != null) state.jam.pause += 1; else state.jam.base_day += 1; save(); tick(); };
+  }
+  el.hidden = !game || !DEV;
+  if (el.hidden) return;
+  const paused = state.jam.pause != null, sp = SPEEDS.find(s => s[1] === state.jam.ms);
+  el.dataset.paused = paused ? "1" : "0";
+  const pb = $("devPause");
+  if (pb.dataset.on !== String(paused)) {
+    pb.dataset.on = String(paused); pb.setAttribute("aria-pressed", String(paused)); pb.setAttribute("aria-label", paused ? "Resume time" : "Pause time");
+    pb.innerHTML = paused ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>`
+      : `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+  }
+  $("devSpeed").textContent = (paused ? "Paused · " : "") + (sp ? sp[0] : `1 day = ${state.jam.ms} ms`);
+}
+// DEV-END

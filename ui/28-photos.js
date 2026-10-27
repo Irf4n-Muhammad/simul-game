@@ -22,6 +22,35 @@ const PHOTO = {
   kalimat_pertama: { place: "home", face: "joy", cap: (n) => `${n}'s first sentence` },
   lompat_pertama: { place: "home", face: "joy", cap: (n) => `${n}'s first jump` },
   kasur_sendiri: { place: "home", face: "calm", cap: (n) => `${n}'s first night in a real bed` },
+  // v45.1: orang di fase bayi (tonggak.js)
+  tetangga_nengok: { place: "home", face: "surprise", cap: (n, w) => `${W_(w, "The neighbour")} came by to meet ${n}` },
+  bayi_lain: { place: "park", face: "joy", cap: (n, w) => `${n} met ${W_(w, "another baby")} at the park` },
+  // v46: fase anak (anak.js): tonggak, sahabat, pentas
+  gigi_copot: { place: "home", face: "joy", cap: (n) => `${n}'s first tooth out` },
+  baca_sendiri: { place: "home", face: "calm", cap: (n) => `${n} read a whole book alone` },
+  naik_sepeda: { place: "park", face: "joy", cap: (n) => `${n} rode a bike, no stabilisers` },
+  berenang: { place: "park", face: "joy", cap: (n) => `${n}'s first swim` },
+  nginep: { place: "home", face: "joy", cap: (n) => `${n}'s first sleepover` },
+  sekolah_sendiri: { place: "school", face: "joy", cap: (n) => `${n} walked to school alone` },
+  garis_pintu: { place: "home", face: "calm", cap: (n) => `${n} at the door frame` },
+  sahabat_kenal: { place: "school", face: "joy", cap: (n, w) => `Best friends: ${n} and ${W_(w)}` },
+  sahabat_pindah: { place: "park", face: "sad", cap: (n, w) => `Saying goodbye to ${W_(w)}` },
+  sahabat_baru: { place: "school", face: "joy", cap: (n, w) => `A new best friend: ${W_(w)}` },
+  pentas_sekolah: { place: "school", face: "joy", cap: (n) => `${n} at the school show` },
+  // v46.1: field trip, liburan, lomba kota (anak.js)
+  field_trip: { place: "park", face: "joy", cap: (n) => `${n} on the class trip, sand in every pocket` },
+  liburan_pulang: { place: "park", face: "calm", cap: (n) => `${n}'s week off, last day` },
+  lomba_kota: { place: "plaza", face: "joy", cap: (n) => `${n} at the city contest` },
+  // v47: fase remaja (remaja.js): SMP, study tour, tonggak remaja, hasil ujian, pesta kelulusan
+  smp_hari_pertama: { place: "school", face: "surprise", cap: (n) => `First day of middle school` },
+  study_tour_pulang: { place: "park", face: "joy", cap: (n) => `${n} on the study tour, day three` },
+  suara_berubah: { place: "home", face: "surprise", cap: (n) => `${n}, suddenly taller` },
+  hobi_sendiri: { place: "home", face: "joy", cap: (n) => `${n} and the new hobby` },
+  gaya_sendiri: { place: "home", face: "calm", cap: (n) => `${n}'s new look` },
+  kota_sendiri: { place: "plaza", face: "joy", cap: (n) => `${n}'s first trip into town alone` },
+  beli_pertama: { place: "plaza", face: "joy", cap: (n) => `The first thing ${n} bought with their own money` },
+  pengumuman_lulus: { place: "school", face: "joy", prop: "cap", cap: (n) => `Results day` },
+  pesta_kelulusan: { place: "school", face: "joy", prop: "balloons", cap: (n) => `The leavers' party` },
   ulang_tahun: { place: "home", face: "joy", prop: "cake", cap: (n, w, l) => `${n} turns ${Math.max(1, Math.round(l.age / 365))}` },
   hari_pertama_sekolah: { place: "school", face: "surprise", cap: (n) => `First day of school` },
   teman_baru: { place: "park", face: "joy", cap: (n, w) => `Met ${W_(w, "a new friend")} for the first time` },
@@ -292,6 +321,8 @@ function tick() {
   $("dayBar").style.width = `${Math.min(100, (dayFloat() - Math.floor(dayFloat())) * 100)}%`;
   if (!sheetKind && !PH && !game.pending) { const r = nextUnseenResult(); if (r) { markSeen(r); showResult(r); } }
   if (sheetKind === "dilemma" && game.pending) { const cd = countdownText(game.pending); $("cdBar").style.width = cd.frac * 100 + "%"; $("cdText").textContent = cd.text; }
+  // DEV-NEXT
+  if (DEV) devClock();
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { Tele.resume(); tick(); } else Tele.pause(); });
 addEventListener("pagehide", () => Tele.end("tutup"));

@@ -155,7 +155,7 @@ function phWallet(c) {
 // Calendar, in the style of Google Calendar: a schedule list with a big illustrated banner for each month,
 // a week label above each week, the date on the left and coloured event chips on the right.
 // Tapping the month name opens a small month grid; tapping a day there jumps to it.
-const GC_COL = { moment: "#039BE5", offer: "#33B679", drop: "#8E24AA", mag: "#D50000", bday: "#F4511E", anniv: "#E67C73", world: "#7CB342" };
+const GC_COL = { moment: "#039BE5", offer: "#33B679", drop: "#8E24AA", mag: "#D50000", bday: "#F4511E", anniv: "#E67C73", world: "#7CB342", school: "#3B7DD8" };
 const GC_SEASON = [ // per calendar month: sky, ground, accent, and what's in the picture
   ["#CFE3F2", "#F4F7FA", "#8DB3D6", "snow"], ["#E9D3E0", "#F6EEF2", "#C98FB0", "hearts"], ["#D8EBC8", "#9CC27A", "#F2C94C", "sprout"],
   ["#CDE7E4", "#8DC0A4", "#F4A7B9", "rain"], ["#F9E0B8", "#A9C97E", "#E86F5A", "flowers"], ["#BFE3F5", "#F2D49B", "#F2A33A", "sun"],
@@ -188,6 +188,8 @@ function gcEvents(c, from, to) {
     for (const L of Career.profile(c, game.home, from).offers) ev.push({ day: L.until, title: `Offer from ${Career.coName(L.co)} ends`, sub: "Burrow", col: GC_COL.offer });
   }
   for (let k = Mag.latest(from) + 1, d; (d = Mag.issueDay(k)) <= to; k++) ev.push({ day: d, title: "New issue of Old Town", sub: "Magazine", col: GC_COL.mag });
+  // v46: kalender sekolah tetap (anak.js), selama masih sekolah
+  if (globalThis.Anak && c.age(from) < 270) for (const k of Anak.calendar(c, from)) if (k.day >= from && k.day <= to) ev.push({ day: k.day, title: `${k.ic} ${scCap(k.label)}`, sub: "School", col: GC_COL.school });
   // kejadian dunia (festival, cuaca) yang sudah diumumkan: hari mulai dan, kalau lebih dari sehari, hari selesainya
   for (const w of game.home.world.events || []) {
     const days = w.selesai - w.mulai + 1, ic = w.ikon ? w.ikon + " " : "";

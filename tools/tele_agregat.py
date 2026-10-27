@@ -22,7 +22,7 @@ NAMA_HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
 RETENSI_HARI = [1, 2, 3, 7, 14, 30]
 # event fitur -> kolom kuncinya (tabel fitur.csv)
 FITUR = {"fokus": None, "balik": "k", "cuaca": "k", "kosmetik": "i", "keinginan": "k", "dilema": "lvl",
-         "dunia": "j", "brand": "k", "notif": "app", "momen": "k", "tonggak": None, "later": "k"}
+         "dunia": "j", "brand": "k", "notif": "app", "momen": "k", "tonggak": None, "later": "k", "sekolah": None, "siapa": None}
 KOLOM = {
     "ringkas": ["pemain", "sesi", "event", "file", "periode_mulai", "periode_selesai", "hari", "pemain_aktif_7h",
                 "pemain_aktif_7h_sebelumnya", "sesi_7h", "sesi_7h_sebelumnya", "durasi_median_detik", "sesi_per_pemain_hari",
