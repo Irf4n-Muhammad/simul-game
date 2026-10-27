@@ -321,6 +321,8 @@ function tick() {
   $("dayBar").style.width = `${Math.min(100, (dayFloat() - Math.floor(dayFloat())) * 100)}%`;
   if (!sheetKind && !PH && !game.pending) { const r = nextUnseenResult(); if (r) { markSeen(r); showResult(r); } }
   if (sheetKind === "dilemma" && game.pending) { const cd = countdownText(game.pending); $("cdBar").style.width = cd.frac * 100 + "%"; $("cdText").textContent = cd.text; }
+  // DEV-NEXT
+  if (DEV) devClock();
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { Tele.resume(); tick(); } else Tele.pause(); });
 addEventListener("pagehide", () => Tele.end("tutup"));

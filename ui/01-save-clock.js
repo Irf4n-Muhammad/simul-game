@@ -13,7 +13,8 @@ const load = () => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } 
 const save = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { Tele.teknis("save_gagal"); /* plays on without saving */ } };
 let chats = (() => { try { return JSON.parse(localStorage.getItem(CHAT_KEY)) || {}; } catch (e) { return {}; } })();
 const saveChats = () => { try { localStorage.setItem(CHAT_KEY, JSON.stringify(chats)); } catch (e) { /* ignore */ } };
-const dayFloat = () => state.jam.base_day + (Date.now() - state.jam.base_ts) / state.jam.ms;
+// jam.pause: hari yang dibekukan (tombol jeda di build dev); selama terisi, seluruh game diam di hari itu
+const dayFloat = () => state.jam.pause != null ? state.jam.pause : state.jam.base_day + (Date.now() - state.jam.base_ts) / state.jam.ms;
 const liveDay = () => Math.floor(dayFloat());
 // telemetry (lokal dulu): konteks buat tiap sesi. Kamus event: riset/kamus-event.md
 Tele.init({ ver: APP_VER, ctx: () => state ? { hari: liveDay(), umur: state.hadir.length, akun: state.akun, aksi: state.aksi, hadir: state.hadir } : {} });
