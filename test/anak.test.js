@@ -28,7 +28,7 @@ test("kalender tetap: ulangan 95 dan 150 (diumumkan 3 hari sebelumnya, nilai ter
     const at = id => sink.filter(l => l.events.includes(id)).map(l => l.day - c.born);
     assert.deepEqual(at("ulangan_1_diumumkan"), [92]); assert.deepEqual(at("ulangan_2_diumumkan"), [147]);
     assert.deepEqual(at("ujian"), [95, 150], akun);   // ulangan acak nggak ada lagi di fase anak
-    assert.deepEqual(at("ujian_diumumkan").filter(d => d < 180), []);   // yang acak tinggal buat remaja
+    assert.deepEqual(at("ujian_diumumkan").filter(d => d < 180), []);   // ulangan acak nggak ada lagi (v47: remaja juga bertanggal, remaja.js)
     assert.deepEqual(at("rapor_1"), [120]); assert.deepEqual(at("libur_sekolah"), [121]); assert.deepEqual(at("pentas_sekolah"), [165]); assert.deepEqual(at("rapor_2"), [178]);
     assert.deepEqual(at("lomba").filter(d => d < 180), []);   // lomba acak tinggal buat remaja; di anak: pentas 165
     const N = c.info.nilai;

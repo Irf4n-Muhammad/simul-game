@@ -16,7 +16,7 @@ function aheadSnap() {
     mag: Mag.issueDay(Mag.latest(d) + 1), build: F.build ? { done: F.build.done, label: F.build.item ? F.build.item.label : "" } : null,
     kindred, phases: Engine.PHASES, prize: id => !!(Status.JOBS[id] && Status.JOBS[id].prize),
     // v45 tonggak bayi + v46 tonggak anak, bakat, dan tanggal sekolah (anak.js)
-    tonggak: members.flatMap(m => { const h = game.home.get(m.id); return h && h.alive(d) ? (globalThis.Tonggak ? Tonggak.upcoming(h, d) : []).concat(globalThis.Anak ? Anak.upcoming(h, d) : []) : []; }),
+    tonggak: members.flatMap(m => { const h = game.home.get(m.id); return h && h.alive(d) ? (globalThis.Tonggak ? Tonggak.upcoming(h, d) : []).concat(globalThis.Anak ? Anak.upcoming(h, d) : [], globalThis.Remaja ? Remaja.upcoming(h, d) : []) : []; }),   // v47: + tonggak dan tanggal remaja
     wants: c ? Wants.active(c, d, game.home) : [], cita: c ? c.info.cita || null : null, nameOf,
   };
 }

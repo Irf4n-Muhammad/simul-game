@@ -24,7 +24,7 @@ const PH_APPS = [
   { id: "school", name: "School", bg: "#3B7DD8", young: true },  // v46: anak dan remaja (anak.js); pintu umur 60 (wants.js)
   { id: "calendar", name: "Calendar", bg: "#fff" },
   { id: "photos", name: "Photos", bg: "#fff" },
-  { id: "wallet", name: "Wallet", bg: "#1d1d1b", adult: true },
+  { id: "wallet", name: "Wallet", bg: "#1d1d1b", adult: true },   // v47: app dewasa kebuka satu-satu (Remaja.LATER: Wallet 270, Homes 300, Kindred 330, Ventures 400)
   { id: "homes", name: "Homes", bg: "#E07A5F", adult: true },
   { id: "mag", name: "Magazine", bg: "#C8102E" },
   { id: "ventures", name: "Ventures", bg: "linear-gradient(160deg,#4CB386,#1E6B52)", adult: true },
@@ -45,7 +45,9 @@ function phWall(c) {
   const col = colorOf(member(c.id) || { rupa: c.rupa });
   return ph ? `url(${ph.img}) center/cover, ${col}` : `radial-gradient(circle at 30% 20%, ${col}, transparent 60%), radial-gradient(circle at 80% 90%, #2D3A63, transparent 55%), #1b1a24`;
 }
-function phApps(c) { const kid = phKind(c) === "tablet", young = c.age(today()) < 270, P = doorsNow(); return PH_APPS.filter(a => !(kid && a.adult) && !(a.young && !young) && P[a.id] !== false).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets ? pwApp(c) : []); }
+// v47: app dewasa yang belum waktunya (Remaja.LATER) disembunyiin dan nggak ngirim notif; Paws ikut, kecuali sudah punya hewan
+const phLocked = (c, id) => !!globalThis.Remaja && c.age(today()) < Remaja.laterFrom(id);
+function phApps(c) { const kid = phKind(c) === "tablet", young = c.age(today()) < 270, P = doorsNow(); return PH_APPS.filter(a => !(kid && a.adult) && !(a.young && !young) && !phLocked(c, a.id) && P[a.id] !== false).concat(kid ? [] : baApps(c), kid || !globalThis.Work ? [] : wdApp(c), globalThis.Pets && (!phLocked(c, "paws") || (c.st && c.st.pet)) ? pwApp(c) : []); }
 function pwApp(c) { const P = c.st && c.st.pet; return [{ id: "paws", name: "Paws", bg: PW_COL, html: `<b class="pi-txt" style="font-size:27px">${P ? Pets.KINDS[P.kind].ic : "🐾"}</b>` }]; }
 function wdApp(c) { const v = Work.view(c, game.home, today()); return v ? [{ id: "ward", name: v.P.app, bg: v.P.color, html: `<b class="pi-txt" style="font-size:27px">${v.P.ic}</b>`, adult: true }] : []; }
 function phBadge(id, c) {
@@ -65,7 +67,7 @@ function phBadge(id, c) {
   if (id === "kindred") { const V = globalThis.Net ? Net.view(c) : null; return V && V.ready ? V.inbox.length : 0; }
   return 0;
 }
-function phNotes(c) { const P = doorsNow(); return phNotes0(c).filter(n => P[n.app] !== false); }
+function phNotes(c) { const P = doorsNow(); return phNotes0(c).filter(n => P[n.app] !== false && !phLocked(c, n.app)); }
 function phNotes0(c) {
   const day = today(), out = [];
   if (mgFresh()) {

@@ -30,7 +30,7 @@ test("pilih sekolah: ditanya umur 56 (bayi); suportif = dekat, tegas = favorit, 
 test("pagar jarak: les di hari bakat, liburan 116 cuma ditanya kalau bakat >= 14 hari sebelumnya (kalau nggak: danau tanpa tanya), field trip 131; dilema_hari ikut", () => {
   let asked = 0, gated = 0;
   for (let i = 0; i < 24; i++) {
-    const akun = "akun-g" + i, { c, sink, at } = run(akun, 182, "suportif", 1), b = S.bakatDay(c);
+    const akun = "akun-g" + i, { c, sink, at } = run(akun, 179, "suportif", 1), b = S.bakatDay(c);   // sampai akhir fase anak: dilema remaja (v47) nyatet dilema_hari juga
     assert.deepEqual(at("bakat_ketahuan"), [b], akun);
     assert.deepEqual(at("tanya_liburan"), [116]); assert.deepEqual(at("izin_field_trip"), [131]);
     assert.equal(decisions(sink, "pilih_sekolah"), 1); assert.equal(decisions(sink, "izin_field_trip"), 1);

@@ -22,6 +22,11 @@
   ulangan_1_diumumkan: ["tegang", 2], ulangan_2_diumumkan: ["tegang", 2], libur_sekolah: ["puncak", 1], rapor_1: ["puncak", 2], rapor_2: ["puncak", 2],
   gigi_copot: ["puncak", 2], baca_sendiri: ["puncak", 2], naik_sepeda: ["puncak", 2], berenang: ["puncak", 2], nginep: ["puncak", 2], uang_jajan: ["puncak", 1], sekolah_sendiri: ["puncak", 2], garis_pintu: ["puncak", 1],
   sahabat_kenal: ["puncak", 2], ribut_sahabat: ["tegang", 1], baikan_sahabat: ["lega", 2], sahabat_pindah: ["sedih", 2], sahabat_baru: ["puncak", 2],
+  // v47: fase remaja (remaja.js): kalender angkatan, aturan rumah, tonggak remaja (lulus dibaca dari barisnya: LINES)
+  smp_hari_pertama: ["puncak", 2], aturan_rumah: ["puncak", 1], ulangan_3_diumumkan: ["tegang", 2], ulangan_4_diumumkan: ["tegang", 2], rapor_3: ["puncak", 2], rapor_4: ["puncak", 2],
+  study_tour_berangkat: ["puncak", 2], study_tour_pulang: ["lega", 1], pekan_ujian: ["tegang", 2], pesta_kelulusan: ["puncak", 2],
+  suara_berubah: ["puncak", 2], jerawat_pertama: ["puncak", 1], cita_cita: ["puncak", 1], hobi_sendiri: ["puncak", 2], gaya_sendiri: ["puncak", 1], kota_sendiri: ["puncak", 2], beli_pertama: ["puncak", 2],
+  izin_kerja_sambilan: ["puncak", 1], kerja_sambilan: ["puncak", 2],
   // v46.1: pilihan lingkungan, klinik anak, lomba kota, liburan, field trip (anak.js)
   pilih_sekolah: ["puncak", 1], tanya_liburan: ["puncak", 1], izin_field_trip: ["puncak", 1], liburan_berangkat: ["puncak", 2], liburan_tengah: ["puncak", 1], liburan_pulang: ["lega", 1],
   field_trip: ["puncak", 2], lomba_kota: ["puncak", 2], klinik_gigi_1: ["lega", 1], klinik_mata: ["lega", 1], klinik_gigi_2: ["lega", 1],
@@ -48,6 +53,9 @@
     pentas_sekolah: [[/loudest clap/, "puncak", 2, "pentas_bagus"], [/one wobble/, "puncak", 1, "pentas_biasa"], [/freezes/, "tegang", 1, "pentas_grogi"]],
     rapor_1: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
     rapor_2: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
+    rapor_3: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
+    rapor_4: [[/Top marks/, "puncak", 2, "rapor_bagus"], [/need work/, "tegang", 1, "rapor_jelek"]],
+    pesta_pertama: [[/is not leaving now/, "tegang", 1, "pesta_telat"]],
     field_trip: [[/goes to the lighthouse without/, "sedih", 1, "field_trip_tidak"]],
     lomba_kota: [[/wins the under-tens/, "puncak", 2, "lomba_menang"], [/comes second/, "puncak", 1, "lomba_kedua"], [/first round/, "tegang", 1, "lomba_kalah"]],
     klinik_mata: [[/Glasses, then/, "puncak", 2, "kacamata"]],

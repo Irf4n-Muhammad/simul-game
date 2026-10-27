@@ -4,10 +4,12 @@
 const scCap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const scWhen = (x, d) => x === d ? "today" : x === d + 1 ? "tomorrow" : `in ${x - d} days`;
 // tanggal sekolah berikutnya (hari ini kalau belum selesai), atau null; dipakai lencana, notifikasi lock screen, kartu di app
-function scNext(c, d) { return globalThis.Anak ? Anak.calendar(c, d).find(k => k.day > d || (k.day === d && !k.done)) || null : null; }
+function scNext(c, d) { const K = c.age(d) >= 180 && globalThis.Remaja ? Remaja.calendar(c, d) : globalThis.Anak ? Anak.calendar(c, d) : []; return K.find(k => k.day > d || (k.day === d && !k.done)) || null; }   // v47: kalender remaja dari 180
 function phSchool(c) {
-  const d = today(), age = c.age(d), K = Anak.calendar(c, d), s = c.info.sahabat, lama = c.info.sahabat_lama, R = c.info.rapor || [], N = c.info.nilai || {}, u = c.info.ujian;
-  const nx = scNext(c, d), n = esc(c.name), teen = age >= 180;
+  const d = today(), age = c.age(d);
+  if (age >= 180 && globalThis.Remaja) return phSchoolTeen(c);   // v47: app School remaja (ui/37-remaja.js)
+  const K = Anak.calendar(c, d), s = c.info.sahabat, lama = c.info.sahabat_lama, R = c.info.rapor || [], N = c.info.nilai || {}, u = c.info.ujian;
+  const nx = scNext(c, d), n = esc(c.name), teen = false;
   const S = Anak.sekolahOf(c), L = c.info.liburan, FT = c.info.field_trip;
   Tele.ev("sekolah", { a: "buka", nilai: Object.keys(N).length, rapor: R.length, sahabat: s ? s.jenis : lama ? "pindah" : "-", pilih: S.dipilih ? S.id : "-" });
   const grade = q => q ? Anak.GRADE[q.g] : "";

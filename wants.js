@@ -118,7 +118,7 @@
       cond: c => !!c.st, measure: c => c.st ? c.st.wallet : 0, delta: 100,
       say: n => `${n} is saving up for something. Won't say what.`, ok: n => `${n} counted the coins twice. Enough.` }),
     W("hobi", ["remaja"], "a hobby of their own", "🎨", { n: 3, w: c => 1 + t(c, "kreatif") / 60,
-      prog: (c, A, day, home, out) => agendaIs(c, day, "latihan") || firedToday(out, "hobi_baru", "bakat_ketahuan"),
+      prog: (c, A, day, home, out) => agendaIs(c, day, "latihan") || firedToday(out, "hobi_baru", "bakat_ketahuan", "hobi_sendiri"),
       say: n => `${n} keeps doodling in the margins of everything.`, ok: n => `${n} found a thing that's theirs.` }),
     W("cinta", ["remaja"], "someone to like them back", "💌", { besar: true, ulang: 150, w: c => 1 + t(c, "ramah") / 80,
       measure: c => fired(c, "jadian_remaja", "cinta_monyet"), delta: 1,

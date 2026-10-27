@@ -123,6 +123,7 @@ storylet("ngompol_heboh", ["bayi"], "kecil", { cooldown: 10 }, x => {
 });
 
 // ---------------------------------------------------------------- anak
+// v47: ujian_diumumkan, ujian_akhir_diumumkan, cita_cita, pesta_pertama, kerja_sambilan pindah ke remaja.js (kalender angkatan dan rentang benih)
 
 storylet("hari_pertama_sekolah", ["anak"], "sedang", { once: true, priority: true }, x => {
   x.c.info.sekolah = true;
@@ -182,18 +183,6 @@ storylet("berantem_sekolah", ["anak"], "sedang", { cooldown: 50, weight: x => x.
 });
 
 // v46: di fase anak ulangan ikut kalender sekolah tetap (anak.js); yang acak tinggal buat remaja sampai v47
-storylet("ujian_diumumkan", ["remaja"], "kecil", { cooldown: 35,
-  cond: x => !("ujian" in x.c.info) && x.age < 245 }, x => {
-  x.c.info.ujian = { hari: x.day + 3, belajar: 0, jenis: "ulangan" };
-  x.say(`School news: ${x.n} has a quiz in 3 days. You can help them study anytime before then.`);
-});
-
-storylet("ujian_akhir_diumumkan", ["remaja"], "kecil", { once: true, priority: true,
-  cond: x => x.age >= 250 && !("ujian" in x.c.info) }, x => {
-  x.c.info.ujian = { hari: x.day + 10, belajar: 0, jenis: "akhir" };
-  x.say(`${x.n}'s final exams are in 10 days. They start sticking notes on the bathroom mirror.`);
-});
-
 storylet("ujian", ["anak", "remaja"], "sedang", { priority: true, cooldown: 1,
   cond: x => "ujian" in x.c.info && x.day >= x.c.info.ujian.hari }, x => {
   const u = x.c.info.ujian;
@@ -201,14 +190,14 @@ storylet("ujian", ["anak", "remaja"], "sedang", { priority: true, cooldown: 1,
   const sk = x.c.info.sekolah_pilihan;   // v46.1: sekolah favorit +6, les matematika +5 (anak.js, pilihan lingkungan)
   const skor = (x.c.stats.kecerdasan * 0.6 + x.t("rajin") * 0.4 + u.belajar * 7 + (u.sendiri || 0) * 4 + x.rng.uniform(-12, 12)
     + (sk && sk.id === "favorit" ? 6 : 0) + (x.has("les_aman") ? 5 : 0));
-  // v46: ulangan dari kalender sekolah (u.kal) dicatat buat rapor dan app School (anak.js)
-  if (u.kal) (x.c.info.nilai ||= {})[u.kal] = { d: x.day, skor: Math.round(skor), g: skor > 58 ? "great" : skor > 38 ? "okay" : "bad", belajar: u.belajar, sendiri: u.sendiri || 0 };
+  // v46: ulangan dari kalender sekolah (u.kal) dicatat buat rapor dan app School (anak.js); v47: ujian akhir juga (remaja.js baca skornya di hari pengumuman)
+  const kal = u.kal || (u.jenis === "akhir" ? "ujian_akhir" : null);
+  if (kal) (x.c.info.nilai ||= {})[kal] = { d: x.day, skor: Math.round(skor), g: skor > 58 ? "great" : skor > 38 ? "okay" : "bad", belajar: u.belajar, sendiri: u.sendiri || 0 };
   const bantu = (u.belajar ? ` You studied together ${u.belajar} time${u.belajar > 1 ? "s" : ""} before.` : "")
     + (u.sendiri ? ` ${x.n} also studied alone ${u.sendiri} time${u.sendiri > 1 ? "s" : ""}.` : "");
-  if (u.jenis === "akhir") {
-    x.c.info.lulus = skor > 55 ? "great" : "just okay";
-    x.say(`${x.n} passed their final exams with ${x.c.info.lulus} grades.${bantu} They throw their cap into the sky!`);
-    x.remember(`Graduated school with ${x.c.info.lulus} grades.`);
+  if (u.jenis === "akhir") {   // v47: lulusnya diumumkan tiga hari kemudian (remaja.js `pengumuman_lulus`, umur 265)
+    x.need("mood", 6);
+    x.say(`Last paper done. ${x.n} walks out of the hall with the whole year group, blinking at the daylight.${bantu} Results in three days.`);
     return;
   }
   if (skor > 58) {
@@ -347,18 +336,6 @@ storylet("pertanyaan_besar", ["anak"], "kecil", { cooldown: 20 }, x => {
 
 // ---------------------------------------------------------------- remaja
 
-storylet("cita_cita", ["remaja"], "sedang", { once: true, priority: true, cond: x => x.age >= 190 }, x => {
-  const t = x.c.traits, b = x.c.info.bakat;
-  // older saves may still hold the Indonesian talent names, so they are kept as aliases
-  const pilihan = { drawing: "illustrator", music: "musician", sports: "athlete", science: "scientist",
-    menggambar: "illustrator", musik: "musician", olahraga: "athlete", sains: "scientist" };
-  const cita = (b && (x.c.info.bakat_level ?? 0) > 35) ? (pilihan[b] ?? null) : (
-    t.ambisius > 60 ? "business owner" : t.rajin > 55 ? "doctor" : "youtuber");
-  x.c.info.cita = cita;
-  x.say(`${x.n} writes in big letters on their bedroom wall: "FUTURE ${cita.toUpperCase()}!"`);
-  x.remember(`Dream job: ${cita}.`);
-});
-
 storylet("cinta_monyet", ["remaja"], "sedang", { cooldown: 60,
   cond: x => x.c.rel_of("gebetan")[0] === null && x.c.partner() === null && !x.has("patah_hati"),
   weight: x => x.t("ramah") / 45 }, x => {
@@ -423,33 +400,8 @@ storylet("membantah", ["remaja"], "kecil", { cooldown: 12,
   x.bond(-1.5);
 });
 
-storylet("pesta_pertama", ["remaja"], "sedang", { cooldown: 50, cond: x => x.age >= 200 }, x => {
-  x.say(`${x.n} is invited to a friend's birthday party. They say "everyone is going".`);
-  const options = { boleh: "Yes, home by 10", larang: "No" };
-  const rule = x.rule("jam_malam");
-  let final, followed;
-  if (rule) {
-    [final, followed] = x.by_rule("curfew " + (rule === "ketat" ? "is 9 p.m., no night parties" : "is 11 p.m."),
-      rule === "ketat" ? "larang" : "boleh", "boleh", options);
-  } else {
-    [, final, followed] = x.ask("Can they go?", options, { suportif: "boleh", tegas: "larang" },
-      "boleh", { alone: `so ${x.n} went without waiting for your OK.` });
-  }
-  if (final === "boleh") {
-    x.flag("di_pesta", 1);
-    if (followed === false) {
-      x.say(`At 8 p.m. ${x.n}'s room is empty. The window is wide open.`);
-      x.flag("kabur_ke_pesta", 1);
-      x.bond(-3);
-    }
-  } else {
-    x.say(`${x.n} stays in their room all night, watching their friends' stories.`);
-    x.need("mood", -10);
-  }
-});
-
 storylet("masalah_di_pesta", ["remaja", "dewasa"], "besar", { cooldown: 30, priority: true,
-  cond: x => x.has("di_pesta") && x.t("impulsif") > 55 }, x => {
+  cond: x => x.has("di_pesta") && x.c.info.pesta_hari !== x.day && x.t("impulsif") > 55 }, x => {   // v47: besoknya, bukan di hari pestanya (remaja.js)
   const r = x.rng.random();
   if (r < 0.45) {
     x.say(`At 1 a.m. a friend brings ${x.n} home, dizzy and smelling of drinks. They say sorry while half asleep.`);
@@ -469,9 +421,9 @@ storylet("masalah_di_pesta", ["remaja", "dewasa"], "besar", { cooldown: 30, prio
 });
 
 storylet("pesta_aman", ["remaja", "dewasa"], "kecil", { cooldown: 1, priority: true,
-  cond: x => x.has("di_pesta") && x.t("impulsif") <= 55 }, x => {
+  cond: x => x.has("di_pesta") && x.c.info.pesta_hari !== x.day && x.t("impulsif") <= 55 }, x => {
   const kabur = x.has("kabur_ke_pesta");
-  x.say(`${x.n} comes home from the party` + (kabur ? " through the window, thinking nobody noticed." : " right on time, talking about a three-layer birthday cake."));
+  x.say(`${x.n} comes home from the party` + (kabur ? " well past curfew, shoes in hand, thinking nobody noticed." : " right on time, talking about a three-layer birthday cake."));
   for (const f of ["di_pesta", "kabur_ke_pesta"]) x.c.clear_flag(f);
 });
 
@@ -499,28 +451,20 @@ storylet("curhat_malam", ["remaja", "dewasa", "tua"], "kecil", { cooldown: 10,
   }
 });
 
-storylet("kerja_sambilan", ["remaja"], "sedang", { once: true,
-  cond: x => x.age >= 220 && x.t("ambisius") > 40 }, x => {
-  const tempat = x.pick(["ice cream shop", "bookstore", "car wash"]);
-  x.c.info.sambilan = tempat;
-  x.say(`${x.n} gets a part-time job at the ${tempat}. They spend their first paycheck on a little gift for you.`);
-  x.stat("uang", 30);
-  x.bond(3);
-  x.remember(`First part-time job at the ${tempat}.`);
-});
-
 // ---------------------------------------------------------------- setelah lulus: jalur berbeda
 
 storylet("setelah_lulus", ["remaja", "dewasa"], "sedang", { once: true, priority: true,
-  cond: x => "lulus" in x.c.info && x.age >= 258 }, x => {
+  cond: x => "lulus" in x.c.info && x.age >= 266 }, x => {   // v47: sehari sesudah pengumuman lulus 265 (remaja.js); dilema terjadwal, ikut pagar dilema_hari
   const t = x.c.traits;
   const pref = (x.c.stats.kecerdasan + t.rajin / 2 > 75 ? "kuliah"
     : t.impulsif > 60 || t.kreatif > 65 ? "gap" : "kerja");
   x.say(`${x.n} is thinking about what to do after graduation.`);
-  const [, final] = x.ask("What do you suggest?",
+  x.c.info.dilema_hari = x.day;
+  const [g, final] = x.ask("What do you suggest?",
     { kuliah: "College first", kerja: "Start working", gap: "Gap year, go explore" },
     { suportif: "SELF", tegas: "kuliah" }, pref, { safe: "kuliah" });
   x.c.info.jalur = final;
+  x.c.info.jalur_oleh = g === null ? "sendiri" : "wali";
   if (final === "kuliah") {
     x.c.info.kuliah_aktif = true;
     x.c.info.siap_kerja = x.day + x.rng.randint(150, 240);
@@ -1186,8 +1130,7 @@ storylet("minta_jajan", ["anak", "remaja"], "kecil", { cooldown: 12 }, x => {
     [, final] = x.ask(`${x.n} asks for ${barang}. Okay?`, opsi, { suportif: "kasih", tegas: "tolak" },
       "kasih");
   }
-  if (final === "kasih") {
-    x.stat("uang", -2);
+  if (final === "kasih") {   // v47: jajan dibayar dari dompet rumah, bukan dari jar makhluk (uang jajan Senin di remaja.js); angkanya nunggu keputusan dompet rumah
     x.need("mood", 6);
     x.say(`${x.n} comes home with ${barang}, grinning ear to ear.`);
   } else {
@@ -1220,7 +1163,8 @@ storylet("takut_gelap", ["anak"], "kecil", { cooldown: 20, weight: x => x.t("pen
   }
 });
 
-storylet("gaya_rambut", ["remaja"], "kecil", { cooldown: 40 }, x => {
+storylet("gaya_rambut", ["remaja"], "kecil", { cooldown: 40, cond: x => x.age < 252 && x.day - (x.c.info.dilema_hari ?? -14) >= 14 }, x => {   // v47: ikut pagar 14 hari dilema remaja, dan nggak nempel ke jalur 266
+  x.c.info.dilema_hari = x.day;
   const warna = x.pick(["purple", "neon green", "half shaved"]);
   const [, final] = x.ask(`${x.n} wants their hair ${warna}.`, { boleh: "Sure", jangan: "No way" },
     { suportif: "boleh", tegas: "jangan" }, "boleh");

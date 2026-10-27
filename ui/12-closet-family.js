@@ -87,6 +87,7 @@ function showProfile(id) {
     ${tasteLine(m)}
     ${wantsBox(id, here)}
     ${tonggakBox(id)}
+    ${siapaBox(id)}
     ${watakBox(id)}
     ${m.bekas.length ? `<div class="fieldset"><span class="lbl">Shaped by</span><div class="list">${m.bekas.map(b => `<div class="line"><span class="grow"><b>${esc(b.label)}</b><small class="sub">${esc(b.why || "")}${b.why ? " · " : ""}${fmtDate(b.d)}. Since then: ${esc(b.note)}.</small></span></div>`).join("")}</div></div>` : ""}
     ${s ? `<div class="box"><h3>${esc(s.best ? s.best.title : "No career yet")}</h3><small>${s.best ? esc(s.best.label) + " · " : ""}${coins(s.wallet)} · prestige ${s.prestige}</small></div>
