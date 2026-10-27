@@ -63,6 +63,7 @@ function phLaterSeen(later) {
 function phLaterTap(id, v) {
   const a = phLater(PH.c).find(x => x.id === id); if (!a) return;
   Tele.ev("later", { a: "ketuk", k: id });
-  const msg = `${a.name} opens ${phLaterWhen(a.day)}${a.grown ? `, once ${PH.c.name} is grown` : a.teen ? ", in the teen years" : ""}. Nothing to buy, just time.`;
+  const msg = id === "work" ? `Work opens ${phLaterWhen(a.day)}, once ${PH.c.name} is grown: apply through Burrow, and the job's own app appears with the first shift. Nothing to buy, just time.`
+    : `${a.name} opens ${phLaterWhen(a.day)}${a.grown ? `, once ${PH.c.name} is grown` : a.teen ? ", in the teen years" : ""}. Nothing to buy, just time.`;
   const p = v.querySelector(".ph-kid"); if (p) p.textContent = msg; else say(msg);
 }
