@@ -8,7 +8,7 @@ nama global (`Engine`, `Status`, ...). Modul bertanda ✓ di kolom Node bisa di-
 ## Urutan muat (index.html)
 
 three.js r128 (`lib/`) → brands → telemetry → moments → town-assets → town → engine → storylets → agenda → status → tree →
-cosmetics → career → market → venture → work → pets → mag → wants → tonggak → anak → remaja → obrolan → game → net → today → soon → weather → balik → kabar → **ui.js** (hasil gabungan `ui/*.js`).
+cosmetics → career → market → venture → work → pets → mag → wants → tonggak → anak → remaja → obrolan → game → net → today → soon → weather → balik → kabar → dapur → **ui.js** (hasil gabungan `ui/*.js`).
 Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` menyalin tepat daftar itu ke `_site/`.
 
 ## Modul
@@ -44,6 +44,7 @@ Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` men
 | `balik.js` | 74 | Rawat terbalik (v44.1, daftar-saran 32): seminggu sekali makhluk bertanya tentang pemain (8 pertanyaan bergilir), reaksi ikut sifat yang menonjol. Teks ditulis manusia. | `Balik { Q, due, react, EVERY, TRAITS }` | — (jawaban di state.balik, bukan aksi) | — | ✓ |
 | `obrolan.js` | 140 | Pertanyaan harian makhluk (v48, diskusi loop harian): makhluk yang buka Ngobrol, pemain jawab satu ketukan. Bayi tidak bicara: pembukanya keadaan, jawabannya tindakan. Daftar per fase (bayi 10, anak 12, remaja 12, dewasa 8, tua 6) + 3 pertanyaan konteks (ujian dekat, sahabat, event kota), permutasi per siklus dari benih. Tiap jawaban menggeser satu sifat 0,4. | `Obrolan { BANK, CTX, TRAITS, STEP, opener, react, act, parse, size, describe }` | aksi `tanya:<id>:<sifat><+|->` (di-replay; `c.info.tanya_hari`, `tanya_log`) | — | ✓ |
 | `kabar.js` | 55 | Notifikasi (v48): rencana kabar hari ini + 2 hari dari potret: pagi 09:00 (tanggal sekolah, majalah, pertanyaan, sarapan), malam 19:00 kalau rawat malam belum, satu kabar kangen kalau 2 hari nggak buka; paling banyak 2 sehari, jam tenang 21:30–08:00. | `Kabar { plan, PAGI, MALAM, quiet }` | — (potret dari UI) | — | ✓ |
+| `dapur.js` | 45 | Dompet koin dapur (v49): harga makanan (basic gratis, enam makanan enak 12–20 koin), modal awal 50, koin dari mini game dibatasi 60 per hari, rekor per mini game. Koin ini dari main, beda dengan Buttons (cosmetics.js). | `Dapur { START, CAP, PRICE, fresh, price, can, spend, earn, left, coinsFor }` | — (dompet di state.dapur, bukan aksi) | — | ✓ |
 
 `town-assets.js` adalah data (model kota) dan tidak di-lint. `net.js` dan `town.js` butuh browser (db artifact, three.js).
 
@@ -95,6 +96,7 @@ dengan skrip inline v44. `ui.js` adalah file hasil (di-gitignore); yang diedit a
 | `ui/34-balik.js` | baru (v44.1) | **rawat terbalik**: potret untuk balik.js, lembar tiga pilihan, jawaban ke `state.balik`; tur `balik` |
 | `ui/38-obrolan.js` | baru (v48) | **Attention, kedekatan, pertanyaan harian**: `attnOf`/`attnFill` (kebutuhan cepat di HUD, `state.perhatian`, habis dalam ½ hari), `bondBox` (tingkat kedekatan di profil) dan `bondCheck` (momen kecil sekali tiap naik tingkat, `state.ikatan_tier`), `tanyaShow`/`tanyaAnswer` (pertanyaan di atas bar Ngobrol; Claude nulis pertanyaannya kalau ada, kalau nggak dari obrolan.js), `worldFacts` (sekolah, sahabat, kota, jawaban belakangan buat Ngobrol AI) |
 | `ui/38b-kabar.js` | baru (v48) | **notifikasi**: lembar opt-in (ditawarkan sekali sesudah tur; Family > Notifications), `kabarSync` tiap buka/tinggal: TimestampTrigger kalau ada, antrian ke `sw.js`, timer di halaman |
+| `ui/38c-dapur.js` | baru (v49) | **koin dan mini game**: tombol koin di Kitchen (`dapurChip`, dipanggil `careUi`), lembar Kitchen, mini game Fruit catch (`mgStart`: kanvas 2D 30 detik, adegan 3D dijeda selama main lewat `FC` di ui/29); harga dan potong koin di lembar makan (ui/07) |
 | `ui/39-start.js` | 6988–6990 | pemanggilan boot() (dulu `30-start.js`; dinomori 39 supaya tetap terakhir) |
 
 ## Penanda blok Dev (build rilis)

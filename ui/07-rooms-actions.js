@@ -40,6 +40,7 @@ function careItemFor(act) {
   return null;
 }
 function careUi() {
+  dapurChip();
   const v = canCare() ? careView() : null, strip = $("careStrip");
   strip.hidden = !v;
   const r = ROOMS[roomIx];
@@ -110,23 +111,38 @@ const FOOD_ART = {
   family: '<rect width="64" height="64" fill="#F3E9DC"/><ellipse cx="32" cy="40" rx="29" ry="17" fill="#fff"/><ellipse cx="32" cy="36" rx="17" ry="12" fill="#B8662C"/><ellipse cx="29" cy="32" rx="10" ry="6" fill="#D88A45"/><path d="M47 30l6-5M48 34l7-2" stroke="#F3E2C9" stroke-width="4" stroke-linecap="round"/><circle cx="12" cy="44" r="3.5" fill="#E8742E"/><circle cx="17" cy="49" r="3.5" fill="#5E9B3B"/><circle cx="47" cy="49" r="3.5" fill="#E8742E"/><circle cx="52" cy="44" r="3.5" fill="#5E9B3B"/><circle cx="33" cy="51" r="3" fill="#F2D36B"/>',
   treat: '<rect width="64" height="64" fill="#F3E9DC"/><circle cx="32" cy="34" r="25" fill="#D9A15A"/><circle cx="32" cy="34" r="21" fill="#D9472E"/><path d="M16 30c5 2 9-4 14-1s10 5 18-1c1 5-2 14-8 17s-17 3-22-3-3-9-2-12Z" fill="#F6D36B"/><circle cx="24" cy="28" r="3.5" fill="#A8281E"/><circle cx="38" cy="25" r="3.5" fill="#A8281E"/><circle cx="40" cy="40" r="3.5" fill="#A8281E"/><circle cx="26" cy="42" r="3.5" fill="#A8281E"/><path d="M32 34 32 9M32 34 53.6 21.5" stroke="#C88A44" stroke-width="1.2"/><circle cx="33" cy="33" r="1.4" fill="#3E7D2E"/><circle cx="46" cy="33" r="1.4" fill="#3E7D2E"/>',
 };
+FOOD_ART.basic_p = PLATE + '<rect x="12" y="25" width="24" height="21" rx="5" fill="#C98A4B"/><rect x="14.5" y="27.5" width="19" height="16" rx="3.5" fill="#E8C38E"/><rect x="38" y="18" width="14" height="28" rx="3" fill="#E7EEF3"/><rect x="38" y="25" width="14" height="21" rx="3" fill="#FBFBFA"/>';
+FOOD_ART.basic_m = PLATE + '<ellipse cx="27" cy="36" rx="12" ry="9" fill="#FBFAF6"/><circle cx="23" cy="34" r="1" fill="#E6E0D4"/><circle cx="29" cy="38" r="1" fill="#E6E0D4"/><circle cx="40" cy="32" r="4" fill="#5E9B3B"/><circle cx="44" cy="38" r="3.5" fill="#E8742E"/><circle cx="38" cy="41" r="3.5" fill="#7BB451"/><circle cx="45" cy="31" r="2.5" fill="#E8742E"/>';
 const foodArt = id => FOOD_ART[id] ? `<span class="food-ph" aria-hidden="true"><svg viewBox="0 0 64 64">${FOOD_ART[id]}</svg></span>` : "";
 function careDo(i) {
   if (!canCare()) return;
   if (i.opts) {
+    // v49: makan pakai koin dapur (ui/38c-dapur.js); basic gratis
+    const food = i.id === "makan_p" || i.id === "makan_m", W = food ? wallet() : null;
     openSheet("care", `<span class="ribbon" style="background: var(--sky)">${i.half ? "EVENING" : "MORNING"} · ${esc(cur.nama)}</span>
       <h2>${{ makan_p: "What's for breakfast?", makan_m: "What's for dinner?", tidur: "How should bedtime go?" }[i.id]}</h2>
       ${i.overdue ? `<p>It's late, so this one won't give a bonus. ${esc(cur.nama)} still needs it.</p>` : ""}
-      <div class="carepick">${i.opts.map(o => { const fb = foodBrand(o.id); if (fb) Tele.brand("food:" + o.id, "tampil", fb.tier); const ph = fb ? "" : foodArt(o.id), tx = `<b>${esc(fb ? fb.name : o.label)}${fb ? ' <i class="ptag">Partner</i>' : ""}${o.taste > 0 ? " ♥" : ""}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}</small>`;
-        return `<button class="choice yes${ph ? " food" : ""}" data-opt="${o.id}">${ph ? `${ph}<span class="food-tx">${tx}</span>` : tx}</button>`; }).join("")}</div>
+      ${food ? `<div class="coinrow"><span>You have <b>${coinTxt(W.koin)}</b></span><button class="chip" id="careEarn">Earn coins</button></div>` : ""}
+      <div class="carepick">${i.opts.map(o => { const fb = foodBrand(o.id); if (fb) Tele.brand("food:" + o.id, "tampil", fb.tier); const ph = fb ? "" : foodArt(o.id === "basic" ? "basic_" + (i.half ? "m" : "p") : o.id);
+        const pr = food ? Dapur.price(o.id) : null, cant = pr && W.koin < pr, tag = pr === null ? "" : `<i class="price${cant ? " short" : ""}">${pr ? coinTxt(pr) : "Free"}</i>`;
+        const tx = `<b>${esc(fb ? fb.name : o.label)}${fb ? ' <i class="ptag">Partner</i>' : ""}${o.taste > 0 ? " ♥" : ""} ${tag}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}${cant ? ` · need ${pr - W.koin} more` : ""}</small>`;
+        return `<button class="choice yes${ph ? " food" : ""}${cant ? " short" : ""}" data-opt="${o.id}">${ph ? `${ph}<span class="food-tx">${tx}</span>` : tx}</button>`; }).join("")}</div>
       <button class="close" data-close="1">Not now</button>`);
-    sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => { closeSheet(); careAct(i, b.dataset.opt); });
+    sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
+      const o = b.dataset.opt;
+      if (food && !Dapur.can(W, o)) { say("Not enough coins. Play Fruit catch?", 2400); b.classList.add("nudge"); setTimeout(() => b.classList.remove("nudge"), 500); return; }
+      closeSheet(); careAct(i, o);
+    });
+    if ($("careEarn")) $("careEarn").onclick = () => { closeSheet(); mgStart(); };
     sheet.querySelector("[data-close]").onclick = closeSheet;
   } else careAct(i, null);
 }
 function careAct(i, opt) {
   game.half_now = careHalfNow();
+  const food = i.id === "makan_p" || i.id === "makan_m";
+  if (food && !Dapur.can(wallet(), opt)) return;
   if (!game.act(selected, "rawat:" + i.id + (opt ? ":" + opt : ""))) return;
+  if (food) { const pr = Dapur.price(opt); Dapur.spend(wallet(), opt); if (pr) Tele.ev("dapur", { a: "beli", k: opt, harga: pr }); }
   let note = game.careNote;
   const fb = foodBrand(opt);
   if (fb) { Tele.brand("food:" + opt, "pakai", fb.tier); if (note && FOOD_WORD[opt] && note.includes(FOOD_WORD[opt])) { note = note.split(FOOD_WORD[opt]).join(fb.name); Tele.brand("food:" + opt, "sebut", fb.tier); } }
