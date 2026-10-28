@@ -569,6 +569,21 @@ svg { stroke: currentColor; }
 .talkbar input:focus { outline: 2px solid var(--accent); }
 .talkbar .send { width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; box-shadow: 0 8px 20px rgba(169,93,63,.35); display: grid; place-items: center; padding: 0; }
 .talkbar .x { width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(255,255,255,.6); background: var(--glass-strong); box-shadow: var(--shadow); display: grid; place-items: center; padding: 0; }
+/* v49: koin dapur dan mini game (ui/38c-dapur.js) */
+.coin-chip { display: block; margin: 0 auto 10px; font-size: 14px; font-weight: 800; color: var(--ink); background: var(--glass-strong); border: 1px solid rgba(255,255,255,.6); box-shadow: var(--shadow); border-radius: 999px; padding: 8px 16px; }
+.coinrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; font-size: 14px; }
+.carepick .price { font-style: normal; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #F6E7BF; color: #7A5A12; margin-left: 4px; white-space: nowrap; }
+.carepick .price.short { background: #F4DAD6; color: #9A3B2F; }
+.carepick button.short { opacity: .62; }
+.carepick button.nudge { animation: nudge .4s; }
+@keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.fcx { position: fixed; inset: 0; z-index: 60; background: linear-gradient(#CFE3EE, #F3E9DC 70%, #E2C9A6); touch-action: none; }
+.fcx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fcx-top { position: absolute; left: 16px; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; justify-content: space-between; z-index: 2; font-weight: 800; color: var(--ink); }
+.fcx-top b { font-size: 28px; min-width: 60px; } .fcx-top span { font-size: 20px; padding: 4px 14px; border-radius: 999px; background: var(--glass-strong); }
+.fcx-top .x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--glass-strong); font-size: 18px; }
+.fcx-card { position: absolute; left: 24px; right: 24px; top: 40%; transform: translateY(-50%); z-index: 3; background: #FBF8F3; border-radius: 24px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.fcx-card b { font-size: 18px; } .fcx-card small { font-size: 14px; color: var(--ink-soft); } .fcx-card .row2 { justify-content: center; }
 /* v48: pertanyaan harian di atas bar ngobrol (ui/38-obrolan.js) */
 .talk-topic { position: absolute; left: 16px; right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 22px; background: var(--glass-strong); border: 1px solid rgba(255,255,255,.6); box-shadow: var(--shadow); }
 .talk-topic .tt-who { align-self: center; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); opacity: .7; }
@@ -733,9 +748,9 @@ svg { stroke: currentColor; }
 .mg { position: absolute; inset: 0; overflow-y: auto; background: #fff; color: #111; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; animation: paIn .28s cubic-bezier(.2,1,.3,1); touch-action: pan-y; box-sizing: border-box; }
 .mg button { font: inherit; color: inherit; }
 .mg-serif, .mg-logo, .mgc-logo, .mgc-star b, .mg h2, .mg h3, .mg-num, .mg-drop::first-letter { font-family: "Bodoni Moda", Didot, "Times New Roman", serif; }
-.mg-top { padding: 52px 18px 10px; text-align: center; border-bottom: 1px solid #111; }
+.fc-top { padding: 52px 18px 10px; text-align: center; border-bottom: 1px solid #111; }
 .mg-logo { display: block; font-size: 44px; font-weight: 600; letter-spacing: .04em; line-height: 1; }
-.mg-top small { display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: #555; }
+.fc-top small { display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: #555; }
 .mg-stand { padding-bottom: 40px; }
 .mg-latest { display: block; width: calc(100% - 36px); margin: 18px auto 0; padding: 0 !important; border: 0; background: none !important; box-shadow: 0 18px 40px rgba(0,0,0,.18) !important; border-radius: 0 !important; }
 .mg-out { margin: 14px 18px 0; display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
@@ -804,7 +819,7 @@ svg { stroke: currentColor; }
 .mg-col b { font-family: "Helvetica Neue", Arial, sans-serif; }
 .mg-end { padding: 30px 20px 50px; text-align: center; }
 .mg-end .mg-logo { font-size: 28px; } .mg-end small { display: block; margin-top: 6px; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #777; }
-.ph-basic .mg-top, .ph-tablet .mg-top { padding-top: 40px; } .ph-basic .mg-bar, .ph-tablet .mg-bar { padding-top: 38px; }
+.ph-basic .fc-top, .ph-tablet .fc-top { padding-top: 40px; } .ph-basic .mg-bar, .ph-tablet .mg-bar { padding-top: 38px; }
 /* cover layouts */
 .mgc-close .mgc-logo, .mgc-dark .mgc-logo { mix-blend-mode: normal; color: #fff; text-shadow: 0 .5cqw 4cqw rgba(0,0,0,.25); }
 .mgc-close .mgc-no, .mgc-close .mgc-lines span, .mgc-dark .mgc-no, .mgc-dark .mgc-lines span { color: #fff; text-shadow: 0 .3cqw 2cqw rgba(0,0,0,.35); }
@@ -1082,6 +1097,7 @@ svg { stroke: currentColor; }
 
   <div class="hud-bottom" id="bottom">
     <div>
+      <button class="coin-chip" id="coinBtn" hidden></button>
       <div class="room-nav">
         <button class="arrow" id="prev" aria-label="Previous room"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <div class="room-name" id="roomName">Kitchen</div>
@@ -1141,4 +1157,5 @@ svg { stroke: currentColor; }
 <script src="weather.js"></script>
 <script src="balik.js"></script>
 <script src="kabar.js"></script>
+<script src="dapur.js"></script>
 <script src="ui.js"></script>

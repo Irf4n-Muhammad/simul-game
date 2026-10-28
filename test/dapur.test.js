@@ -1,0 +1,44 @@
+// Dompet dapur (dapur.js, v49): makanan dasar gratis, makanan enak pakai koin, koin dari mini game dibatasi per hari.
+const test = require("node:test");
+const assert = require("node:assert/strict");
+require("../engine.js");
+require("../storylets.js"); require("../status.js"); require("../tree.js"); require("../agenda.js"); require("../career.js"); require("../market.js");
+const D = require("../dapur.js");
+const G = require("../game.js");
+
+test("harga: basic gratis, enam makanan enak berharga, yang bukan makanan null", () => {
+  assert.equal(D.price("basic"), 0);
+  for (const k of ["power", "comfort", "fruit", "light", "family", "treat"]) assert.ok(D.price(k) > 0, k);
+  assert.equal(D.price("story"), null);
+  assert.ok(D.START >= D.price("treat"));   // modal awal cukup buat satu makan enak
+});
+
+test("beli: koin dipotong, nggak bisa minus, basic selalu bisa", () => {
+  const W = D.fresh(); W.koin = 13;
+  assert.equal(D.spend(W, "power"), true); assert.equal(W.koin, 1);
+  assert.equal(D.can(W, "power"), false); assert.equal(D.spend(W, "power"), false); assert.equal(W.koin, 1);
+  assert.equal(D.can(W, "basic"), true); assert.equal(D.spend(W, "basic"), true); assert.equal(W.koin, 1);
+});
+
+test("dapat koin: dibatasi CAP per hari, reset besoknya, rekor tetap dicatat", () => {
+  const W = D.fresh(), k0 = W.koin;
+  assert.equal(D.earn(W, "buah", 25, 10).got, 25);
+  assert.equal(D.earn(W, "buah", 40, 10).got, D.CAP - 25);
+  const r = D.earn(W, "buah", 50, 10);
+  assert.equal(r.got, 0); assert.equal(r.best, true); assert.equal(W.best.buah, 50);
+  assert.equal(W.koin, k0 + D.CAP); assert.equal(D.left(W, 10), 0);
+  assert.equal(D.left(W, 11), D.CAP);
+  assert.equal(D.earn(W, "buah", 5, 11).got, 5);
+});
+
+test("game.js: makan basic diterima, tanpa catatan selera, dan selera lama nggak berubah", () => {
+  const st = { akun: "akun-uji", nama: "Mochi", aturan: { sekolah: "wajib" }, hadir: [], jawaban: {}, aksi: [], dilihat: -1, tur_pintu: {}, rawat_from: 0, rawat_half: 0, jam: { base_ts: 0, base_day: 0, ms: 86400000 } };
+  const g = new G.Game(st); g.advance(40, null);
+  const c = g.home.members[0];
+  g.half_now = 0;
+  assert.equal(g.act(c.id, "rawat:makan_p:basic"), true);
+  assert.equal(g.careNote, null);
+  assert.ok(!("basic" in ((c.info.selera || {}).m || {})));
+  const v = g.careView(c);
+  assert.deepEqual(v.items.find(i => i.id === "makan_p").opts.map(o => o.id), ["power", "comfort", "fruit", "basic"]);
+});

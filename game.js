@@ -16,12 +16,14 @@
     makan_p: { half: 0, need: "lapar", label: "Breakfast", opts: {
       power: { label: "Eggs on toast", note: "+1 condition today" },
       comfort: { label: "Pancakes", note: "Mood up" },
-      fruit: { label: "Fruit and yogurt", note: "Good for their health" } } },
+      fruit: { label: "Fruit and yogurt", note: "Good for their health" },
+      basic: { label: "Toast and milk", note: "Fills them up" } } },
     mandi: { half: 0, need: "kebersihan", label: "Bath" },
     makan_m: { half: 1, need: "lapar", label: "Dinner", opts: {
       light: { label: "Light soup", note: "Sleeps better: +1 condition tomorrow" },
       family: { label: "Family dinner", note: "Bond up" },
-      treat: { label: "Pizza night", note: "Big mood boost, a bit less healthy" } } },
+      treat: { label: "Pizza night", note: "Big mood boost, a bit less healthy" },
+      basic: { label: "Rice and vegetables", note: "Fills them up" } } },
     tidur: { half: 1, need: "energi", label: "Bedtime", opts: {
       story: { label: "Bedtime story", note: "Learns a little Logic", grown: { label: "Talk about the day", note: "Learns a little Charm" } },
       cuddle: { label: "Cuddle", note: "Bond and mood up" },
@@ -33,6 +35,8 @@
   const rawatOf = (c, d) => ((c.info.rawat ||= {})[d] ||= {});
   // Titip: pamit dulu, keluarga yang ngurus mulai besok. Jatahnya 10 hari per 30 hari.
   const TITIP_MAX = 10, TITIP_WIN = 30, TITIP_LEN = [1, 2, 3, 5, 7];
+  // v49: tiap makan ada pilihan dasar (basic) yang gratis dan tanpa bonus; tiga yang lain dibeli pakai koin mini game (dapur.js, cuma di UI).
+  // basic sengaja di luar MENU: selera (_prefs) tetap diundi dari tiga menu lama, jadi save lama nggak berubah waktu di-replay.
   // Selera: tiap makhluk punya satu menu yang disuka dan satu yang nggak, ketahuan pelan-pelan. Bisa berubah waktu sudah besar.
   const MENU = { makan_p: ["power", "comfort", "fruit"], makan_m: ["light", "family", "treat"] };
   const FOOD = { power: "eggs on toast", comfort: "pancakes", fruit: "fruit and yogurt", light: "soup", family: "family dinner", treat: "pizza" };
@@ -362,7 +366,7 @@
         else if (opt === "family") { const B = (c.info.bekas || {}).duka ? 1.5 : 1; c.bond = Math.min(100, c.bond + 0.6 * B * (1 - c.bond / 100)); x.need("mood", 4 * B); }
         else if (opt === "cuddle") { c.bond = Math.min(100, c.bond + 0.6 * (1 - c.bond / 100)); x.need("mood", 5); }
         else if (opt === "story" && c.st) { const k = grown ? "charm" : "logic"; c.st.skills[k] = Math.min(100, c.st.skills[k] + 0.3); }
-        this.careNote = MENU[item] ? this._taste(c, x, opt) : item === "mandi" ? this._bath(c, x, day) : null;
+        this.careNote = MENU[item] ? (opt === "basic" ? null : this._taste(c, x, opt)) : item === "mandi" ? this._bath(c, x, day) : null;
         return true;
       }
       if (NEED_MAP[kind]) {

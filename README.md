@@ -6,7 +6,7 @@ https://irf4n-muhammad.github.io/simul-game/ on your phone. The same game with t
 (`?dev=1`, or seven taps on the version label) is at https://irf4n-muhammad.github.io/simul-game/dev/;
 both share one save, so you can switch between them.
 
-Build: **v48**. The game clock runs in real time (one real day = one game day), so a
+Build: **v49**. The game clock runs in real time (one real day = one game day), so a
 creature grows over weeks, not minutes.
 
 ## Install it like an app
@@ -34,10 +34,10 @@ keep separate saves. If you already started in the browser, use **Back up** ther
 This repository is now the **source** of the game; GitHub Pages serves the build.
 
 - `index.html` — page shell (markup and CSS); loads the modules and `ui.js`
-- `ui/*.js` — the UI script in 40 fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed)
+- `ui/*.js` — the UI script in 41 fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed)
 - `*.js` — game modules (engine, storylets, town, cosmetics, ...); see `MODULES.md`
-- `today.js`, `soon.js`, `weather.js`, `balik.js`, `obrolan.js`, `kabar.js` — the Today, Soon and Someday lines, the weather-skin rules, the
-  weekly reverse-care questions, the creature's daily question and the notification plan: pure modules (snapshot in, text out) with tests
+- `today.js`, `soon.js`, `weather.js`, `balik.js`, `obrolan.js`, `kabar.js`, `dapur.js` — the Today, Soon and Someday lines, the weather-skin rules, the
+  weekly reverse-care questions, the creature's daily question, the notification plan and the kitchen coin wallet: pure modules (snapshot in, text out) with tests
 - `sim/` — Node simulators and browser harnesses, with last results in `sim/last/` (see `sim/README.md`)
 - `test/` — unit tests for pure functions (`npm test`)
 - `tools/` — `build_ui.py` (stitch UI, `--release` strips Dev code) and `build_site.py` (assemble `_site/`)
