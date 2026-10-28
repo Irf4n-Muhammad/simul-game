@@ -8,7 +8,7 @@ nama global (`Engine`, `Status`, ...). Modul bertanda ✓ di kolom Node bisa di-
 ## Urutan muat (index.html)
 
 three.js r128 (`lib/`) → brands → telemetry → moments → town-assets → town → engine → storylets → agenda → status → tree →
-cosmetics → career → market → venture → work → pets → mag → wants → tonggak → anak → remaja → game → net → today → soon → weather → balik → **ui.js** (hasil gabungan `ui/*.js`).
+cosmetics → career → market → venture → work → pets → mag → wants → tonggak → anak → remaja → obrolan → game → net → today → soon → weather → balik → kabar → **ui.js** (hasil gabungan `ui/*.js`).
 Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` menyalin tepat daftar itu ke `_site/`.
 
 ## Modul
@@ -42,6 +42,8 @@ Urutan ini juga urutan `<script src>` di `index.html`; `tools/build_site.py` men
 | `soon.js` | 121 | Baris "Soon" dan "Someday" (v44.1, daftar-saran 2–4): mengumpulkan tanggal yang sudah ada (ujian, review, kompetisi, kelahiran, kelas, maraton, ganti fase, ulang tahun, momen terjadwal, event dunia, drop Bazaar, majalah, bangunan, Kindred), yang terdekat ≤60 hari jadi satu kalimat dengan rutinitasnya; pasti vs mungkin; satu harapan tanpa tanggal. v46: tanggal sekolah (kunci `sekolah`, ketuk buka app School); yang pasti dan ≤3 hari selalu di depan. | `Soon { items, line, someday, HORIZON }` | — (potret dari UI) | — | ✓ |
 | `weather.js` | 61 | Cuaca asli jadi kulit langit (v44.1, daftar-saran 33): kode WMO → 6 kulit, zona waktu → kota, URL Open-Meteo, umur cache. Kulit saja; tidak ada yang di engine/game/replay membacanya. | `Weather { SKINS, skin, place, cityOf, url, parse, fresh, label, round1 }` | — (cache di localStorage `mk-cuaca`, bukan save) | — | ✓ |
 | `balik.js` | 74 | Rawat terbalik (v44.1, daftar-saran 32): seminggu sekali makhluk bertanya tentang pemain (8 pertanyaan bergilir), reaksi ikut sifat yang menonjol. Teks ditulis manusia. | `Balik { Q, due, react, EVERY, TRAITS }` | — (jawaban di state.balik, bukan aksi) | — | ✓ |
+| `obrolan.js` | 140 | Pertanyaan harian makhluk (v48, diskusi loop harian): makhluk yang buka Ngobrol, pemain jawab satu ketukan. Bayi tidak bicara: pembukanya keadaan, jawabannya tindakan. Daftar per fase (bayi 10, anak 12, remaja 12, dewasa 8, tua 6) + 3 pertanyaan konteks (ujian dekat, sahabat, event kota), permutasi per siklus dari benih. Tiap jawaban menggeser satu sifat 0,4. | `Obrolan { BANK, CTX, TRAITS, STEP, opener, react, act, parse, size, describe }` | aksi `tanya:<id>:<sifat><+|->` (di-replay; `c.info.tanya_hari`, `tanya_log`) | — | ✓ |
+| `kabar.js` | 55 | Notifikasi (v48): rencana kabar hari ini + 2 hari dari potret: pagi 09:00 (tanggal sekolah, majalah, pertanyaan, sarapan), malam 19:00 kalau rawat malam belum, satu kabar kangen kalau 2 hari nggak buka; paling banyak 2 sehari, jam tenang 21:30–08:00. | `Kabar { plan, PAGI, MALAM, quiet }` | — (potret dari UI) | — | ✓ |
 
 `town-assets.js` adalah data (model kota) dan tidak di-lint. `net.js` dan `town.js` butuh browser (db artifact, three.js).
 
@@ -91,6 +93,8 @@ dengan skrip inline v44. `ui.js` adalah file hasil (di-gitignore); yang diedit a
 | `ui/36-anak.js` | baru (v46) | **app School** di tablet/HP (`phSchool`: kalender tahun ini, ulangan, rapor, sahabat, bakat; cuma baca), `scNext` buat lencana app dan notifikasi lock screen; kartu intro dan tur `school` ada di 14/18; v46.1 bagian Your choices (sekolah, les, liburan, field trip: siapa yang mutusin atau kapan ditanya), hasil di baris kalender, tur `lingkungan` lewat `?` dan `EXTRA_TOURS`; v47 umur ≥ 180 ngoper ke `phSchoolTeen` (ui/37), `scNext` pakai `Remaja.calendar` |
 | `ui/37-remaja.js` | baru (v47) | **app School remaja + kartu "gw siapa"**: `phSchoolTeen` (tahun ini, ulangan dan ujian akhir, rapor dengan catatan wali kelas, sahabat, bakat, aturan rumah dengan `?` tur `aturan`, Your choices: kerja sambilan dan sesudah sekolah; kartu "MIDDLE SCHOOL" / "CLASS OF YYYY"), `siapaBox` (kartu "Who Tutu is · n of 8" di profil: cita-cita, hobi, gaya, kota, sahabat, crew, kerja, beli pertama; sesudah lulus judul "Class of 2027: Tutu, future musician"; tur `siapa` lewat `?`), `EXTRA_TOURS` `aturan` (umur < 195) dan `siapa` (tonggak remaja pertama) |
 | `ui/34-balik.js` | baru (v44.1) | **rawat terbalik**: potret untuk balik.js, lembar tiga pilihan, jawaban ke `state.balik`; tur `balik` |
+| `ui/38-obrolan.js` | baru (v48) | **Attention, kedekatan, pertanyaan harian**: `attnOf`/`attnFill` (kebutuhan cepat di HUD, `state.perhatian`, habis dalam ½ hari), `bondBox` (tingkat kedekatan di profil) dan `bondCheck` (momen kecil sekali tiap naik tingkat, `state.ikatan_tier`), `tanyaShow`/`tanyaAnswer` (pertanyaan di atas bar Ngobrol; Claude nulis pertanyaannya kalau ada, kalau nggak dari obrolan.js), `worldFacts` (sekolah, sahabat, kota, jawaban belakangan buat Ngobrol AI) |
+| `ui/38b-kabar.js` | baru (v48) | **notifikasi**: lembar opt-in (ditawarkan sekali sesudah tur; Family > Notifications), `kabarSync` tiap buka/tinggal: TimestampTrigger kalau ada, antrian ke `sw.js`, timer di halaman |
 | `ui/39-start.js` | 6988–6990 | pemanggilan boot() (dulu `30-start.js`; dinomori 39 supaya tetap terakhir) |
 
 ## Penanda blok Dev (build rilis)

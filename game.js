@@ -5,6 +5,7 @@
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const W = (typeof module !== "undefined") ? require("./wants.js") : globalThis.Wants;  // keinginan: dicek sesudah tiap tindakan pemain
+  const O = (typeof module !== "undefined") ? require("./obrolan.js") : globalThis.Obrolan;  // v48: pertanyaan harian makhluk (Ngobrol)
   const NEED_MAP = { makan: "lapar", mandi: "kebersihan", tidur: "energi" };
 
   // ---------------------------------------------------------------- rawat pagi dan malam
@@ -387,6 +388,20 @@
         c.info.ngobrol = day;
         c.bond = Math.min(100, c.bond + 0.8 * (1 - c.bond / 100));
         c.needs.mood = Math.min(100, c.needs.mood + 4);
+        return true;
+      }
+      if (kind.startsWith("tanya:")) {
+        // v48: jawaban pertanyaan harian (obrolan.js). Sekali sehari per makhluk; geser satu sifat sedikit, plus sedikit ikatan dan mood.
+        // Sifat dan arahnya ada di kunci aksi, jadi replay nggak bergantung pada daftar pertanyaan versi mana pun.
+        const P = O && O.parse(kind);
+        if (!P || c.info.tanya_hari === day) return false;
+        c.info.tanya_hari = day;
+        const x = new E.Ctx(c, day, E.seed_rng("tanya"), this.home, true);
+        x.trait(P.trait, O.STEP * P.sign);
+        c.bond = Math.min(100, c.bond + 0.4 * (1 - c.bond / 100));
+        x.need("mood", 3);
+        (c.info.tanya_log ||= []).push([day, P.id, P.trait + (P.sign > 0 ? "+" : "-")]);
+        if (c.info.tanya_log.length > 20) c.info.tanya_log.splice(0, c.info.tanya_log.length - 20);
         return true;
       }
       if (kind.startsWith("ingat:")) {
