@@ -12,6 +12,7 @@
 //   3. pintu baru terbuka hari ini                      -> "New today: <pintu>"                  (now)
 //   4. momen greget hari ini (skor >= 2, ada kalimat)   -> kalimat momen
 //   5. rawat yang masih terbuka                         -> "<item> for <nama> · N to do"
+//   5a. (v48) pertanyaan harian makhluk (obrolan.js)    -> "<nama> wants to ask you something" / bayi "<nama> needs you" (now)
 //   5b. (v44.1) pertanyaan mingguan makhluk ke pemain   -> "<nama> asks: have you eaten today?"  (now)
 //   6. momen terjadwal <= 2 hari                        -> "<kapan>: <siapa>, <momen>"
 //   7. keinginan aktif pertama                          -> "<nama> wants <keinginan>"
@@ -26,6 +27,7 @@
 //   d         hari ini (today())
 //   doors()   peta pintu terbuka { id: true } (doorsNow)
 //   care()    tampilan rawat { half, items: [{ id, label, open, done }] } atau null kalau belum bisa dirawat
+//   tanya()   (v48) pertanyaan harian yang belum dijawab { id, mode } atau null; boleh tidak ada
 //   balik()   (v44.1) pertanyaan rawat terbalik yang jatuh tempo { id, ic, q } atau null; boleh tidak ada
 //   next()    momen terjadwal berikutnya { id, day, cid, label } atau null
 //   wants()   keinginan aktif [{ id, ic, label }] (Wants.active)
@@ -50,6 +52,8 @@
     if (mom) return { k: "momen:" + mom.tag, ic: mom.kind === "sedih" ? "🌧" : mom.kind === "tegang" ? "⏳" : "✨", tx: mom.line, go: "diary" };
     const v = S.care();
     if (v) { const open = v.items.filter(i => i.open && !i.done); if (open.length) { const i = open[0]; return { k: "rawat:" + i.id + ":" + v.half, ic: v.half ? "☾" : "☀", tx: `${i.label} for ${n}${open.length > 1 ? ` · ${open.length} to do` : ""}`, go: "rawat", id: i.id }; } }
+    // v48: pertanyaan harian (obrolan.js): sesudah rawat, makhluk yang buka obrolan; ketuk = buka Ngobrol
+    const Q = S.tanya ? S.tanya() : null; if (Q) return { k: "tanya:" + Q.id, ic: Q.mode === "keadaan" ? "👶" : "💬", tx: Q.mode === "keadaan" ? `${n} needs you` : `${n} wants to ask you something`, go: "tanya", now: true };
     // v44.1: rawat terbalik (balik.js): sesudah rawat hari ini beres, makhluk gantian nanya tentang pemain
     const B = S.balik ? S.balik() : null; if (B) return { k: "balik:" + B.id, ic: B.ic, tx: B.q, go: "balik", now: true };
     const m = S.next(); if (m && m.day - d <= 2) return { k: "momen:" + m.id, ic: "📌", tx: `${S.fmtWhen(m.day)}: ${S.nameOf(m.cid)}, ${m.label}`, go: "momen", m };

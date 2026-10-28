@@ -32,6 +32,7 @@ function poke() {
   const lines = POKES[cur.fase] || POKES.dewasa;
   surpriseUntil = now() + 350; joyUntil = now() + 1600;
   play(["jump", "wiggle", "squash"][pokeN % 3], 700); say(lines[pokeN++ % lines.length], 1400); burst(["♥"], 3);
+  attnFill(cur.id, 12); save(); drawHud();   // v48: ketuk = sedikit perhatian
 }
 function hideHint() { $("hint").style.opacity = 0; }
 $("prev").onclick = () => { hideHint(); setRoom(roomIx - 1); };

@@ -25,18 +25,21 @@ function facts(m) {
       `Skills: ${Status.SKILLS.map(k => `${Status.SKILL_LABEL[k]} ${s.skills[k]}`).join(", ")}.`, s.rares.length ? `Rare traits: ${s.rares.map(r => r.label).join(", ")}.` : "",
       Tree.pathOf(game.home.get(m.id)).length ? `Callings found in your constellations: ${Tree.pathOf(game.home.get(m.id)).join(", ")}.` : "",
       s.ach.length ? `Proudest moments: ${s.ach.slice(-4).map(a => a.label).join(" ")}` : ""].filter(Boolean).join(" "); })(), m.pasangan ? `Partner: ${m.pasangan}.` : "",
-    `Family at home: ${fam}.`, `Important memories:\n${m.memori.map(x => "- " + x.teks).join("\n") || "-"}`,
+    `Family at home: ${fam}.`, worldFacts(m), `Important memories:\n${m.memori.map(x => "- " + x.teks).join("\n") || "-"}`,
     `Recent events:\n${recent || "-"}`].filter(Boolean).join("\n");
 }
 $("talkBtn").onclick = () => {
   hideHint();
   if (!cur || cur.fase === "meninggal" || cur.fase === "merantau") return;
-  $("bottom").hidden = true; $("talkbar").hidden = false; $("quota").hidden = false;
-  $("quota").textContent = sampleFn ? `Talking with ${cur.nama}` : "Chat needs Claude. Open this page on claude.ai to talk.";
-  $("talkIn").focus();
+  $("bottom").hidden = true; $("talkbar").hidden = false; talkOpen = true;
+  // v48: makhluk yang mulai duluan (ui/38-obrolan.js); ketik bebas cuma kalau Claude ada dan makhluknya sudah bisa ngomong
+  tanyaShow();
+  if (tanyaShown) tanyaAsk(cur, tanyaShown);
+  else if (!$("talkIn").hidden) $("talkIn").focus();
 };
 function closeTalk() {
-  $("bottom").hidden = false; $("talkbar").hidden = true; $("quota").hidden = true; chatCtl?.abort();
+  $("bottom").hidden = false; $("talkbar").hidden = true; $("quota").hidden = true; $("talkTopic").hidden = true; talkOpen = false; chatCtl?.abort();
+  if (tanyaShown && tanyaShown.mode === "kata") say("...", 600);
   const cid = selected, turns = chats[cid] || [], fresh = turns.filter(t => !t.kept);
   if (sampleFn && fresh.filter(t => t.role === "user").length >= 2) {
     fresh.forEach(t => { t.kept = true; }); saveChats();
@@ -77,7 +80,7 @@ async function guardianSay(cid, text, onText) {
   try {
     const { text: reply } = await sampleFn(history, { modelTier: "quick", cache: false, signal: chatCtl.signal, onText: ({ text: t }) => onText && onText(t) });
     turns.push({ role: "assistant", content: reply, d: today(), h: phClock() });
-    game.act(cid, "ngobrol"); save(); refresh();
+    game.act(cid, "ngobrol"); attnFill(cid, 100); save(); refresh();
     return reply;
   } catch (err) { turns.pop(); failHard(err); throw err; }
   finally { chatBusy = false; saveChats(); }

@@ -100,13 +100,25 @@ function coachEvent(kind) {
   if (!state || state.tut == null || state.tut >= COACH.length) return;
   if (COACH[state.tut].on === kind) { state.tut += 1; save(); setTimeout(coachShow, 900); }
 }
+// v48: gambar makanan di lembar pilih makan (diskusi loop harian: "makanan harus ada fotonya"). Ilustrasi SVG, belum foto asli.
+const PLATE = '<rect width="64" height="64" fill="#F3E9DC"/><ellipse cx="32" cy="36" rx="27" ry="22" fill="#fff"/><ellipse cx="32" cy="36" rx="21" ry="16.5" fill="#F7F3EE"/>';
+const FOOD_ART = {
+  power: PLATE + '<rect x="15" y="22" width="30" height="27" rx="7" fill="#C98A4B"/><rect x="18" y="25" width="24" height="21" rx="5" fill="#E8B878"/><path d="M22 30c3-5 12-6 16-1s2 13-5 13-14-6-11-12Z" fill="#fff"/><circle cx="30" cy="35" r="5" fill="#F2B233"/><circle cx="28.5" cy="33.5" r="1.4" fill="#FCE3A0"/>',
+  comfort: PLATE + '<ellipse cx="32" cy="44" rx="17" ry="5" fill="#C98A4B"/><ellipse cx="32" cy="40" rx="17" ry="5" fill="#E2A75E"/><ellipse cx="32" cy="36" rx="17" ry="5" fill="#C98A4B"/><ellipse cx="32" cy="32" rx="17" ry="5" fill="#E2A75E"/><ellipse cx="32" cy="28" rx="17" ry="5" fill="#EDBB74"/><path d="M20 28c4 3 20 3 24 0 1 4-2 6-3 10-1-3-3-4-4-1-2-3-4-3-5 0-2-3-5-4-7-1-2-3-5-5-5-8Z" fill="#9A4E17" opacity=".85"/><rect x="28" y="23" width="8" height="5" rx="1.5" fill="#FFE38A"/>',
+  fruit: '<rect width="64" height="64" fill="#F3E9DC"/><path d="M8 30h48c0 15-11 24-24 24S8 45 8 30Z" fill="#7FA8C9"/><ellipse cx="32" cy="30" rx="24" ry="7" fill="#F8F6F2"/><circle cx="22" cy="28" r="4" fill="#D9374B"/><circle cx="27" cy="31" r="3.2" fill="#4B3F8F"/><circle cx="31" cy="27" r="3" fill="#4B3F8F"/><circle cx="43" cy="29" r="5" fill="#8DBF4E"/><circle cx="43" cy="29" r="3" fill="#C8E08A"/><circle cx="36" cy="31" r="3.4" fill="#F5E2A0"/><circle cx="36" cy="31" r="1" fill="#D8BE6A"/><path d="M17 31l3-2" stroke="#2F7A3A" stroke-width="1.4"/>',
+  light: '<rect width="64" height="64" fill="#F3E9DC"/><path d="M10 32h44c0 13-10 21-22 21S10 45 10 32Z" fill="#E9E3DA"/><ellipse cx="32" cy="32" rx="22" ry="7" fill="#E2A93F"/><circle cx="24" cy="32" r="2.4" fill="#E8742E"/><circle cx="38" cy="30.5" r="2.4" fill="#E8742E"/><rect x="29" y="31" width="5" height="3" rx="1" fill="#F7EFD8"/><path d="M41 33l4-1M19 30l3 1" stroke="#5E9B3B" stroke-width="2" stroke-linecap="round"/><path d="M24 22c-3-3 3-5 0-9M32 21c-3-3 3-5 0-9M40 22c-3-3 3-5 0-9" stroke="#C9BFB2" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  family: '<rect width="64" height="64" fill="#F3E9DC"/><ellipse cx="32" cy="40" rx="29" ry="17" fill="#fff"/><ellipse cx="32" cy="36" rx="17" ry="12" fill="#B8662C"/><ellipse cx="29" cy="32" rx="10" ry="6" fill="#D88A45"/><path d="M47 30l6-5M48 34l7-2" stroke="#F3E2C9" stroke-width="4" stroke-linecap="round"/><circle cx="12" cy="44" r="3.5" fill="#E8742E"/><circle cx="17" cy="49" r="3.5" fill="#5E9B3B"/><circle cx="47" cy="49" r="3.5" fill="#E8742E"/><circle cx="52" cy="44" r="3.5" fill="#5E9B3B"/><circle cx="33" cy="51" r="3" fill="#F2D36B"/>',
+  treat: '<rect width="64" height="64" fill="#F3E9DC"/><circle cx="32" cy="34" r="25" fill="#D9A15A"/><circle cx="32" cy="34" r="21" fill="#D9472E"/><path d="M16 30c5 2 9-4 14-1s10 5 18-1c1 5-2 14-8 17s-17 3-22-3-3-9-2-12Z" fill="#F6D36B"/><circle cx="24" cy="28" r="3.5" fill="#A8281E"/><circle cx="38" cy="25" r="3.5" fill="#A8281E"/><circle cx="40" cy="40" r="3.5" fill="#A8281E"/><circle cx="26" cy="42" r="3.5" fill="#A8281E"/><path d="M32 34 32 9M32 34 53.6 21.5" stroke="#C88A44" stroke-width="1.2"/><circle cx="33" cy="33" r="1.4" fill="#3E7D2E"/><circle cx="46" cy="33" r="1.4" fill="#3E7D2E"/>',
+};
+const foodArt = id => FOOD_ART[id] ? `<span class="food-ph" aria-hidden="true"><svg viewBox="0 0 64 64">${FOOD_ART[id]}</svg></span>` : "";
 function careDo(i) {
   if (!canCare()) return;
   if (i.opts) {
     openSheet("care", `<span class="ribbon" style="background: var(--sky)">${i.half ? "EVENING" : "MORNING"} · ${esc(cur.nama)}</span>
       <h2>${{ makan_p: "What's for breakfast?", makan_m: "What's for dinner?", tidur: "How should bedtime go?" }[i.id]}</h2>
       ${i.overdue ? `<p>It's late, so this one won't give a bonus. ${esc(cur.nama)} still needs it.</p>` : ""}
-      <div class="carepick">${i.opts.map(o => { const fb = foodBrand(o.id); if (fb) Tele.brand("food:" + o.id, "tampil", fb.tier); return `<button class="choice yes" data-opt="${o.id}"><b>${esc(fb ? fb.name : o.label)}${fb ? ' <i class="ptag">Partner</i>' : ""}${o.taste > 0 ? " ♥" : ""}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}</small></button>`; }).join("")}</div>
+      <div class="carepick">${i.opts.map(o => { const fb = foodBrand(o.id); if (fb) Tele.brand("food:" + o.id, "tampil", fb.tier); const ph = fb ? "" : foodArt(o.id), tx = `<b>${esc(fb ? fb.name : o.label)}${fb ? ' <i class="ptag">Partner</i>' : ""}${o.taste > 0 ? " ♥" : ""}</b><small>${esc(o.note)}${o.taste > 0 ? ` · ${esc(cur.nama)} loves this` : o.taste < 0 ? ` · ${esc(cur.nama)} is not a fan` : ""}</small>`;
+        return `<button class="choice yes${ph ? " food" : ""}" data-opt="${o.id}">${ph ? `${ph}<span class="food-tx">${tx}</span>` : tx}</button>`; }).join("")}</div>
       <button class="close" data-close="1">Not now</button>`);
     sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => { closeSheet(); careAct(i, b.dataset.opt); });
     sheet.querySelector("[data-close]").onclick = closeSheet;
@@ -119,6 +131,7 @@ function careAct(i, opt) {
   const fb = foodBrand(opt);
   if (fb) { Tele.brand("food:" + opt, "pakai", fb.tier); if (note && FOOD_WORD[opt] && note.includes(FOOD_WORD[opt])) { note = note.split(FOOD_WORD[opt]).join(fb.name); Tele.brand("food:" + opt, "sebut", fb.tier); } }
   drainNoon(); save(); refresh(); joyUntil = now() + 2600; coachEvent("care");
+  if (state.kabar && state.kabar.on) kabarSync();   // v48: rawat malam beres = kabar malam ini dibatalkan
   if (note) setTimeout(() => story(cur.nama, note, false), 900);
   playCare({ makan_p: "makan", makan_m: "makan", mandi: "mandi", tidur: "tidur" }[i.id], i, opt);
 }
@@ -140,6 +153,7 @@ function doAction() {
   const before = r.act === "makan" ? cur.needs.lapar : r.act === "mandi" ? cur.needs.kebersihan : r.act === "tidur" ? cur.needs.energi : cur.ikatan;
   if (r.act !== "peluk" && before > 95) { say({ makan: "I'm full!", mandi: "Already clean!", tidur: "Not sleepy!" }[r.act]); play("shake", 600); return; }
   if (!game.act(selected, r.act)) return;
+  if (r.act === "peluk") attnFill(selected, 100);   // v48: main di Playroom ngisi Attention
   save(); refresh(); joyUntil = now() + 2600;
   playCare(r.act);
 }

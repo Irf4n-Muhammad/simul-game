@@ -67,6 +67,14 @@ test("rawat terbalik (v44.1): sesudah rawat beres, sebelum momen terjadwal", () 
   assert.equal(Today.line(base({ balik: () => null, next: () => soon })).k, "momen:iv1");
 });
 
+test("pertanyaan harian (v48): sesudah rawat, sebelum rawat terbalik; bayi = keadaan", () => {
+  const B = () => ({ id: "makan", ic: "🍚", q: "Mochi asks: have you eaten today?" });
+  assert.deepEqual(Today.line(base({ tanya: () => ({ id: "a_pr", mode: "kata" }), balik: B })), { k: "tanya:a_pr", ic: "💬", tx: "Mochi wants to ask you something", go: "tanya", now: true });
+  assert.equal(Today.line(base({ tanya: () => ({ id: "b_malam", mode: "keadaan" }) })).tx, "Mochi needs you");
+  assert.equal(Today.line(base({ tanya: () => ({ id: "a_pr", mode: "kata" }), care: () => careOpen })).k, "rawat:fruit:0");
+  assert.equal(Today.line(base({ tanya: () => null, balik: B })).k, "balik:makan");
+});
+
 test("momen terjadwal: tampil kalau <= 2 hari lagi", () => {
   const L = Today.line(base({ next: () => soon }));
   assert.deepEqual(L, { k: "momen:iv1", ic: "📌", tx: "In 2 days: Kiko, job interview", go: "momen", m: soon });

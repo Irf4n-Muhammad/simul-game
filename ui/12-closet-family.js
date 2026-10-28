@@ -54,6 +54,7 @@ function showFamily() {
     ${awayBox()}
     <button class="secondary" id="closetBtn">${esc(cur.nama)}'s closet · ${Cosmetics.CURRENCY.ic} ${Cosmetics.saldo(state)}</button>
     <div class="row2"><button class="secondary" id="chronBtn">Family chronicle</button><button class="secondary" id="bkBtn">Back up${backupDue() ? " ⚠︎" : ""}</button></div>
+    <button class="secondary" id="kabarBtn">Notifications${state.kabar && state.kabar.on && KABAR_OK && Notification.permission === "granted" ? " · on" : " · off"}</button>
     <button class="secondary" id="skyBtn">Sky & weather${WX ? ` · ${Weather.label(WX)}` : wxCfg.on ? "" : " · off"}</button>
     ${DEV ? `<button class="secondary" id="devBtn">Dev tools${state.dev_stars ? " · stars open" : ""}</button>` : ""}
     <div class="row2"><button class="secondary" id="resetBtn">Start over</button><button class="close" data-close="1">Close</button></div>
@@ -65,6 +66,7 @@ function showFamily() {
   $("bkBtn").onclick = showBackup;
   $("closetBtn").onclick = () => showCloset("wear");
   $("skyBtn").onclick = showSky;
+  $("kabarBtn").onclick = () => showKabar(false);
   if (DEV) $("devBtn").onclick = () => showDev();
   // DEV-NEXT
   bindVerTap("verTap");
@@ -85,6 +87,7 @@ function showProfile(id) {
     <p>${fmtAge(m.umur)} old${parents.length ? ` · child of ${esc(parents.join(" & "))}` : ""}${m.pasangan ? ` · with ${esc(m.pasangan)}` : ""}${sah ? ` · best friends with ${esc(sah.nama)}` : ""}</p>
     <div>${habitsOf(id).map(h => `<span class="tag">${esc(HABITS[h].label)}</span>`).join("")}</div>
     ${tasteLine(m)}
+    ${bondBox(id)}
     ${wantsBox(id, here)}
     ${tonggakBox(id)}
     ${siapaBox(id)}
