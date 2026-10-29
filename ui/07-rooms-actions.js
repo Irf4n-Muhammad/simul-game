@@ -133,7 +133,7 @@ function careDo(i) {
       if (food && !Dapur.can(W, o)) { say("Not enough coins. Play Fruit catch?", 2400); b.classList.add("nudge"); setTimeout(() => b.classList.remove("nudge"), 500); return; }
       closeSheet(); careAct(i, o);
     });
-    if ($("careEarn")) $("careEarn").onclick = () => { closeSheet(); mgStart(); };
+    if ($("careEarn")) $("careEarn").onclick = () => { closeSheet(); showKitchen(); };
     sheet.querySelector("[data-close]").onclick = closeSheet;
   } else careAct(i, null);
 }
