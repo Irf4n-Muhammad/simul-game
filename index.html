@@ -583,6 +583,9 @@ svg { stroke: currentColor; }
 .fcx-top b { font-size: 28px; min-width: 60px; } .fcx-top span { font-size: 20px; padding: 4px 14px; border-radius: 999px; background: var(--glass-strong); }
 .fcx-top .x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--glass-strong); font-size: 18px; }
 .fcx-card { position: absolute; left: 24px; right: 24px; top: 40%; transform: translateY(-50%); z-index: 3; background: #FBF8F3; border-radius: 24px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.fcx-slash { background: radial-gradient(circle at 50% 35%, #8A5A3A, #4E2F1D 75%); }
+.fcx-slash .fcx-top { color: #FBF8F3; } .fcx-slash .fcx-top span, .fcx-slash .fcx-top .x { color: var(--ink); }
+#sheet .choice[data-mg] { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; } #sheet .choice[data-mg] small { font-weight: 500; opacity: .8; }
 .fcx-card b { font-size: 18px; } .fcx-card small { font-size: 14px; color: var(--ink-soft); } .fcx-card .row2 { justify-content: center; }
 /* v48: pertanyaan harian di atas bar ngobrol (ui/38-obrolan.js) */
 .talk-topic { position: absolute; left: 16px; right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 22px; background: var(--glass-strong); border: 1px solid rgba(255,255,255,.6); box-shadow: var(--shadow); }

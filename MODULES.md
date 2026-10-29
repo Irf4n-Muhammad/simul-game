@@ -96,7 +96,7 @@ dengan skrip inline v44. `ui.js` adalah file hasil (di-gitignore); yang diedit a
 | `ui/34-balik.js` | baru (v44.1) | **rawat terbalik**: potret untuk balik.js, lembar tiga pilihan, jawaban ke `state.balik`; tur `balik` |
 | `ui/38-obrolan.js` | baru (v48) | **Attention, kedekatan, pertanyaan harian**: `attnOf`/`attnFill` (kebutuhan cepat di HUD, `state.perhatian`, habis dalam ½ hari), `bondBox` (tingkat kedekatan di profil) dan `bondCheck` (momen kecil sekali tiap naik tingkat, `state.ikatan_tier`), `tanyaShow`/`tanyaAnswer` (pertanyaan di atas bar Ngobrol; Claude nulis pertanyaannya kalau ada, kalau nggak dari obrolan.js), `worldFacts` (sekolah, sahabat, kota, jawaban belakangan buat Ngobrol AI) |
 | `ui/38b-kabar.js` | baru (v48) | **notifikasi**: lembar opt-in (ditawarkan sekali sesudah tur; Family > Notifications), `kabarSync` tiap buka/tinggal: TimestampTrigger kalau ada, antrian ke `sw.js`, timer di halaman |
-| `ui/38c-dapur.js` | baru (v49) | **koin dan mini game**: tombol koin di Kitchen (`dapurChip`, dipanggil `careUi`), lembar Kitchen, mini game Fruit catch (`mgStart`: kanvas 2D 30 detik, adegan 3D dijeda selama main lewat `FC` di ui/29); harga dan potong koin di lembar makan (ui/07) |
+| `ui/38c-dapur.js` | baru (v49), v50 | **koin dan mini game**: tombol koin "Play" di semua ruangan (`dapurChip`, dipanggil `careUi`), lembar Games (`showKitchen`, daftar `MG_GAMES`), mini game Fruit slash (v50, goresan jari, bom −5, kombo) dan Fruit catch (`mgStart(k)`: kanvas 2D 30 detik, adegan 3D dijeda selama main lewat `FC` di ui/29); harga dan potong koin di lembar makan (ui/07) |
 | `ui/39-start.js` | 6988–6990 | pemanggilan boot() (dulu `30-start.js`; dinomori 39 supaya tetap terakhir) |
 
 ## Penanda blok Dev (build rilis)
