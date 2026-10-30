@@ -38,10 +38,17 @@ function arcDraw() {
   const W = wallet(), left = Dapur.left(W, today());
   ARC.el.innerHTML = `<header><b>Games</b><span class="arc-coin">${coinTxt(W.koin)}</span><button class="x" id="arcX" aria-label="Close">✕</button></header>
     <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
-    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b><small>${W.best[k] ? `Best ${W.best[k]}` : g.timed ? "30 seconds" : "Until you miss"}</small></button>`; }).join("")}</div>
+    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
     <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
   ARC.el.querySelector("#arcX").onclick = arcClose;
   ARC.el.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => mgStart(b.dataset.mg); });
+}
+// kotak game: rekor dan peringkatnya, bukan lama mainnya (Muhammad 30 Okt: detik bikin orang males main)
+const TIER_COL = ["#ffffff55", "#C98A4B", "#C9CED6", "#F2C94C", "#7FD8F0", "#E58AF0"];
+function arcRank(k, best) {
+  if (!best) return `<span class="arc-rank"><em>New</em></span><small>No record yet</small>`;
+  const t = Dapur.tier(k, best);
+  return `<span class="arc-rank" style="--t: ${TIER_COL[t.ix]}"><em>${t.name}</em></span><span class="arc-best">${best}</span>`;
 }
 function arcClose() {
   if (!ARC) return;
@@ -356,7 +363,10 @@ function mgDone() {
   save(); dapurChip();
   Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1 });
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
-  mgCard(`<b>${what} · score ${FC.score}${r.best ? " · new best!" : ""}</b>
+  const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
+  const line = r.best ? (T.next ? `New record · ${T.name} · ${T.need} more for ${T.next}` : `New record · ${T.name}`)
+    : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `So close! ${gap} short of your record (${W.best[k]})` : `Record ${W.best[k] || 0} · ${T.name}`;
+  mgCard(`<b>${what} · score ${FC.score}</b><span class="fcx-tier${r.best ? " up" : ""}">${line}</span>
     <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
     <button class="choice yes fcx-next" id="mgAgain">Play again</button>
     <button class="choice no" id="mgOk">All games</button>`);
