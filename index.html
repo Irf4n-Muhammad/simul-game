@@ -583,9 +583,22 @@ svg { stroke: currentColor; }
 .fcx-top b { font-size: 28px; min-width: 60px; } .fcx-top span { font-size: 20px; padding: 4px 14px; border-radius: 999px; background: var(--glass-strong); }
 .fcx-top .x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--glass-strong); font-size: 18px; }
 .fcx-card { position: absolute; left: 24px; right: 24px; top: 40%; transform: translateY(-50%); z-index: 3; background: #FBF8F3; border-radius: 24px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.fcx-stack { background: linear-gradient(#1F2547, #4B4F8F 70%, #7C6FB0); } .fcx-pisau { background: radial-gradient(circle at 50% 34%, #3A5A3A, #1D2A22 70%); }
+.fcx-stack .fcx-top, .fcx-pisau .fcx-top { color: #FBF8F3; } .fcx-stack .fcx-top .x, .fcx-pisau .fcx-top .x { color: var(--ink); }
+.fcx-card .fcx-next { text-align: center; font-size: 17px; } .fcx-card .fcx-next i { font-style: normal; }
+.fcx-card .row2 .choice { flex: 1; text-align: center; }
+.arc { position: fixed; inset: 0; z-index: 55; background: radial-gradient(circle at 50% 0%, #2C2950, #14121F 70%); color: #F4F1FA; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.arc header { display: flex; align-items: center; gap: 10px; } .arc header b { font-size: 28px; flex: 1; letter-spacing: -.01em; }
+.arc-coin { font-weight: 800; font-size: 15px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.1); }
+.arc .x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font-size: 18px; }
+.arc-sub { margin: 0; font-size: 14px; color: rgba(244,241,250,.7); }
+.arc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+.arc-tile { position: relative; aspect-ratio: 1 / 1.05; border: 0; border-radius: 22px; padding: 14px; text-align: left; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 70%, #000)); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+.arc-tile i { position: absolute; top: 12px; left: 14px; font-style: normal; font-size: 44px; } .arc-tile b { font-size: 17px; } .arc-tile small { font-size: 12.5px; opacity: .85; font-weight: 600; }
+.arc-tile:active { transform: scale(.97); }
+.arc-foot { text-align: center; color: rgba(244,241,250,.5); font-size: 12.5px; margin-top: auto; }
 .fcx-slash { background: radial-gradient(circle at 50% 35%, #8A5A3A, #4E2F1D 75%); }
 .fcx-slash .fcx-top { color: #FBF8F3; } .fcx-slash .fcx-top span, .fcx-slash .fcx-top .x { color: var(--ink); }
-#sheet .choice[data-mg] { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; } #sheet .choice[data-mg] small { font-weight: 500; opacity: .8; }
 .fcx-card b { font-size: 18px; } .fcx-card small { font-size: 14px; color: var(--ink-soft); } .fcx-card .row2 { justify-content: center; }
 /* v48: pertanyaan harian di atas bar ngobrol (ui/38-obrolan.js) */
 .talk-topic { position: absolute; left: 16px; right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 22px; background: var(--glass-strong); border: 1px solid rgba(255,255,255,.6); box-shadow: var(--shadow); }

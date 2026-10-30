@@ -134,7 +134,7 @@ let last = now();
 function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
-  if (FC) return;   // v49: mini game nutupin layar; adegan 3D nggak usah digambar
+  if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
   if (TOWN && TOWN.on) {
     if (Math.floor(ts / 30) !== Math.floor((ts - dt) / 30)) applyLight();
     TOWN.frame(t, dt); renderer.render(TOWN.scene, TOWN.camera);

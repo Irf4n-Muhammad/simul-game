@@ -13,24 +13,47 @@ function dapurChip() {
   const W = wallet(), t = `${coinTxt(W.koin)} · Play`;
   if (b.textContent !== t) b.textContent = t;
 }
-// daftar game: id dipakai buat skor terbaik (W.best) dan telemetri
+// daftar game: id dipakai buat skor terbaik (W.best) dan telemetri. waktu: true = ronde 30 detik, false = sampai gagal.
+// v51 (diskusi 30 Okt): mini game itu ruang sendiri, kayak buka HP khusus game. Makhluknya nggak ikut; yang nyambung cuma koin.
+// Nilai jualnya transisi: pindah dari game ke game harus tanpa effort (tombol "Next" di kartu akhir, langsung main).
 const MG_GAMES = {
-  potong: { name: "Fruit slash", blurb: "Swipe to slice the fruit. Leave the bombs alone.", how: "Swipe across the fruit. Slice three in one swipe for a bonus. Bombs cost you five." },
-  buah: { name: "Fruit catch", blurb: "Catch the falling fruit in a basket. Bugs cost you three.", how: "Move the basket with your finger. Fruit +1, star +3, bug −3." },
+  potong: { name: "Fruit slash", icon: "🍉", color: "#E8506A", timed: true, how: "Swipe across the fruit. Three in one swipe is a combo. Bombs cost five." },
+  stack: { name: "Stack", icon: "🧱", color: "#5B7BD5", timed: false, how: "Tap to drop the block. Whatever hangs over falls off. Land it exactly for a bonus." },
+  pisau: { name: "Knife throw", icon: "🔪", color: "#5E8F3E", timed: false, how: "Tap to throw a knife into the log. Don't hit another knife." },
+  buah: { name: "Fruit catch", icon: "🧺", color: "#E59A2E", timed: true, how: "Move the basket with your finger. Fruit +1, star +3, bug −3." },
 };
+const MG_ORDER = Object.keys(MG_GAMES);
+let ARC = null;   // layar Games (hub); adegan 3D dijeda selama ini ada (ui/29)
 function showKitchen() {
-  const W = wallet(), d = today(), left = Dapur.left(W, d), n = esc(cur.nama);
-  openSheet("dapur", `<span class="ribbon" style="background: var(--sky)">GAMES · ${coinTxt(W.koin)}</span>
-    <h2>Play a little</h2>
-    <p>Thirty seconds a round. Every point is a coin for ${n}'s nice food.</p>
-    <small class="sub">${left ? `You can still earn ${coinTxt(left)} today.` : "You've earned all the coins for today. You can still play for your best score."}</small>
-    ${Object.entries(MG_GAMES).map(([k, g]) => `<button class="choice${k === "potong" ? " yes" : ""}" data-mg="${k}"><b>${g.name}</b><small>${g.blurb}${W.best[k] ? ` Best: ${W.best[k]}.` : ""}</small></button>`).join("")}
-    <span class="lbl">Prices</span>
-    <small class="sub">Basic food is always free. The nice ones cost coins: ${Object.entries(Dapur.PRICE).filter(([, p]) => p).map(([k, p]) => `${esc(FOOD_WORD[k] || k)} ${p}`).join(", ")}.</small>
-    <button class="close" data-close="1">Close</button>`);
-  sheet.querySelector("[data-close]").onclick = closeSheet;
-  sheet.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => { closeSheet(); mgStart(b.dataset.mg); }; });
-  Tele.ev("dapur", { a: "buka", koin: W.koin });
+  if (ARC) return;
+  const el = document.createElement("div");
+  el.className = "arc"; el.id = "arcBox";
+  document.body.appendChild(el);
+  ARC = { el, played: new Set(), rounds: 0, t0: now() };
+  arcDraw();
+  Tele.ev("minigame", { a: "hub" });
+}
+function arcDraw() {
+  if (!ARC) return;
+  const W = wallet(), left = Dapur.left(W, today());
+  ARC.el.innerHTML = `<header><b>Games</b><span class="arc-coin">${coinTxt(W.koin)}</span><button class="x" id="arcX" aria-label="Close">✕</button></header>
+    <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
+    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b><small>${W.best[k] ? `Best ${W.best[k]}` : g.timed ? "30 seconds" : "Until you miss"}</small></button>`; }).join("")}</div>
+    <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
+  ARC.el.querySelector("#arcX").onclick = arcClose;
+  ARC.el.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => mgStart(b.dataset.mg); });
+}
+function arcClose() {
+  if (!ARC) return;
+  if (FC) mgEnd(true);
+  Tele.ev("minigame", { a: "hub_tutup", game: ARC.played.size, ronde: ARC.rounds, dtk: Math.round((now() - ARC.t0) / 1000) });
+  ARC.el.remove(); ARC = null;
+  dapurChip();
+}
+// game berikutnya buat tombol Next: yang belum dimainkan di sesi ini dulu, urut dari daftar
+function mgNext(k) {
+  const i = MG_ORDER.indexOf(k), rest = MG_ORDER.slice(i + 1).concat(MG_ORDER.slice(0, i));
+  return rest.find(x => !ARC || !ARC.played.has(x)) || rest[0];
 }
 
 // ---- layar mini game bersama: kanvas 2D di atas layar (adegan 3D berhenti selama FC ada, lihat ui/29)
@@ -42,8 +65,8 @@ function mgStart(k = "potong") {
   if (FC) return;
   const g = MG_GAMES[k] || MG_GAMES.potong;
   const el = document.createElement("div");
-  el.className = "fcx" + (k === "potong" ? " fcx-slash" : ""); el.id = "fcBox";
-  el.innerHTML = `<div class="fcx-top"><b id="mgScore">0</b><span id="mgTime">${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
+  el.className = "fcx fcx-" + k; el.id = "fcBox";
+  el.innerHTML = `<div class="fcx-top"><b id="mgScore">0</b><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -54,6 +77,11 @@ function mgStart(k = "potong") {
     const aim = e => { FC.bx = Math.max(0, Math.min(cv.width, pos(e)[0])); };
     cv.addEventListener("pointerdown", aim); cv.addEventListener("pointermove", aim);
     FC.key = e => { if (e.key === "ArrowLeft") FC.bx -= 40 * dpr; if (e.key === "ArrowRight") FC.bx += 40 * dpr; FC.bx = Math.max(0, Math.min(cv.width, FC.bx)); };
+    window.addEventListener("keydown", FC.key);
+  } else if (!g.timed) {
+    // Stack dan Knife throw: satu tap = satu aksi
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) (k === "stack" ? stackTap : knifeTap)(); });
+    FC.key = e => { if ((e.key === " " || e.key === "Enter") && FC.run) { e.preventDefault(); (k === "stack" ? stackTap : knifeTap)(); } };
     window.addEventListener("keydown", FC.key);
   } else {
     // goresan jari: tiap ruas baru dicek ke semua buah; satu goresan = satu kombo
@@ -66,11 +94,15 @@ function mgStart(k = "potong") {
   $("mgX").onclick = () => mgEnd(true);
   mgCard(`<b>${g.name}</b><small>${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
   $("mgPlay").onclick = mgRun;
-  Tele.ev("minigame", { k, a: "buka" });
+  Tele.ev("minigame", { k, a: "buka", ke: ARC ? ARC.played.size + 1 : 1 });
+  // yang udah pernah dimainkan langsung jalan, tanpa kartu cara main (pindah game harus tanpa effort)
+  if (wallet().best[k]) mgRun();
 }
 function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
 function mgRun() {
-  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0 });
+  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0 });
+  if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
+  if (ARC) ARC.played.add(FC.k);
   mgCard(null); $("mgScore").textContent = "0";
   requestAnimationFrame(mgFrame);
 }
@@ -80,10 +112,13 @@ function mgFrame() {
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
-  if (FC.k === "buah") catchStep(dt, el); else slashStep(dt, el);
-  const rest = Math.max(0, MG_LEN - el);
-  $("mgTime").textContent = Math.ceil(rest);
-  if (rest <= 0) return mgDone();
+  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep }[FC.k];
+  step(dt, el);
+  if (MG_GAMES[FC.k].timed) {
+    const rest = Math.max(0, MG_LEN - el);
+    $("mgTime").textContent = Math.ceil(rest);
+    if (rest <= 0) return mgDone();
+  } else if (FC.over && now() - FC.over > 900) return mgDone();   // gagal: jeda sebentar biar kelihatan jatuhnya
   requestAnimationFrame(mgFrame);
 }
 const mgAdd = n => { FC.score = Math.max(0, FC.score + n); $("mgScore").textContent = FC.score; };
@@ -201,17 +236,138 @@ function slashEnd() {
   FC.combo = 0;
 }
 
+// ---- Stack (v51): balok geser kiri-kanan, tap buat jatuhin; yang nggak numpuk kepotong. Sampai meleset total.
+function stackInit() {
+  const { cv } = FC, w = cv.width * 0.62;
+  Object.assign(FC, { tower: [{ x: (cv.width - w) / 2, w }], cam: 0, perfect: 0 });
+  stackNew();
+}
+function stackNew() {
+  const { cv, dpr, tower } = FC, top = tower[tower.length - 1], n = tower.length, fromL = n % 2 === 1;
+  FC.mov = { x: fromL ? -top.w : cv.width, w: top.w, dir: fromL ? 1 : -1, v: (230 + Math.min(n, 40) * 9) * dpr };
+}
+function stackTap() {
+  const m = FC.mov, top = FC.tower[FC.tower.length - 1], dpr = FC.dpr; if (!m) return;
+  let x = m.x, w = m.w;
+  const lo = Math.max(x, top.x), hi = Math.min(x + w, top.x + top.w);
+  if (hi - lo <= 0) { FC.bits.push({ x, w, y: FC.tower.length, vy: 0, vx: m.dir * 60 * dpr }); FC.mov = null; FC.over = now(); navigator.vibrate && navigator.vibrate(120); return; }
+  if (Math.abs(x - top.x) < 6 * dpr) {
+    x = top.x; FC.perfect += 1; mgAdd(2);
+    FC.pops.push({ txt: FC.perfect > 1 ? `Perfect ×${FC.perfect}` : "Perfect +2", x: x + w / 2, y: FC.tower.length, c: "#FFF6C8", life: 0.9 });
+  } else {
+    // yang nggantung jatuh
+    const cut = x < top.x ? { x, w: top.x - x } : { x: hi, w: x + w - hi };
+    FC.bits.push({ ...cut, y: FC.tower.length, vy: 0, vx: (x < top.x ? -1 : 1) * 80 * dpr });
+    x = lo; w = hi - lo; FC.perfect = 0; mgAdd(1);
+  }
+  FC.tower.push({ x, w }); FC.caught = FC.tower.length - 1;
+  stackNew();
+}
+function stackStep(dt) {
+  const { cv, ctx, dpr, tower } = FC, W = cv.width, H = cv.height, bh = 30 * dpr, base = H - 110 * dpr;
+  const m = FC.mov;
+  if (m) { m.x += m.dir * m.v * dt; if (m.x > W - m.w * 0.15 && m.dir > 0) m.dir = -1; if (m.x < -m.w * 0.85 && m.dir < 0) m.dir = 1; }
+  // kamera naik ngikutin menara: puncak di sekitar 40% layar
+  const want = Math.max(0, tower.length * bh - (base - H * 0.4));
+  FC.cam += (want - FC.cam) * Math.min(1, dt * 6);
+  const yOf = i => base - i * bh + FC.cam;
+  const slab = (x, w, i, alpha = 1) => {
+    const y = yOf(i), hue = (200 + i * 11) % 360;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsl(${hue} 55% 58%)`; ctx.fillRect(x, y - bh, w, bh);
+    ctx.fillStyle = `hsl(${hue} 65% 72%)`; ctx.fillRect(x, y - bh, w, 7 * dpr);
+    ctx.globalAlpha = 1;
+  };
+  tower.forEach((b, i) => { if (yOf(i) > -bh && yOf(i) - bh < H) slab(b.x, b.w, i); });
+  if (m) slab(m.x, m.w, tower.length);
+  for (const b of FC.bits) { b.vy += H * 2.2 * dt; b.x += b.vx * dt; b.dy = (b.dy || 0) + b.vy * dt; ctx.save(); ctx.translate(0, b.dy); slab(b.x, b.w, b.y, 0.9); ctx.restore(); }
+  FC.bits = FC.bits.filter(b => b.dy < H * 1.5);
+  ctx.font = `800 ${22 * dpr}px system-ui, sans-serif`;
+  for (const p of FC.pops) { p.life -= dt; ctx.globalAlpha = Math.max(0, p.life / 0.9); ctx.fillStyle = p.c; ctx.fillText(p.txt, p.x, yOf(p.y) - bh * 2 - (0.9 - p.life) * 40 * dpr); }
+  ctx.globalAlpha = 1; FC.pops = FC.pops.filter(p => p.life > 0);
+}
+
+// ---- Knife throw (v51): kayu berputar, tap buat lempar pisau. Kena pisau lain = selesai. Kayu penuh = +3, kayu baru.
+function knifeInit() { Object.assign(FC, { lvl: 0, fly: null, bounce: null, hitT: 0 }); knifeLog(); }
+function knifeLog() {
+  const L = FC.lvl;
+  FC.ang = 0; FC.stuck = []; FC.need = 6 + Math.min(L, 6);
+  // mulai kayu kedua ada pisau penghalang
+  for (let i = 0; i < Math.min(L, 3); i++) FC.stuck.push({ t: Math.random() * Math.PI * 2, old: true });
+  FC.spin = { base: 2.2 + L * 0.25, wob: L >= 2 ? 1.6 : 0, ph: Math.random() * 6 };
+}
+const knifeNorm = t => ((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+function knifeTap() { if (!FC.fly && !FC.bounce && FC.need > 0) FC.fly = { y: FC.cv.height - 150 * FC.dpr }; }
+function knifeDraw(ctx, x, y, a, dpr, alpha = 1) {
+  // pisau menghadap a: ujung bilah di (x,y), gagang menjauh
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#DDE3EA"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, -6 * dpr); ctx.lineTo(10 * dpr, -6 * dpr); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#3B2A20"; ctx.fillRect(44 * dpr, -5 * dpr, 34 * dpr, 10 * dpr);
+  ctx.restore();
+}
+function knifeStep(dt, el) {
+  const { cv, ctx, dpr } = FC, W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.34, R = 78 * dpr;
+  const sp = FC.spin, v = sp.base + sp.wob * Math.sin(el * 1.3 + sp.ph);
+  if (FC.run) FC.ang += v * dt;
+  FC.hitT = Math.max(0, FC.hitT - dt);
+  // pisau terbang
+  if (FC.fly) {
+    FC.fly.y -= 2600 * dpr * dt;
+    if (FC.fly.y <= cy + R) {
+      const t = knifeNorm(Math.PI / 2 - FC.ang), gap = 0.2;
+      const hit = FC.stuck.some(k => { const d = Math.abs(knifeNorm(k.t - t + Math.PI) - Math.PI); return d < gap; });
+      FC.fly = null;
+      if (hit) { FC.bounce = { y: cy + R, vy: 900 * dpr, rot: 0 }; FC.over = now(); navigator.vibrate && navigator.vibrate(120); }
+      else {
+        FC.stuck.push({ t }); FC.need -= 1; FC.caught += 1; mgAdd(1); FC.hitT = 0.08;
+        if (FC.need === 0) {
+          mgAdd(3); FC.pops.push({ txt: "Log cleared +3", x: cx, y: cy, c: "#FFF6C8", life: 1.1 });
+          for (let i = 0; i < 16; i++) FC.pops.push({ x: cx, y: cy, vx: (Math.random() - 0.5) * 800 * dpr, vy: (Math.random() - 0.7) * 700 * dpr, r: (4 + Math.random() * 5) * dpr, c: i % 2 ? "#A9743F" : "#7A4E2A", life: 0.7 });
+          FC.lvl += 1; setTimeout(() => { if (FC && FC.k === "pisau" && FC.run) knifeLog(); }, 450);
+        }
+      }
+    }
+  }
+  // kayu
+  const off = FC.hitT ? -6 * dpr : 0;
+  if (FC.need > 0 || !FC.run) {
+    for (const k of FC.stuck) { const a = k.t + FC.ang; knifeDraw(ctx, cx + Math.cos(a) * (R - 14 * dpr), cy + off + Math.sin(a) * (R - 14 * dpr), a, dpr); }
+    ctx.save(); ctx.translate(cx, cy + off); ctx.rotate(FC.ang);
+    ctx.fillStyle = "#A9743F"; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#7A4E2A"; ctx.lineWidth = 3 * dpr;
+    for (const r of [0.75, 0.5, 0.25]) { ctx.beginPath(); ctx.arc(0, 0, R * r, 0, 7); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(R * 0.1, 0); ctx.lineTo(R * 0.6, R * 0.2); ctx.stroke();
+    ctx.restore();
+  }
+  // pisau yang siap / terbang / mental
+  const ky = H - 150 * dpr;
+  if (FC.fly) knifeDraw(ctx, cx, FC.fly.y, -Math.PI / 2, dpr);
+  else if (!FC.bounce && FC.need > 0 && FC.run) knifeDraw(ctx, cx, ky, -Math.PI / 2, dpr);
+  if (FC.bounce) { const b = FC.bounce; b.vy += 2600 * dpr * dt; b.y += b.vy * dt; b.rot += 9 * dt; knifeDraw(ctx, cx + b.rot * 30 * dpr, b.y, -Math.PI / 2 + b.rot, dpr); }
+  // sisa pisau buat kayu ini
+  for (let i = 0; i < FC.need; i++) { ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.fillRect(22 * dpr, H - 60 * dpr - i * 18 * dpr, 26 * dpr, 8 * dpr); }
+  for (const p of FC.pops) {
+    p.life -= dt;
+    if (p.txt) { ctx.globalAlpha = Math.max(0, p.life / 1.1); ctx.font = `800 ${24 * dpr}px system-ui, sans-serif`; ctx.fillStyle = p.c; ctx.fillText(p.txt, p.x, p.y - (1.1 - p.life) * 50 * dpr); }
+    else { p.vy += 1800 * dpr * dt; p.x += p.vx * dt; p.y += p.vy * dt; ctx.globalAlpha = Math.max(0, p.life / 0.7); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1; FC.pops = FC.pops.filter(p => p.life > 0);
+}
+
 function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
-  const W = wallet(), k = FC.k, r = Dapur.earn(W, k, FC.score, today());
+  const W = wallet(), k = FC.k, r = Dapur.earn(W, k, FC.score, today()), nx = mgNext(k);
+  if (ARC) ARC.rounds += 1;
   save(); dapurChip();
-  Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got });
-  const verb = k === "buah" ? "caught" : "sliced";
-  mgCard(`<b>${FC.caught} ${verb} · score ${FC.score}${r.best ? " · new best!" : ""}</b>
-    <small>${r.got ? `+${coinTxt(r.got)}. You have ${coinTxt(W.koin)}.` : FC.score ? `No more coins today, but nice one. You have ${coinTxt(W.koin)}.` : `No coins this time. You have ${coinTxt(W.koin)}.`}${r.left && r.got ? ` ${coinTxt(r.left)} left to earn today.` : ""}</small>
-    <div class="row2"><button class="choice yes" id="mgAgain">Play again</button><button class="choice no" id="mgOk">Done</button></div>`);
+  Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1 });
+  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
+  mgCard(`<b>${what} · score ${FC.score}${r.best ? " · new best!" : ""}</b>
+    <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
+    <button class="choice yes fcx-next" id="mgNext"><i>${MG_GAMES[nx].icon}</i> Next: ${MG_GAMES[nx].name}</button>
+    <div class="row2"><button class="choice" id="mgAgain">Play again</button><button class="choice no" id="mgOk">All games</button></div>`);
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
+  $("mgNext").onclick = () => { Tele.ev("minigame", { k: nx, a: "lanjut", dari: k }); mgEnd(false); mgStart(nx); };
 }
 function mgEnd(quit) {
   if (!FC) return;
@@ -220,7 +376,6 @@ function mgEnd(quit) {
   if (FC.key) window.removeEventListener("keydown", FC.key);
   window.removeEventListener("resize", FC.size);
   FC.el.remove(); FC = null;
-  dapurChip();
-  if (cur) { play("jump", 700); say(wallet().koin >= 12 ? "Something nice to eat?" : "Thanks!", 2200); }
+  dapurChip(); arcDraw();
 }
 $("coinBtn").onclick = () => { hideHint(); if (game && cur) showKitchen(); };
