@@ -15,7 +15,7 @@ function dapurChip() {
 }
 // daftar game: id dipakai buat skor terbaik (W.best) dan telemetri. waktu: true = ronde 30 detik, false = sampai gagal.
 // v51 (diskusi 30 Okt): mini game itu ruang sendiri, kayak buka HP khusus game. Makhluknya nggak ikut; yang nyambung cuma koin.
-// Nilai jualnya transisi: pindah dari game ke game harus tanpa effort (tombol "Next" di kartu akhir, langsung main).
+// Pindah game cukup lewat "All games"; kartu akhir nggak nyuruh pindah (yang lagi asik pengennya ulang, kata Muhammad 30 Okt).
 const MG_GAMES = {
   potong: { name: "Fruit slash", icon: "🍉", color: "#E8506A", timed: true, how: "Swipe across the fruit. Three in one swipe is a combo. Bombs cost five." },
   stack: { name: "Stack", icon: "🧱", color: "#5B7BD5", timed: false, how: "Tap to drop the block. Whatever hangs over falls off. Land it exactly for a bonus." },
@@ -49,11 +49,6 @@ function arcClose() {
   Tele.ev("minigame", { a: "hub_tutup", game: ARC.played.size, ronde: ARC.rounds, dtk: Math.round((now() - ARC.t0) / 1000) });
   ARC.el.remove(); ARC = null;
   dapurChip();
-}
-// game berikutnya buat tombol Next: yang belum dimainkan di sesi ini dulu, urut dari daftar
-function mgNext(k) {
-  const i = MG_ORDER.indexOf(k), rest = MG_ORDER.slice(i + 1).concat(MG_ORDER.slice(0, i));
-  return rest.find(x => !ARC || !ARC.played.has(x)) || rest[0];
 }
 
 // ---- layar mini game bersama: kanvas 2D di atas layar (adegan 3D berhenti selama FC ada, lihat ui/29)
@@ -95,7 +90,7 @@ function mgStart(k = "potong") {
   mgCard(`<b>${g.name}</b><small>${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
   $("mgPlay").onclick = mgRun;
   Tele.ev("minigame", { k, a: "buka", ke: ARC ? ARC.played.size + 1 : 1 });
-  // yang udah pernah dimainkan langsung jalan, tanpa kartu cara main (pindah game harus tanpa effort)
+  // yang udah pernah dimainkan langsung jalan, tanpa kartu cara main
   if (wallet().best[k]) mgRun();
 }
 function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
@@ -356,18 +351,17 @@ function knifeStep(dt, el) {
 
 function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
-  const W = wallet(), k = FC.k, r = Dapur.earn(W, k, FC.score, today()), nx = mgNext(k);
+  const W = wallet(), k = FC.k, r = Dapur.earn(W, k, FC.score, today());
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();
   Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1 });
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   mgCard(`<b>${what} · score ${FC.score}${r.best ? " · new best!" : ""}</b>
     <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
-    <button class="choice yes fcx-next" id="mgNext"><i>${MG_GAMES[nx].icon}</i> Next: ${MG_GAMES[nx].name}</button>
-    <div class="row2"><button class="choice" id="mgAgain">Play again</button><button class="choice no" id="mgOk">All games</button></div>`);
+    <button class="choice yes fcx-next" id="mgAgain">Play again</button>
+    <button class="choice no" id="mgOk">All games</button>`);
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
-  $("mgNext").onclick = () => { Tele.ev("minigame", { k: nx, a: "lanjut", dari: k }); mgEnd(false); mgStart(nx); };
 }
 function mgEnd(quit) {
   if (!FC) return;
