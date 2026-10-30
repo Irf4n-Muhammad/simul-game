@@ -42,3 +42,11 @@ test("game.js: makan basic diterima, tanpa catatan selera, dan selera lama nggak
   const v = g.careView(c);
   assert.deepEqual(v.items.find(i => i.id === "makan_p").opts.map(o => o.id), ["power", "comfort", "fruit", "basic"]);
 });
+
+test("peringkat rekor: naik sesuai ambang, tahu sisa poin ke peringkat berikutnya", () => {
+  assert.deepEqual(D.tier("stack", 0), { ix: 0, name: "Rookie", next: "Bronze", need: 5 });
+  assert.equal(D.tier("stack", 5).name, "Bronze");
+  assert.deepEqual(D.tier("stack", 18), { ix: 2, name: "Silver", next: "Gold", need: 2 });
+  assert.deepEqual(D.tier("pisau", 999), { ix: 5, name: "Legend", next: null, need: null });
+  assert.equal(D.tier("nggak-ada", 12).name, "Bronze");   // game tak dikenal pakai ambang Fruit catch
+});

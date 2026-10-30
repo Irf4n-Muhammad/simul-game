@@ -9,6 +9,8 @@
 //   Dapur.earn(W, game, skor, d)  -> { got, left, best } koin yang masuk; per hari dibatasi CAP, sisanya cuma ngejar skor terbaik
 //   Dapur.left(W, d)              -> sisa koin yang masih bisa didapat hari d
 //   Dapur.coinsFor(skor)          -> koin dari satu ronde (sebelum batas harian)
+//   Dapur.tier(game, skor)        -> peringkat rekor { ix, name, next, need } (v52): Rookie, Bronze, Silver, Gold, Diamond, Legend.
+//                                    next/need = peringkat berikutnya dan berapa poin lagi (null kalau udah Legend)
 //
 // Batas harian: cukup buat dua makan enak sehari kalau main 2-3 ronde; main lebih banyak tetap boleh (seru, rekor), koinnya nggak nambah.
 "use strict";
@@ -34,7 +36,15 @@
     if (best) W.best[game] = skor;
     return { got, left: CAP - W.dapat, best };
   }
-  const api = { START, CAP, PRICE, fresh, price, can, spend, earn, left, coinsFor };
+  // ambang tiap game (skor minimum buat Bronze..Legend); disetel dari main uji, nanti dari telemetri
+  const TIERS = ["Rookie", "Bronze", "Silver", "Gold", "Diamond", "Legend"];
+  const BAR = { potong: [10, 25, 40, 60, 85], buah: [10, 20, 30, 45, 60], stack: [5, 12, 20, 30, 45], pisau: [6, 15, 25, 40, 60] };
+  function tier(game, skor) {
+    const b = BAR[game] || BAR.buah, s = skor || 0;
+    let ix = 0; while (ix < b.length && s >= b[ix]) ix++;
+    return { ix, name: TIERS[ix], next: ix < b.length ? TIERS[ix + 1] : null, need: ix < b.length ? b[ix] - s : null };
+  }
+  const api = { START, CAP, PRICE, TIERS, fresh, price, can, spend, earn, left, coinsFor, tier };
   if (typeof module !== "undefined") module.exports = api;
   else globalThis.Dapur = api;
 })();
