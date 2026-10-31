@@ -258,3 +258,28 @@ function wOrchard(ctx, W, H, dpr, t) {
   wFlies(ctx, W, H, dpr, t, 8, "rgba(255,240,140,.9)", [0.55, 0.88]);
 }
 const WORLDS = { pisau: wDojo, stack: wCity, potong: wKitchen, buah: wOrchard };
+
+// ---- objek gaya stiker (v64): emoji dikasih garis luar tebel + bayangan, biar nyatu sama dunia kartun.
+// Dibikin sekali per (emoji, ukuran) ke kanvas cadangan, lalu tinggal ditempel.
+const STICK = {};
+function sticker(e, px) {
+  const id = e + ":" + Math.round(px);
+  if (STICK[id]) return STICK[id];
+  const pad = Math.ceil(px * 0.22), n = Math.ceil(px * 1.25) + pad * 2;
+  const mk = () => { const c = document.createElement("canvas"); c.width = c.height = n; return c; };
+  const raw = mk(), rc = raw.getContext("2d");
+  rc.textAlign = "center"; rc.textBaseline = "middle"; rc.font = mgFont(px); rc.fillText(e, n / 2, n / 2 + px * 0.06);
+  const sil = mk(), sc = sil.getContext("2d");
+  sc.drawImage(raw, 0, 0); sc.globalCompositeOperation = "source-in"; sc.fillStyle = OUTL; sc.fillRect(0, 0, n, n);
+  const out = mk(), oc = out.getContext("2d"), w = Math.max(2, px * 0.07);
+  // bayangan jatuh, lalu garis luar (siluet digeser melingkar), lalu emojinya
+  oc.globalAlpha = 0.28; oc.drawImage(sil, 0, w * 1.6); oc.globalAlpha = 1;
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; oc.drawImage(sil, Math.cos(a) * w, Math.sin(a) * w); }
+  oc.drawImage(raw, 0, 0);
+  // kilau kecil di kiri atas
+  oc.globalCompositeOperation = "source-atop"; const g = oc.createRadialGradient(n * 0.38, n * 0.32, 0, n * 0.38, n * 0.32, px * 0.45);
+  g.addColorStop(0, "rgba(255,255,255,.35)"); g.addColorStop(1, "rgba(255,255,255,0)"); oc.fillStyle = g; oc.fillRect(0, 0, n, n);
+  return (STICK[id] = out);
+}
+function stamp(ctx, e, x, y, px) { const c = sticker(e, px); ctx.drawImage(c, x - c.width / 2, y - c.height / 2); }
+const stickerURL = (e, px) => { try { return sticker(e, px).toDataURL(); } catch (err) { return ""; } };

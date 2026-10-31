@@ -65,7 +65,7 @@ function arcDraw() {
     <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
     ${arcDaily(W)}
     ${arcPuzzle(W)}
-    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
+    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i><img alt="" src="${stickerURL(g.icon, 96)}"></i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
     <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
   ARC.el.querySelector("#arcX").onclick = arcClose;
   ARC.el.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => mgStart(b.dataset.mg); });
@@ -343,13 +343,13 @@ function catchStep(dt, el) {
       if (it.find) mgPick(it.kind);
       else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; Sfx.play("ulat"); } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; Sfx.play(it.kind === "star" ? "bintang" : "tangkap"); }
     }
-    if (!it.done) { if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); } else ctx.fillText(it.e, it.x, it.y); }
+    if (!it.done) { if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); } else stamp(ctx, it.e, it.x, it.y, S); }
   }
   FC.items = FC.items.filter(it => !it.done && it.y < H + S);
   FC.shake = Math.max(0, FC.shake - dt);
   const sx = FC.shake ? (Math.random() - 0.5) * 16 * dpr : 0;
   ctx.font = mgFont(S * 1.7);
-  ctx.fillText("🧺", FC.bx + sx, by);
+  stamp(ctx, "🧺", FC.bx + sx, by, S * 1.7);
 }
 
 // ---- Fruit slash (v50): buah dilempar dari bawah, digores jari. Santai: bom cuma −5, nggak ada game over, buah lolos nggak dihukum.
@@ -379,7 +379,7 @@ function slashStep(dt, el) {
     it.vy += g * dt; it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.vr * dt;
     if (it.vy > 0) it.up = false;
     if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S); ctx.font = mgFont(S); continue; }
-    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot); ctx.fillText(it.e, 0, 0); ctx.restore();
+    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot); stamp(ctx, it.e, 0, 0, S); ctx.restore();
   }
   FC.items = FC.items.filter(it => !it.cut && !(it.y > H + S && !it.up));
   // potongan buah: dua belahan yang jatuh berputar
@@ -387,7 +387,7 @@ function slashStep(dt, el) {
     b.vy += g * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vr * dt;
     ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
     ctx.beginPath(); ctx.rect(b.side < 0 ? -S : 0, -S, S, 2 * S); ctx.clip();
-    ctx.fillText(b.e, 0, 0); ctx.restore();
+    stamp(ctx, b.e, 0, 0, S); ctx.restore();
   }
   FC.bits = FC.bits.filter(b => b.y < H + S * 2);
   // cipratan dan angka kecil
@@ -522,8 +522,14 @@ function stackStep(dt) {
   const slab = (x, w, i, alpha = 1) => {
     const y = yOf(i), [side, top] = sk(i, tt);
     ctx.globalAlpha = alpha * (FC.skin === "berlian" ? 0.85 : 1);
+    // balok kartun: muka depan, tutup atas lebih terang + kilau, bayangan bawah, garis luar tebel
+    const tp = 8 * dpr;
     ctx.fillStyle = side; ctx.fillRect(x, y - bh, w, bh);
-    ctx.fillStyle = top; ctx.fillRect(x, y - bh, w, 7 * dpr);
+    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(x, y - 7 * dpr, w, 7 * dpr);
+    ctx.fillStyle = top; ctx.fillRect(x, y - bh, w, tp);
+    ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(x + 5 * dpr, y - bh + 2.5 * dpr, Math.max(0, Math.min(w * 0.3, w - 10 * dpr)), 2.5 * dpr);
+    ctx.lineWidth = 2.5 * dpr; ctx.strokeStyle = OUTL; ctx.strokeRect(x, y - bh, w, bh);
+    ctx.beginPath(); ctx.moveTo(x, y - bh + tp); ctx.lineTo(x + w, y - bh + tp); ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = "rgba(34,24,43,.5)"; ctx.stroke();
     ctx.globalAlpha = 1;
   };
   tower.forEach((b, i) => { if (yOf(i) > -bh && yOf(i) - bh < H) slab(b.x, b.w, i); });
@@ -551,9 +557,20 @@ function knifeDraw(ctx, x, y, a, dpr, alpha = 1) {
   const K = KNIFE_SKIN[FC.skin] || KNIFE_SKIN.dasar;
   ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = alpha;
   if (K.glow) { ctx.shadowColor = K.glow; ctx.shadowBlur = 14 * dpr; }
-  ctx.fillStyle = K.blade; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, -6 * dpr); ctx.lineTo(10 * dpr, -6 * dpr); ctx.closePath(); ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = K.handle; ctx.fillRect(44 * dpr, -5 * dpr, 34 * dpr, 10 * dpr);
+  const u = dpr;
+  // bilah: punggung lurus di atas, mata melengkung ke ujung; kilau di punggung, gelap di mata
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(12 * u, -6.5 * u); ctx.lineTo(46 * u, -6.5 * u); ctx.lineTo(46 * u, 6.5 * u); ctx.quadraticCurveTo(14 * u, 7 * u, 0, 0); ctx.closePath();
+  ctx.fillStyle = K.blade; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.fillRect(8 * u, -6.5 * u, 38 * u, 3 * u);
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(0, 2.5 * u, 46 * u, 5 * u);
+  ctx.restore();
+  ctx.lineWidth = 2 * u; ctx.strokeStyle = OUTL; ctx.lineJoin = "round"; ctx.stroke();
+  // pelindung dan gagang dengan paku keling
+  ctx.fillStyle = "#4A4656"; ctx.fillRect(46 * u, -9 * u, 5 * u, 18 * u); ctx.strokeRect(46 * u, -9 * u, 5 * u, 18 * u);
+  ctx.fillStyle = K.handle; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(51 * u, -5.5 * u, 30 * u, 11 * u, 4 * u) : ctx.rect(51 * u, -5.5 * u, 30 * u, 11 * u); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(54 * u, -4 * u, 24 * u, 2.5 * u);
+  ctx.fillStyle = "#F2E6C8"; for (const rx of [58, 72]) { ctx.beginPath(); ctx.arc(rx * u, 0.5 * u, 1.8 * u, 0, 7); ctx.fill(); }
   ctx.restore();
 }
 function knifeStep(dt, el) {
@@ -594,10 +611,17 @@ function knifeStep(dt, el) {
   if (FC.need > 0 || !FC.run) {
     for (const k of FC.stuck) { const a = k.t + FC.ang; knifeDraw(ctx, cx + Math.cos(a) * (R - 14 * dpr), cy + off + Math.sin(a) * (R - 14 * dpr), a, dpr); }
     ctx.save(); ctx.translate(cx, cy + off); ctx.rotate(FC.ang);
-    ctx.fillStyle = "#A9743F"; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
-    ctx.strokeStyle = "#7A4E2A"; ctx.lineWidth = 3 * dpr;
-    for (const r of [0.75, 0.5, 0.25]) { ctx.beginPath(); ctx.arc(0, 0, R * r, 0, 7); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(R * 0.1, 0); ctx.lineTo(R * 0.6, R * 0.2); ctx.stroke();
+    // kayu kartun: kulit kayu gelap, potongan terang dengan cincin, retakan, garis luar tebel
+    ctx.fillStyle = "#5A3820"; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; ctx.fillStyle = i % 2 ? "#6B4428" : "#4A2E1A"; ctx.beginPath(); ctx.arc(Math.cos(a) * R * 0.93, Math.sin(a) * R * 0.93, R * 0.1, 0, 7); ctx.fill(); }
+    const wg = ctx.createRadialGradient(-R * 0.2, -R * 0.2, 0, 0, 0, R * 0.86); wg.addColorStop(0, "#F0C27E"); wg.addColorStop(1, "#C08447");
+    ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(0, 0, R * 0.84, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(122,78,42,.6)"; ctx.lineWidth = 2.5 * dpr;
+    for (const r of [0.66, 0.46, 0.27]) { ctx.beginPath(); ctx.ellipse(R * 0.03, 0, R * r, R * r * 0.95, 0.3, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = "#8A5A30"; ctx.beginPath(); ctx.arc(R * 0.03, 0, R * 0.08, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#6B4428"; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(R * 0.12, R * 0.02); ctx.lineTo(R * 0.4, R * 0.18); ctx.lineTo(R * 0.62, R * 0.12); ctx.stroke();
+    ctx.lineWidth = 3.5 * dpr; ctx.strokeStyle = OUTL; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
+    ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.arc(0, 0, R * 0.84, 0, 7); ctx.stroke();
     ctx.restore();
   }
   // pisau yang siap / terbang / mental
@@ -738,7 +762,10 @@ function findDraw(ctx, kind, x, y, S) {
   const t = now() / 1000, k = 1 + 0.08 * Math.sin(t * 8);
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
   ctx.shadowColor = kind === "box" ? "#FFE16B" : "#7FF3FF"; ctx.shadowBlur = 24 * FC.dpr;
-  ctx.font = mgFont(S); ctx.fillText(FIND_ICON[kind], 0, 0);
+  ctx.shadowBlur = 0; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.5;
+  const gl = ctx.createRadialGradient(0, 0, 0, 0, 0, S); gl.addColorStop(0, kind === "box" ? "rgba(255,225,107,.9)" : "rgba(127,243,255,.9)"); gl.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gl; ctx.fillRect(-S, -S, 2 * S, 2 * S); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  stamp(ctx, FIND_ICON[kind], 0, 0, S);
   ctx.restore();
 }
 function mgEnd(quit) {
