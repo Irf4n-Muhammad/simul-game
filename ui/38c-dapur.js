@@ -113,7 +113,7 @@ function mgStart(k = "potong", daily = false) {
   const el = document.createElement("div");
   el.className = "fcx fcx-" + k; el.id = "fcBox";
   // skor gede di tengah atas, di BELAKANG kanvas: buah dan pisau tetap kegambar di atasnya, jadi ga pernah nutupin permainan
-  el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
+  el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x snd" id="mgSnd" aria-label="Sound">${Sfx.off ? "🔇" : "🔊"}</button><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -140,6 +140,10 @@ function mgStart(k = "potong", daily = false) {
   window.addEventListener("resize", size);
   worldDraw(0);
   $("mgX").onclick = () => mgEnd(true);
+  $("mgSnd").onclick = e => { e.stopPropagation(); $("mgSnd").textContent = Sfx.toggle() ? "🔇" : "🔊"; Sfx.play("ui"); };
+  // suara: dibuka di sentuhan pertama (aturan browser), dan tiap tombol di game bunyi klik
+  el.addEventListener("pointerdown", () => Sfx.unlock());
+  el.addEventListener("click", e => { if (e.target.closest("button") && e.target.id !== "mgSnd") Sfx.play("ui"); });
   mgCard(`<div class="pp-head${daily ? " pp-gold" : ""}">${daily ? "Today's challenge" : g.name}</div>
     <div class="pp-icon" style="--c: ${g.color}">${g.icon}</div>${daily ? `<b>${g.name}</b>` : ""}
     <small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes pp-big" id="mgPlay">▶ Start</button>`);
@@ -150,7 +154,7 @@ function mgStart(k = "potong", daily = false) {
 }
 // pop up di atas permainan (v60): layar belakangnya diredupin, kartunya muncul mental
 function mgCard(html) {
-  const c = $("mgCard"); clearTimeout(FC.offerT);
+  const c = $("mgCard"); clearTimeout(FC.offerT); clearInterval(FC.offerTick);
   c.hidden = !html; c.innerHTML = html || "";
   if (html && !reduce) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
 }
@@ -291,6 +295,7 @@ function mgHype(l) {
   if (l >= 2 && hot) { hot.textContent = l === 3 ? "ON FIRE!" : "HOT!"; hot.className = ""; void hot.offsetWidth; hot.className = "go l" + l; }
   box.classList.remove("zap"); void box.offsetWidth; box.classList.add("zap");
   navigator.vibrate && navigator.vibrate(l === 3 ? [30, 40, 60] : 30);
+  if (l >= 2) Sfx.play("panas", l);
 }
 function mgJuice(dt) {
   const b = $("mgScore");
@@ -336,7 +341,7 @@ function catchStep(dt, el) {
     if (!it.done && it.y > by - S * 0.6 && it.y < by + S * 0.3 && Math.abs(it.x - FC.bx) < bw / 2 + S * 0.2) {
       it.done = true;
       if (it.find) mgPick(it.kind);
-      else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; }
+      else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; Sfx.play("ulat"); } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; Sfx.play(it.kind === "star" ? "bintang" : "tangkap"); }
     }
     if (!it.done) { if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); } else ctx.fillText(it.e, it.x, it.y); }
   }
@@ -419,13 +424,13 @@ function slashTo(p) {
     it.cut = true;
     if (it.find) { mgPick(it.kind); continue; }
     if (it.kind === "bomb") {
-      mgAdd(-5); FC.shake = 0.35; navigator.vibrate && navigator.vibrate(120);
+      mgAdd(-5); FC.shake = 0.35; navigator.vibrate && navigator.vibrate(120); Sfx.play("bom");
       FC.pops.push({ txt: "−5", x: it.x, y: it.y, c: "#B23A3A", life: 0.9 });
       for (let i = 0; i < 14; i++) FC.pops.push({ x: it.x, y: it.y, vx: (Math.random() - 0.5) * 700 * FC.dpr, vy: (Math.random() - 0.8) * 600 * FC.dpr, r: (3 + Math.random() * 4) * FC.dpr, c: i % 2 ? "#3A3A3A" : "#F39A2E", life: 0.5 });
       continue;
     }
     const pts = it.kind === "gold" ? 3 : 1;
-    mgAdd(pts); FC.caught += 1; FC.combo += 1;
+    mgAdd(pts); FC.caught += 1; FC.combo += 1; Sfx.play(pts > 1 ? "bintang" : "iris");
     if (pts > 1) FC.pops.push({ txt: "+3", x: it.x, y: it.y, c: "#C08A1E", life: 0.9 });
     const sp = 140 * FC.dpr, nx = -Math.sin(ang), ny = Math.cos(ang);
     for (const side of [-1, 1]) FC.bits.push({ e: it.e, side, x: it.x, y: it.y, vx: it.vx * 0.5 + side * sp * (nx || 1), vy: Math.min(it.vy, 0) * 0.3 + side * sp * ny * 0.5, rot: ang + Math.PI / 2, vr: side * 3 });
@@ -436,7 +441,7 @@ function slashTo(p) {
 function slashEnd() {
   if (FC.run && FC.combo >= 3) {
     const bonus = FC.combo - 1, tr = FC.trail, p = tr[tr.length - 1].p;
-    mgAdd(bonus);
+    mgAdd(bonus); Sfx.play("kombo", FC.combo);
     FC.pops.push({ txt: `Combo +${bonus}`, x: Math.max(80 * FC.dpr, Math.min(FC.cv.width - 80 * FC.dpr, p[0])), y: p[1], c: "#2E7D5B", life: 0.9 });
   }
   FC.combo = 0;
@@ -491,15 +496,15 @@ function stackTap() {
   const m = FC.mov, top = FC.tower[FC.tower.length - 1], dpr = FC.dpr; if (!m) return;
   let x = m.x, w = m.w;
   const lo = Math.max(x, top.x), hi = Math.min(x + w, top.x + top.w);
-  if (hi - lo <= 0) { FC.bits.push({ x, w, y: FC.tower.length, vy: 0, vx: m.dir * 60 * dpr }); FC.mov = null; FC.over = now(); navigator.vibrate && navigator.vibrate(120); return; }
+  if (hi - lo <= 0) { FC.bits.push({ x, w, y: FC.tower.length, vy: 0, vx: m.dir * 60 * dpr }); FC.mov = null; FC.over = now(); navigator.vibrate && navigator.vibrate(120); Sfx.play("jatuh"); return; }
   if (Math.abs(x - top.x) < 6 * dpr) {
-    x = top.x; FC.perfect += 1; FC.perfN += 1; mgAdd(2);
+    x = top.x; FC.perfect += 1; FC.perfN += 1; mgAdd(2); Sfx.play("pas", FC.perfect);
     FC.pops.push({ txt: FC.perfect > 1 ? `Perfect ×${FC.perfect}` : "Perfect +2", x: x + w / 2, y: FC.tower.length, c: "#FFF6C8", life: 0.9 });
   } else {
     // yang nggantung jatuh
     const cut = x < top.x ? { x, w: top.x - x } : { x: hi, w: x + w - hi };
     FC.bits.push({ ...cut, y: FC.tower.length, vy: 0, vx: (x < top.x ? -1 : 1) * 80 * dpr });
-    x = lo; w = hi - lo; FC.perfect = 0; mgAdd(1);
+    x = lo; w = hi - lo; FC.perfect = 0; mgAdd(1); Sfx.play("taruh", FC.tower.length);
   }
   if (m.find) mgPick(m.find);
   FC.tower.push({ x, w }); FC.caught = FC.tower.length - 1;
@@ -540,7 +545,7 @@ function knifeLog() {
   FC.spin = { base: 2.2 + L * 0.25, wob: L >= 2 ? 1.6 : 0, ph: FC.rnd() * 6 };
 }
 const knifeNorm = t => ((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-function knifeTap() { if (!FC.fly && !FC.bounce && FC.need > 0) FC.fly = { y: FC.cv.height - 150 * FC.dpr }; }
+function knifeTap() { if (!FC.fly && !FC.bounce && FC.need > 0) { FC.fly = { y: FC.cv.height - 150 * FC.dpr }; Sfx.play("lempar"); } }
 function knifeDraw(ctx, x, y, a, dpr, alpha = 1) {
   // pisau menghadap a: ujung bilah di (x,y), gagang menjauh; warnanya dari skin yang dipakai
   const K = KNIFE_SKIN[FC.skin] || KNIFE_SKIN.dasar;
@@ -563,9 +568,9 @@ function knifeStep(dt, el) {
       const t = knifeNorm(Math.PI / 2 - FC.ang), gap = 0.2;
       const hit = FC.stuck.some(k => { const d = Math.abs(knifeNorm(k.t - t + Math.PI) - Math.PI); return d < gap; });
       FC.fly = null;
-      if (hit) { FC.bounce = { y: cy + R, vy: 900 * dpr, rot: 0 }; FC.over = now(); navigator.vibrate && navigator.vibrate(120); }
+      if (hit) { FC.bounce = { y: cy + R, vy: 900 * dpr, rot: 0 }; FC.over = now(); navigator.vibrate && navigator.vibrate(120); Sfx.play("dentang"); }
       else {
-        FC.stuck.push({ t }); FC.need -= 1; FC.caught += 1; mgAdd(1); FC.hitT = 0.08;
+        FC.stuck.push({ t }); FC.need -= 1; FC.caught += 1; mgAdd(1); FC.hitT = 0.08; Sfx.play(FC.need === 0 ? "kayu" : "tancap");
         if (FC.gift && Math.abs(knifeNorm(FC.gift.t - t + Math.PI) - Math.PI) < 0.32) { mgPick(FC.gift.kind); FC.gift = null; }
         if (FC.need === 0) {
           mgAdd(3); FC.pops.push({ txt: "Log cleared +3", x: cx, y: cy, c: "#FFF6C8", life: 1.1 });
@@ -624,6 +629,7 @@ function mgOffer() {
     <button class="choice yes pp-big pp-go" id="mgCont">▶ Continue</button>
     <button class="pp-link" id="mgFin">No thanks</button>`);
   FC.offerT = setTimeout(() => { if (FC && $("mgFin")) $("mgFin").click(); }, 6000);
+  FC.offerTick = setInterval(() => { if (FC && $("mgCont")) Sfx.play("detik"); }, 1000);
   $("mgCont").onclick = () => {
     Tele.ev("minigame", { k: FC.k, a: "lanjut", skor: FC.score });
     FC.cont = true; FC.over = 0;
@@ -669,7 +675,7 @@ function mgShowEnd() {
     <small class="pp-wallet">You have ${coinTxt(W.koin)}${FC.score && !r.left && !r.got ? " · today's coins are all won" : ""}</small>
     <button class="choice yes pp-big" id="mgAgain">↻ Play again</button>
     <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
-  if (!FC.res.shown) { ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
+  if (!FC.res.shown) { Sfx.play(r.best && FC.score ? "rekor" : "selesai"); ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
   if ($("mgSkin")) $("mgSkin").onclick = skinPanel;
@@ -684,7 +690,7 @@ function dropPlan() {
   return { kind, at, done: false };
 }
 function mgPick(kind) {
-  FC.got.push(kind); Dapur.found(wallet(), today()); save();
+  FC.got.push(kind); Dapur.found(wallet(), today()); save(); Sfx.play("temu");
   Tele.ev("minigame", { k: FC.k, a: "nemu", jenis: kind });
   navigator.vibrate && navigator.vibrate([20, 30, 40]);
   const t = document.createElement("div"); t.className = "fcx-find";
@@ -703,11 +709,11 @@ function revealNext() {
   const go = () => { R.step += 1; revealNext(); };
   if (sk) {
     v.innerHTML = `<div class="rv-rays gold"></div><div class="rv-in"><small>PUZZLE COMPLETE</small><i class="rv-icon pop">🧩</i><b>New skin: ${sk.name}</b><em>For ${MG_GAMES[sk.game].name}. Wear it from the Skins button.</em>${nextBtn}</div>`;
-    ppConfetti(v); navigator.vibrate && navigator.vibrate([40, 40, 80]);
+    ppConfetti(v); navigator.vibrate && navigator.vibrate([40, 40, 80]); Sfx.play("rekor");
   } else if (f.kind === "box" && !f.open) {
     v.innerHTML = `<div class="rv-rays"></div><div class="rv-in"><small>YOU FOUND</small><i class="rv-icon wiggle">🎁</i><b>Mystery box</b><em>Tap to open</em></div>`;
     v.onclick = () => {
-      v.onclick = null; f.open = true; v.querySelector(".rv-icon").className = "rv-icon shake";
+      v.onclick = null; f.open = true; v.querySelector(".rv-icon").className = "rv-icon shake"; Sfx.play("goyang");
       Tele.ev("minigame", { k: FC.k, a: "buka_peti", isi: f.r.kind });
       setTimeout(() => { if (FC && v.isConnected) revealPrize(v, f.r, nextBtn, go); }, reduce ? 0 : 700);
     };
@@ -723,6 +729,7 @@ function revealPrize(v, x, nextBtn, go) {
     <b>${piece ? `${x.have} of ${x.need}` : `+${x.n} coins`}</b>${slots}
     <em>${piece ? `${x.done ? "Puzzle complete" : `${x.need - x.have} more`} for ${sk.name}` : `You have ${coinTxt(wallet().koin)}`}</em>${nextBtn}</div>`;
   navigator.vibrate && navigator.vibrate(x.jackpot ? [40, 40, 80] : 40);
+  Sfx.play("buka"); setTimeout(() => Sfx.play(x.jackpot ? "jackpot" : piece ? "temu" : "koin"), 250);
   if (x.jackpot) ppConfetti(v);
   $("rvNext").onclick = go;
 }
@@ -736,6 +743,7 @@ function findDraw(ctx, kind, x, y, S) {
 }
 function mgEnd(quit) {
   if (!FC) return;
+  clearTimeout(FC.offerT); clearInterval(FC.offerTick);
   if (quit && FC.run) Tele.ev("minigame", { k: FC.k, a: "berhenti", skor: FC.score });
   // keluar di tengah main: temuan yang udah diambil tetap jadi milik pemain, dibuka diam-diam
   if (quit && FC.run && FC.got && FC.got.length) { const W = wallet(); FC.got.forEach(kind => kind === "piece" ? Dapur.addPiece(W) : Dapur.openBox(W, Math.random(), Math.random())); save(); }
