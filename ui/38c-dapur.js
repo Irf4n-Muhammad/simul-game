@@ -18,15 +18,18 @@ function trophyShelf() {
   if (trophyG) { R.g.remove(trophyG); trophyG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   if (!ranks.some(t => t > 0)) { trophyG = null; return; }
   const g = trophyG = new THREE.Group(); g.position.set(-1.6, 2.3, R0 + 0.2); R.g.add(g);   // di atas rak mainan, kelihatan dari kamera
-  mesh(RB(2.2, 0.07, 0.36, 0.02), M(0xc9a27a, { roughness: 0.7 }), 0, 0, 0, g);
+  // v67: tujuh game, jadi jarak dan ukuran piala ngikutin jumlahnya biar muat di rak yang sama
+  const n = ranks.length, gap = Math.min(0.53, 2.3 / n), sc = Math.min(1, gap / 0.5);
+  mesh(RB(gap * n + 0.1, 0.07, 0.36, 0.02), M(0xc9a27a, { roughness: 0.7 }), 0, 0, 0, g);
   ranks.forEach((t, i) => {
     if (!t) return;
-    const x = -0.8 + i * 0.53, mat = M(TROPHY_COL[t], { metalness: 0.65, roughness: 0.28, emissive: t >= 4 ? TROPHY_COL[t] : 0x000000, emissiveIntensity: t >= 4 ? 0.25 : 0 });
-    mesh(RB(0.26, 0.07, 0.2, 0.02), M(0x3a332d), x, 0.07, 0, g);                         // alas
-    mesh(CYL(0.035, 0.05, 0.16, 12), mat, x, 0.18, 0, g);                                 // batang
-    mesh(CYL(0.15, 0.07, 0.22, 24), mat, x, 0.37, 0, g);                                  // mangkuk
-    for (const sx of [-1, 1]) { const h = mesh(new THREE.TorusGeometry(0.06, 0.016, 8, 16, Math.PI), mat, x + sx * 0.15, 0.4, 0, g); h.rotation.z = sx * Math.PI / 2; }
-    if (t === 5) mesh(SPH(0.05, 12, 10), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 }), x, 0.55, 0, g);   // Legend: bintang kecil di atas
+    const c = new THREE.Group(), x = 0, mat = M(TROPHY_COL[t], { metalness: 0.65, roughness: 0.28, emissive: t >= 4 ? TROPHY_COL[t] : 0x000000, emissiveIntensity: t >= 4 ? 0.25 : 0 });
+    mesh(RB(0.26, 0.07, 0.2, 0.02), M(0x3a332d), x, 0.07, 0, c);                         // alas
+    mesh(CYL(0.035, 0.05, 0.16, 12), mat, x, 0.18, 0, c);                                 // batang
+    mesh(CYL(0.15, 0.07, 0.22, 24), mat, x, 0.37, 0, c);                                  // mangkuk
+    for (const sx of [-1, 1]) { const h = mesh(new THREE.TorusGeometry(0.06, 0.016, 8, 16, Math.PI), mat, x + sx * 0.15, 0.4, 0, c); h.rotation.z = sx * Math.PI / 2; }
+    if (t === 5) mesh(SPH(0.05, 12, 10), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 }), x, 0.55, 0, c);   // Legend: bintang kecil di atas
+    c.position.x = (i - (n - 1) / 2) * gap; c.scale.setScalar(sc); g.add(c);
   });
 }
 // tombol koin: saldo + jalan ke mini game
@@ -46,6 +49,9 @@ const MG_GAMES = {
   stack: { name: "Stack", icon: "🧱", color: "#5B7BD5", timed: false, how: "Tap to drop the block. Whatever hangs over falls off. Land it exactly for a bonus." },
   pisau: { name: "Knife throw", icon: "🔪", color: "#5E8F3E", timed: false, how: "Tap to throw a knife into the log. Don't hit another knife." },
   buah: { name: "Fruit catch", icon: "🧺", color: "#E59A2E", timed: true, how: "Move the basket with your finger. Fruit +1, star +3, bug −3." },
+  hop: { name: "Frog hop", icon: "🐸", color: "#3FA34D", timed: false, how: "The frog bounces by itself. Slide your finger left and right to land on clouds. Cracked clouds break." },
+  ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear the board for +5." },
+  lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
 const MG_ORDER = Object.keys(MG_GAMES);
 let ARC = null;   // layar Games (hub); adegan 3D dijeda selama ini ada (ui/29)
@@ -125,10 +131,19 @@ function mgStart(k = "potong", daily = false) {
     cv.addEventListener("pointerdown", aim); cv.addEventListener("pointermove", aim);
     FC.key = e => { if (e.key === "ArrowLeft") FC.bx -= 40 * dpr; if (e.key === "ArrowRight") FC.bx += 40 * dpr; FC.bx = Math.max(0, Math.min(cv.width, FC.bx)); };
     window.addEventListener("keydown", FC.key);
+  } else if (k === "hop") {
+    // Frog hop: jari (atau panah) nentuin ke mana kodoknya condong
+    const aim = e => { FC.aimX = Math.max(0, Math.min(cv.width, pos(e)[0])); };
+    cv.addEventListener("pointerdown", aim); cv.addEventListener("pointermove", aim);
+    FC.key = e => { if (FC.aimX == null) return; if (e.key === "ArrowLeft") FC.aimX -= 50 * dpr; if (e.key === "ArrowRight") FC.aimX += 50 * dpr; FC.aimX = Math.max(0, Math.min(cv.width, FC.aimX)); };
+    window.addEventListener("keydown", FC.key);
+  } else if (k === "ingat") {
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) memTap(...pos(e)); });
   } else if (!g.timed) {
-    // Stack dan Knife throw: satu tap = satu aksi
-    cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) (k === "stack" ? stackTap : knifeTap)(); });
-    FC.key = e => { if ((e.key === " " || e.key === "Enter") && FC.run) { e.preventDefault(); (k === "stack" ? stackTap : knifeTap)(); } };
+    // Stack, Knife throw, Town run: satu tap = satu aksi
+    const tap = { stack: stackTap, pisau: knifeTap, lari: runTap }[k];
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) tap(); });
+    FC.key = e => { if ((e.key === " " || e.key === "Enter" || e.key === "ArrowUp") && FC.run) { e.preventDefault(); tap(); } };
     window.addEventListener("keydown", FC.key);
   } else {
     // goresan jari: tiap ruas baru dicek ke semua buah; satu goresan = satu kombo
@@ -181,8 +196,9 @@ function mgRun() {
   Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
-  if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
+  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit }[FC.k];
   FC.got = []; FC.drop = dropPlan();
+  if (init) init();
   if (ARC) ARC.played.add(FC.k);
   mgCard(null); Object.assign(FC, { heat: 0, shown: 0, ember: 0, fire: [], lv: 0 }); mgHeat(0); $("mgScore").textContent = "0";
   requestAnimationFrame(mgFrame);
@@ -193,7 +209,7 @@ function mgFrame() {
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
-  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep }[FC.k];
+  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep }[FC.k];
   worldDraw(dt);
   step(dt, el);
   mgJuice(dt);
@@ -673,7 +689,7 @@ function mgOffer() {
   $("mgCont").onclick = () => {
     Tele.ev("minigame", { k: FC.k, a: "lanjut", skor: FC.score });
     FC.cont = true; FC.over = 0;
-    if (FC.k === "stack") stackNew(); else FC.bounce = null;
+    (MG_REVIVE[FC.k] || (() => {}))();
     mgCard(null); FC.run = true; FC.last = now(); requestAnimationFrame(mgFrame);
   };
   $("mgFin").onclick = () => { Tele.ev("minigame", { k: FC.k, a: "lanjut_tolak", skor: FC.score }); mgDone(); };
@@ -702,7 +718,7 @@ function mgDone() {
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
   const W = wallet(), k = FC.k, { r, fresh, dly } = FC.res;
-  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
+  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
   const sub = r.best && FC.score ? `${what}` : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `${gap} short of your record (${W.best[k]})` : `${what} · record ${W.best[k] || 0}`;
@@ -729,7 +745,7 @@ function dropPlan() {
   // setengah ronde dapet satu temuan; kepingan lebih jarang dari peti. Kapan munculnya beda per game
   if (!Dapur.canDrop(wallet(), today()) || Math.random() > 0.5) return null;
   const kind = Math.random() < 0.25 ? "piece" : "box", r = Math.random();
-  const at = MG_GAMES[FC.k].timed ? 5 + r * 18 : FC.k === "stack" ? 4 + Math.floor(r * 9) : 3 + Math.floor(r * 7);
+  const at = MG_GAMES[FC.k].timed ? 5 + r * 18 : FC.k === "stack" ? 4 + Math.floor(r * 9) : FC.k === "hop" ? 6 + Math.floor(r * 14) : FC.k === "lari" ? 4 + Math.floor(r * 10) : 3 + Math.floor(r * 7);
   return { kind, at, done: false };
 }
 function mgPick(kind) {

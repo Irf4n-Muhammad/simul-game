@@ -47,7 +47,7 @@
   }
   // ambang tiap game (skor minimum buat Bronze..Legend); disetel dari main uji, nanti dari telemetri
   const TIERS = ["Rookie", "Bronze", "Silver", "Gold", "Diamond", "Legend"];
-  const BAR = { potong: [10, 25, 40, 60, 85], buah: [10, 20, 30, 45, 60], stack: [5, 12, 20, 30, 45], pisau: [6, 15, 25, 40, 60] };
+  const BAR = { potong: [10, 25, 40, 60, 85], buah: [10, 20, 30, 45, 60], stack: [5, 12, 20, 30, 45], pisau: [6, 15, 25, 40, 60], hop: [10, 25, 45, 70, 100], ingat: [6, 12, 20, 30, 42], lari: [10, 25, 45, 70, 100] };
   function tier(game, skor) {
     const b = BAR[game] || BAR.buah, s = skor || 0;
     let ix = 0; while (ix < b.length && s >= b[ix]) ix++;
@@ -100,7 +100,7 @@
     const n = r1 < 0.35 ? 50 : 8 + Math.floor(r2 * 15);
     W.koin += n; return { kind: "coin", n, jackpot: n === 50 };
   }
-  const DAILY = ["pisau", "potong", "stack", "buah"];
+  const DAILY = ["pisau", "potong", "stack", "buah", "hop", "ingat", "lari"];
   // mulberry32: cepat, cukup acak buat susunan level
   function rng(seed) {
     let a = (seed * 2654435761) >>> 0;
