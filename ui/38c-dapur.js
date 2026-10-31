@@ -63,10 +63,12 @@ function arcDraw() {
   const W = wallet(), left = Dapur.left(W, today());
   ARC.el.innerHTML = `<header><b>Games</b><span class="arc-coin">${coinTxt(W.koin)}</span><button class="x" id="arcX" aria-label="Close">✕</button></header>
     <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
+    ${arcDaily(W)}
     <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
     <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
   ARC.el.querySelector("#arcX").onclick = arcClose;
   ARC.el.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => mgStart(b.dataset.mg); });
+  ARC.el.querySelector("#arcDaily").onclick = () => mgStart(Dapur.harian(today()), true);
 }
 // kotak game: rekor dan peringkatnya, bukan lama mainnya (Muhammad 30 Okt: detik bikin orang males main)
 const TIER_COL = ["#ffffff55", "#C98A4B", "#C9CED6", "#F2C94C", "#7FD8F0", "#E58AF0"];
@@ -74,6 +76,13 @@ function arcRank(k, best) {
   if (!best) return `<span class="arc-rank"><em>New</em></span><small>No record yet</small>`;
   const t = Dapur.tier(k, best);
   return `<span class="arc-rank" style="--t: ${TIER_COL[t.ix]}"><em>${t.name}</em></span><span class="arc-best">${best}</span>`;
+}
+// tantangan harian (v56): satu game per hari, level sama buat semua, streak harian + bonus koin di luar batas harian
+function arcDaily(W) {
+  const d = today(), k = Dapur.harian(d), g = MG_GAMES[k], H = W.harian && W.harian.d === d ? W.harian : null;
+  const st = Dapur.streakNow(W, d);
+  return `<button class="arc-daily" id="arcDaily" style="--c: ${g.color}"><i>${g.icon}</i><span><small>TODAY'S CHALLENGE</small><b>${g.name}</b>
+    <em>${H ? `Today's best ${H.best}` : "Same level for everyone today"}${st ? ` · 🔥 ${st}-day streak` : ""}</em></span><strong>${H ? "Again" : "Play"}</strong></button>`;
 }
 function arcClose() {
   if (!ARC) return;
@@ -91,7 +100,7 @@ const MG_GOOD = ["🍎", "🍌", "🍓", "🍇", "🥕", "🍊", "🍐"], MG_LEN
 const MG_JUICE = { "🍎": "#E0483E", "🍌": "#F3D34A", "🍓": "#E0483E", "🍇": "#8B5BB5", "🥕": "#F08A2E", "🍊": "#F39A2E", "🍐": "#B5CF52", "🍉": "#E8506A", "🥝": "#8DBA3E", "🍍": "#F3C33A" };
 const mgFont = px => `${px}px system-ui, "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
 let FC = null;
-function mgStart(k = "potong") {
+function mgStart(k = "potong", daily = false) {
   if (FC) return;
   const g = MG_GAMES[k] || MG_GAMES.potong;
   const el = document.createElement("div");
@@ -101,7 +110,7 @@ function mgStart(k = "potong") {
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
   size();
-  FC = { k, el, cv, ctx, dpr, items: [], bits: [], pops: [], score: 0, caught: 0, bx: cv.width / 2, t0: 0, last: 0, spawn: 0, run: false, shake: 0, size };
+  FC = { k, daily, el, cv, ctx, dpr, items: [], bits: [], pops: [], score: 0, caught: 0, bx: cv.width / 2, t0: 0, last: 0, spawn: 0, run: false, shake: 0, size };
   const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; };
   if (k === "buah") {
     const aim = e => { FC.bx = Math.max(0, Math.min(cv.width, pos(e)[0])); };
@@ -122,7 +131,7 @@ function mgStart(k = "potong") {
   }
   window.addEventListener("resize", size);
   $("mgX").onclick = () => mgEnd(true);
-  mgCard(`<b>${g.name}</b><small>${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
+  mgCard(`<b>${daily ? "Today's challenge · " : ""}${g.name}</b><small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
   $("mgPlay").onclick = mgRun;
   Tele.ev("minigame", { k, a: "buka", ke: ARC ? ARC.played.size + 1 : 1 });
   // yang udah pernah dimainkan langsung jalan, tanpa kartu cara main
@@ -130,7 +139,9 @@ function mgStart(k = "potong") {
 }
 function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
 function mgRun() {
-  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false });
+  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
+    // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
+    rnd: FC.daily ? Dapur.rng(today()) : Math.random });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
   if (ARC) ARC.played.add(FC.k);
   mgCard(null); $("mgScore").textContent = "0";
@@ -159,8 +170,8 @@ function catchStep(dt, el) {
   FC.spawn -= dt;
   if (FC.spawn <= 0) {
     FC.spawn = Math.max(0.28, 0.75 - el * 0.015);
-    const r = Math.random(), kind = r < 0.05 ? "star" : r < 0.23 ? "bug" : "fruit";
-    FC.items.push({ x: S / 2 + Math.random() * (W - S), y: -S, vy: (170 + Math.random() * 110 + el * 6) * dpr, kind, e: kind === "star" ? "⭐" : kind === "bug" ? "🐛" : MG_GOOD[Math.floor(Math.random() * MG_GOOD.length)] });
+    const r = FC.rnd(), kind = r < 0.05 ? "star" : r < 0.23 ? "bug" : "fruit";
+    FC.items.push({ x: S / 2 + FC.rnd() * (W - S), y: -S, vy: (170 + FC.rnd() * 110 + el * 6) * dpr, kind, e: kind === "star" ? "⭐" : kind === "bug" ? "🐛" : MG_GOOD[Math.floor(FC.rnd() * MG_GOOD.length)] });
   }
   ctx.font = mgFont(S);
   for (const it of FC.items) {
@@ -185,14 +196,14 @@ function slashStep(dt, el) {
   FC.spawn -= dt;
   if (FC.spawn <= 0) {
     // gelombang: makin lama makin rapat dan makin banyak
-    FC.spawn = Math.max(0.55, 1.25 - el * 0.022) * (0.8 + Math.random() * 0.4);
-    const n = 1 + (Math.random() < 0.25 + el * 0.02 ? 1 : 0) + (el > 12 && Math.random() < 0.3 ? 1 : 0);
+    FC.spawn = Math.max(0.55, 1.25 - el * 0.022) * (0.8 + FC.rnd() * 0.4);
+    const n = 1 + (FC.rnd() < 0.25 + el * 0.02 ? 1 : 0) + (el > 12 && FC.rnd() < 0.3 ? 1 : 0);
     for (let i = 0; i < n; i++) {
-      const x = W * (0.15 + Math.random() * 0.7), h = H * (0.5 + Math.random() * 0.3);
-      const bomb = el > 3 && Math.random() < 0.13, gold = !bomb && Math.random() < 0.04;
-      FC.items.push({ x, y: H + S * 0.6, vx: (W / 2 - x) * (0.3 + Math.random() * 0.5) / 1.6, vy: -Math.sqrt(2 * g * h),
-        rot: 0, vr: (Math.random() - 0.5) * 4, kind: bomb ? "bomb" : gold ? "gold" : "fruit",
-        e: bomb ? "💣" : gold ? "🌟" : SL_FRUIT[Math.floor(Math.random() * SL_FRUIT.length)], up: true });
+      const x = W * (0.15 + FC.rnd() * 0.7), h = H * (0.5 + FC.rnd() * 0.3);
+      const bomb = el > 3 && FC.rnd() < 0.13, gold = !bomb && FC.rnd() < 0.04;
+      FC.items.push({ x, y: H + S * 0.6, vx: (W / 2 - x) * (0.3 + FC.rnd() * 0.5) / 1.6, vy: -Math.sqrt(2 * g * h),
+        rot: 0, vr: (FC.rnd() - 0.5) * 4, kind: bomb ? "bomb" : gold ? "gold" : "fruit",
+        e: bomb ? "💣" : gold ? "🌟" : SL_FRUIT[Math.floor(FC.rnd() * SL_FRUIT.length)], up: true });
     }
   }
   ctx.font = mgFont(S);
@@ -355,8 +366,8 @@ function knifeLog() {
   const L = FC.lvl;
   FC.ang = 0; FC.stuck = []; FC.need = 6 + Math.min(L, 6);
   // mulai kayu kedua ada pisau penghalang
-  for (let i = 0; i < Math.min(L, 3); i++) FC.stuck.push({ t: Math.random() * Math.PI * 2, old: true });
-  FC.spin = { base: 2.2 + L * 0.25, wob: L >= 2 ? 1.6 : 0, ph: Math.random() * 6 };
+  for (let i = 0; i < Math.min(L, 3); i++) FC.stuck.push({ t: FC.rnd() * Math.PI * 2, old: true });
+  FC.spin = { base: 2.2 + L * 0.25, wob: L >= 2 ? 1.6 : 0, ph: FC.rnd() * 6 };
 }
 const knifeNorm = t => ((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 function knifeTap() { if (!FC.fly && !FC.bounce && FC.need > 0) FC.fly = { y: FC.cv.height - 150 * FC.dpr }; }
@@ -441,23 +452,26 @@ function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
   const W = wallet(), k = FC.k, had = Dapur.SKINS[k] ? Dapur.unlocked(W, k) : [];
   const r = Dapur.earn(W, k, FC.score, today());
+  const dly = FC.daily ? Dapur.daily(W, today(), FC.score) : null;
   if (k === "pisau") Dapur.track(W, "pisau", FC.caught);
   if (k === "stack") Dapur.track(W, "perfect", FC.perfN);
   const fresh = Dapur.SKINS[k] ? Dapur.SKINS[k].filter(sk => Dapur.unlocked(W, k).includes(sk.id) && !had.includes(sk.id)) : [];
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();
   Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1, skin: fresh.map(x => x.id).join(",") || undefined });
-  FC.res = { r, fresh };
+  FC.res = { r, fresh, dly };
+  if (dly) Tele.ev("minigame", { k, a: "harian", skor: FC.score, streak: dly.streak, bonus: dly.bonus });
   mgShowEnd();
 }
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
-  const W = wallet(), k = FC.k, { r, fresh } = FC.res;
+  const W = wallet(), k = FC.k, { r, fresh, dly } = FC.res;
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const line = r.best ? (T.next ? `New record · ${T.name} · ${T.need} more for ${T.next}` : `New record · ${T.name}`)
     : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `So close! ${gap} short of your record (${W.best[k]})` : `Record ${W.best[k] || 0} · ${T.name}`;
   mgCard(`<b>${what} · score ${FC.score}</b><span class="fcx-tier${r.best ? " up" : ""}">${line}</span>
+    ${dly ? `<span class="fcx-unlock">🔥 ${dly.streak}-day streak${dly.bonus ? ` · +${coinTxt(dly.bonus)} bonus` : ""} · today's best ${dly.best}</span>` : ""}
     ${fresh.length ? `<span class="fcx-unlock">🎁 New skin: ${fresh.map(x => x.name).join(", ")}</span>` : ""}
     <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
     <button class="choice yes fcx-next" id="mgAgain">Play again</button>
