@@ -716,7 +716,8 @@ function mgShowEnd() {
     ${chips ? `<div class="pp-chips">${chips}</div>` : ""}
     <small class="pp-wallet">You have ${coinTxt(W.koin)}${FC.score && !r.left && !r.got ? " · today's coins are all won" : ""}</small>
     <button class="choice yes pp-big" id="mgAgain">↻ Play again</button>
-    <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
+    <div class="row2 row3">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice" id="mgShare">Share</button><button class="choice no" id="mgOk">All games</button></div>`);
+  $("mgShare").onclick = () => mgShare(k, FC.score, r.best && FC.score, T.name);
   if (!FC.res.shown) { Sfx.play(r.best && FC.score ? "rekor" : "selesai"); ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
@@ -785,6 +786,36 @@ function findDraw(ctx, kind, x, y, S) {
   ctx.fillStyle = gl; ctx.fillRect(-S, -S, 2 * S, 2 * S); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   stamp(ctx, FIND_ICON[kind], 0, 0, S);
   ctx.restore();
+}
+// ---- bagi skor (v66): kartu gambar dari dunia gamenya + skor gede, lewat menu bagi HP (WA dkk); kalau nggak bisa, buka WA
+const SHARE_URL = "https://irf4n-muhammad.github.io/simul-game/";
+function shareCard(k, score, rec, rank) {
+  const W = 720, H = 900, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"), bg = $("mgBg"), g = MG_GAMES[k];
+  if (bg && bg.width) { const s = Math.max(W / bg.width, H / bg.height); x.drawImage(bg, (W - bg.width * s) / 2, (H - bg.height * s) / 2, bg.width * s, bg.height * s); }
+  else { x.fillStyle = "#22182B"; x.fillRect(0, 0, W, H); }
+  x.fillStyle = wGrad(x, 0, H, [[0, "rgba(14,10,24,.55)"], [0.5, "rgba(14,10,24,.25)"], [1, "rgba(14,10,24,.8)"]]); x.fillRect(0, 0, W, H);
+  stamp(x, g.icon, W / 2, 170, 150);
+  x.textAlign = "center"; x.textBaseline = "middle"; x.lineJoin = "round";
+  const txt = (t, y, px, col, sw) => { x.font = `900 ${px}px system-ui, sans-serif`; x.lineWidth = sw; x.strokeStyle = OUTL; x.strokeText(t, W / 2, y); x.fillStyle = col; x.fillText(t, W / 2, y); };
+  txt(g.name.toUpperCase(), 300, 54, "#FFFFFF", 12);
+  if (rec) txt("NEW RECORD!", 372, 40, "#FFE16B", 10);
+  txt(String(score), 500, 210, "#FFFFFF", 22);
+  txt(rank, 640, 44, "#CDB8FF", 10);
+  txt("Can you beat me?", 760, 48, "#FFE16B", 11);
+  x.font = "700 26px system-ui, sans-serif"; x.fillStyle = "rgba(255,255,255,.8)"; x.fillText(SHARE_URL.replace("https://", ""), W / 2, 850);
+  return c;
+}
+async function mgShare(k, score, rec, rank) {
+  const text = `I scored ${score} in ${MG_GAMES[k].name} ${MG_GAMES[k].icon} Can you beat me? ${SHARE_URL}`;
+  Tele.ev("minigame", { k, a: "bagi", skor: score });
+  try {
+    const blob = await new Promise(res => shareCard(k, score, rec, rank).toBlob(res, "image/png"));
+    const file = blob && new File([blob], `score-${k}.png`, { type: "image/png" });
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file], text });
+    if (navigator.share) return await navigator.share({ text });
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
 }
 function mgEnd(quit) {
   if (!FC) return;
