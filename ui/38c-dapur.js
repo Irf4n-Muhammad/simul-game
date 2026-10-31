@@ -106,7 +106,7 @@ function mgStart(k = "potong", daily = false) {
   const el = document.createElement("div");
   el.className = "fcx fcx-" + k; el.id = "fcBox";
   // skor gede di tengah atas, di BELAKANG kanvas: buah dan pisau tetap kegambar di atasnya, jadi ga pernah nutupin permainan
-  el.innerHTML = `<div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
+  el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -131,6 +131,7 @@ function mgStart(k = "potong", daily = false) {
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   }
   window.addEventListener("resize", size);
+  worldDraw(0);
   $("mgX").onclick = () => mgEnd(true);
   mgCard(`<b>${daily ? "Today's challenge · " : ""}${g.name}</b><small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
   $("mgPlay").onclick = mgRun;
@@ -155,6 +156,7 @@ function mgFrame() {
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
   const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep }[FC.k];
+  worldDraw(dt);
   step(dt, el);
   mgJuice(dt);
   if (MG_GAMES[FC.k].timed) {
