@@ -98,8 +98,8 @@ test("peti misteri dan puzzle (v61)", () => {
   const last = D.addPiece(W); assert.ok(last.done); assert.equal(last.have, 6);
   assert.ok(D.unlocked(W, "pisau").includes("ninja"));
   assert.equal(D.puzzleNow(W).id, "galaksi"); assert.equal(D.puzzleNow(W).have, 0);
-  for (let i = 0; i < 6; i++) D.addPiece(W);
-  assert.ok(D.unlocked(W, "stack").includes("galaksi")); assert.equal(D.puzzleNow(W), null);
+  for (const p of D.PUZZLES.slice(1)) { for (let i = 0; i < p.need; i++) D.addPiece(W); assert.ok(D.unlocked(W, p.game).includes(p.id)); }
+  assert.equal(D.puzzleNow(W), null);
   // semua lengkap: kepingan jadi 20 koin
   k = W.koin; assert.equal(D.addPiece(W).kind, "coin"); assert.equal(W.koin, k + 20);
   // skin puzzle tercatat di daftar skin, satu per game

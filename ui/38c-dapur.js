@@ -349,7 +349,7 @@ function catchStep(dt, el) {
   FC.shake = Math.max(0, FC.shake - dt);
   const sx = FC.shake ? (Math.random() - 0.5) * 16 * dpr : 0;
   ctx.font = mgFont(S * 1.7);
-  stamp(ctx, "🧺", FC.bx + sx, by, S * 1.7);
+  stamp(ctx, CATCH_SKIN[FC.skin] || "🧺", FC.bx + sx, by, S * 1.7);
 }
 
 // ---- Fruit slash (v50): buah dilempar dari bawah, digores jari. Santai: bom cuma −5, nggak ada game over, buah lolos nggak dihukum.
@@ -402,8 +402,11 @@ function slashStep(dt, el) {
   const tr = FC.trail;
   if (tr) { const cut = now() - 160; while (tr.length > 2 && tr[0].t < cut) tr.shift(); }
   if (tr && tr.length > 1) {
-    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(255,255,255,.95)";
-    for (let i = 1; i < tr.length; i++) { ctx.lineWidth = (2 + 8 * i / tr.length) * dpr; ctx.beginPath(); ctx.moveTo(tr[i - 1].p[0], tr[i - 1].p[1]); ctx.lineTo(tr[i].p[0], tr[i].p[1]); ctx.stroke(); }
+    const K = TRAIL_SKIN[FC.skin] || TRAIL_SKIN.dasar;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (K.glow) { ctx.shadowColor = K.glow; ctx.shadowBlur = 16 * dpr; }
+    for (let i = 1; i < tr.length; i++) { ctx.strokeStyle = trailCol(K, i, tr.length); ctx.lineWidth = (2 + 8 * i / tr.length) * dpr; ctx.beginPath(); ctx.moveTo(tr[i - 1].p[0], tr[i - 1].p[1]); ctx.lineTo(tr[i].p[0], tr[i].p[1]); ctx.stroke(); }
+    ctx.shadowBlur = 0;
   }
   FC.shake = Math.max(0, FC.shake - dt);
   FC.el.style.transform = FC.shake ? `translate(${(Math.random() - 0.5) * 12}px, ${(Math.random() - 0.5) * 12}px)` : "";
@@ -466,9 +469,22 @@ const STACK_SKIN = {
 };
 const SKIN_SWATCH = (game, id) => {
   if (game === "pisau") { const K = KNIFE_SKIN[id]; return `linear-gradient(90deg, ${K.blade} 0 62%, ${K.handle} 62%)`; }
+  if (game === "potong") { const K = TRAIL_SKIN[id]; return K.rainbow ? "linear-gradient(90deg, #FF5A5A, #FFD34D, #6BF06B, #4FE3FF, #B56BFF)" : K.grad ? `linear-gradient(90deg, ${K.grad.join(", ")})` : `linear-gradient(90deg, #2A1F3D, ${K.c})`; }
+  if (game === "buah") return `#FFF3DA url(${stickerURL(CATCH_SKIN[id], 40)}) center / contain no-repeat`;
   const f = STACK_SKIN[id]; return `linear-gradient(${[0, 1, 2].map(i => f(i, 0)[0]).join(", ")})`;
 };
-const STAT_WORD = { pisau: "knives", perfect: "Perfects" };
+const STAT_WORD = { pisau: "knives", perfect: "Perfects", iris: "sliced", tangkap: "caught" };
+// v65: skin Fruit slash = jejak goresan; Fruit catch = wadah
+const TRAIL_SKIN = {
+  dasar: { c: "#FFFFFF" }, perunggu: { c: "#E8A35E" }, perak: { c: "#EEF3F8", glow: "#FFFFFF" }, emas: { c: "#FFD34D", glow: "#FFB000" },
+  berlian: { c: "#A8F3FF", glow: "#4FE3FF" }, legenda: { rainbow: true, glow: "#FF7AD0" }, katana: { c: "#FF4A4A", glow: "#C8102E" }, neon: { grad: ["#FF4FD8", "#4FF3FF"], glow: "#FF4FD8" },
+};
+const CATCH_SKIN = { dasar: "🧺", perunggu: "🪣", perak: "🥣", emas: "🏆", berlian: "🛒", legenda: "🛸", topi: "🎩", gurita: "🐙" };
+function trailCol(K, i, n) {
+  if (K.rainbow) return `hsl(${(i * 28 + now() / 4) % 360} 95% 65%)`;
+  if (K.grad) return i / n < 0.5 ? K.grad[0] : K.grad[1];
+  return K.c;
+}
 const puzzleWhy = (W, id) => { const P = Dapur.puzzleNow(W); return P && P.id === id ? `🧩 ${P.have}/${P.need} pieces` : "🧩 Puzzle (later)"; };
 function skinPanel() {
   const W = wallet(), k = FC.k, on = Dapur.unlocked(W, k), worn = Dapur.skinOf(W, k), S = W.stat || {};
@@ -672,6 +688,8 @@ function mgDone() {
   const dly = FC.daily ? Dapur.daily(W, today(), FC.score) : null;
   if (k === "pisau") Dapur.track(W, "pisau", FC.caught);
   if (k === "stack") Dapur.track(W, "perfect", FC.perfN);
+  if (k === "potong") Dapur.track(W, "iris", FC.caught);
+  if (k === "buah") Dapur.track(W, "tangkap", FC.caught);
   const fresh = Dapur.SKINS[k] ? Dapur.SKINS[k].filter(sk => Dapur.unlocked(W, k).includes(sk.id) && !had.includes(sk.id)) : [];
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();

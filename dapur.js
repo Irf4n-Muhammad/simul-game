@@ -60,6 +60,13 @@
     stack: [{ id: "dasar", name: "Pastel" }, { id: "perunggu", name: "Clay", tier: 1 }, { id: "perak", name: "Stone", tier: 2 },
       { id: "emas", name: "Gold bars", tier: 3 }, { id: "berlian", name: "Ice", tier: 4 }, { id: "legenda", name: "Rainbow", tier: 5 },
       { id: "permen", name: "Candy", stat: "perfect", n: 25 }, { id: "galaksi", name: "Galaxy", puzzle: "galaksi" }],
+    // v65: Fruit slash = warna jejak goresan, Fruit catch = wadah penangkap
+    potong: [{ id: "dasar", name: "Plain swipe" }, { id: "perunggu", name: "Bronze swipe", tier: 1 }, { id: "perak", name: "Silver swipe", tier: 2 },
+      { id: "emas", name: "Golden swipe", tier: 3 }, { id: "berlian", name: "Ice swipe", tier: 4 }, { id: "legenda", name: "Rainbow swipe", tier: 5 },
+      { id: "katana", name: "Katana", stat: "iris", n: 500 }, { id: "neon", name: "Neon swipe", puzzle: "neon" }],
+    buah: [{ id: "dasar", name: "Basket" }, { id: "perunggu", name: "Bucket", tier: 1 }, { id: "perak", name: "Bowl", tier: 2 },
+      { id: "emas", name: "Trophy cup", tier: 3 }, { id: "berlian", name: "Shopping cart", tier: 4 }, { id: "legenda", name: "UFO", tier: 5 },
+      { id: "topi", name: "Magic hat", stat: "tangkap", n: 500 }, { id: "gurita", name: "Octopus", puzzle: "gurita" }],
   };
   const stats = W => (W.stat = W.stat || {});
   function track(W, stat, n) { const S = stats(W); S[stat] = (S[stat] || 0) + n; return S[stat]; }
@@ -73,7 +80,7 @@
   // Peti/kepingan muncul di tengah permainan (paling banyak BOX_DAY sehari); peti dibuka di kartu akhir.
   // Kepingan ngisi puzzle yang lagi jalan; puzzle lengkap = skin khusus yang cuma bisa dari puzzle.
   const BOX_DAY = 6;
-  const PUZZLES = [{ id: "ninja", game: "pisau", need: 6 }, { id: "galaksi", game: "stack", need: 6 }];
+  const PUZZLES = [{ id: "ninja", game: "pisau", need: 6 }, { id: "galaksi", game: "stack", need: 6 }, { id: "neon", game: "potong", need: 6 }, { id: "gurita", game: "buah", need: 6 }];
   const puz = W => (W.puzzle = W.puzzle || { ix: 0, n: 0 });
   const solved = (W, id) => { const i = PUZZLES.findIndex(p => p.id === id); return i >= 0 && puz(W).ix > i; };
   const canDrop = (W, d) => !(W.peti && W.peti.d === d && W.peti.n >= BOX_DAY);
