@@ -106,7 +106,7 @@ function mgStart(k = "potong", daily = false) {
   const el = document.createElement("div");
   el.className = "fcx fcx-" + k; el.id = "fcBox";
   // skor gede di tengah atas, di BELAKANG kanvas: buah dan pisau tetap kegambar di atasnya, jadi ga pernah nutupin permainan
-  el.innerHTML = `<div class="fcx-sc" id="mgSc"><b id="mgScore">0</b><i id="mgPlus"></i></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
+  el.innerHTML = `<div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -145,7 +145,7 @@ function mgRun() {
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
   if (ARC) ARC.played.add(FC.k);
-  mgCard(null); Object.assign(FC, { heat: 0, shown: 0, ember: 0 }); mgHeat(0); $("mgScore").textContent = "0";
+  mgCard(null); Object.assign(FC, { heat: 0, shown: 0, ember: 0, fire: [], lv: 0 }); mgHeat(0); $("mgScore").textContent = "0";
   requestAnimationFrame(mgFrame);
 }
 function mgFrame() {
@@ -194,31 +194,93 @@ function mgPlus(n) {
   p.textContent = n > 0 ? "+" + n : String(n); p.className = n < 0 ? "neg" : "";
   void p.offsetWidth; p.className += " go";
 }
+// v58: api partikel beneran di kanvas kecil di belakang angka. Nyalanya ngikutin panas secara mulus,
+// bukan cuma 3 tahap; tiap naik tahap ada ledakan percikan, kilat, dan tulisan HOT / ON FIRE
+const FIRE_W = 340, FIRE_H = 250, FIRE_BASE = 198;   // ukuran kanvas api (px CSS) dan garis dasar api = bawah angka
+let FIRE_SPR = null;
+function fireSprites() {
+  // bola api lembut per warna, dari putih panas ke merah lalu asap; digambar sekali, dipakai ulang
+  const stops = [[255, 255, 235], [255, 240, 150], [255, 200, 70], [255, 140, 40], [245, 85, 30], [200, 40, 40], [120, 30, 60], [60, 30, 40]];
+  return stops.map(([r, g, b]) => {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d"), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, `rgba(${r},${g},${b},1)`); gr.addColorStop(0.4, `rgba(${r},${g},${b},.55)`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return c;
+  });
+}
+function fireSpawn(n, w, I, burst) {
+  for (let i = 0; i < n; i++) {
+    const spark = burst || Math.random() < 0.08 + I * 0.1;
+    if (spark) {
+      const ang = burst ? Math.random() * Math.PI * 2 : -Math.PI / 2 + (Math.random() - 0.5) * 1.2, sp = burst ? 220 + Math.random() * 380 : 160 + Math.random() * 260 * (0.5 + I);
+      FC.fire.push({ k: 1, x: FIRE_W / 2 + (Math.random() - 0.5) * w, y: FIRE_BASE - 30 - Math.random() * 30, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, t: 0, life: 0.5 + Math.random() * 0.7, r: 1.5 + Math.random() * 2 });
+    } else {
+      // lidah api: lahir sepanjang lebar angka, naik makin cepat, menyempit, berubah warna
+      const u = (Math.random() - 0.5) * 2;
+      FC.fire.push({ k: 0, x: FIRE_W / 2 + u * w * 0.55, y: FIRE_BASE - Math.random() * 18, vx: -u * 12, vy: -(70 + Math.random() * 90) * (0.7 + I), t: 0, life: (0.45 + Math.random() * 0.45) * (0.8 + I * 0.6), r: (12 + Math.random() * 14) * (0.75 + I * 0.9) * (1 - Math.abs(u) * 0.35), s: Math.random() * 9 });
+    }
+  }
+}
+function fireDraw(dt) {
+  const cv = $("mgFire");
+  if (!cv) return;
+  const dpr = FC.dpr, ctx = cv.getContext("2d");
+  if (cv.width !== FIRE_W * dpr) { cv.width = FIRE_W * dpr; cv.height = FIRE_H * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, FIRE_W, FIRE_H);
+  if (!FC.fire.length) return;
+  FIRE_SPR = FIRE_SPR || fireSprites();
+  const tt = now() / 1000;
+  ctx.globalCompositeOperation = "lighter";
+  FC.fire = FC.fire.filter(p => (p.t += dt) < p.life);
+  for (const p of FC.fire) {
+    const f = p.t / p.life;
+    if (p.k) {   // percikan: titik terang dengan ekor pendek, kena gravitasi dikit
+      p.vy += 260 * dt; p.vx *= 1 - dt * 1.5; p.x += p.vx * dt; p.y += p.vy * dt;
+      ctx.globalAlpha = 1 - f; ctx.strokeStyle = f < 0.5 ? "#FFF6C8" : "#FFB347"; ctx.lineWidth = p.r; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03); ctx.stroke();
+      continue;
+    }
+    p.vy -= 140 * dt; p.vx += Math.sin(tt * 7 + p.s) * 90 * dt; p.vx += (FIRE_W / 2 - p.x) * 1.6 * dt;   // naik, meliuk, nyatu ke tengah jadi lidah
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    const r = p.r * (1 - f * 0.7), spr = FIRE_SPR[Math.min(7, 1 + Math.floor(f * 7))];
+    ctx.globalAlpha = (f < 0.15 ? f / 0.15 : 1 - (f - 0.15) / 0.85) * 0.55;   // jangan sampai numpuk jadi putih, angkanya harus tetap kebaca
+    ctx.drawImage(spr, p.x - r, p.y - r * 1.25, r * 2, r * 2.5);
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+}
+function mgHype(l) {
+  // naik tahap panas: ledakan percikan, kilat, tulisan, getar HP
+  const box = $("mgSc"), hot = $("mgHot"), b = $("mgScore");
+  if (!reduce) fireSpawn(l === 3 ? 70 : 40, b.offsetWidth, 1, true);
+  if (l >= 2 && hot) { hot.textContent = l === 3 ? "ON FIRE!" : "HOT!"; hot.className = ""; void hot.offsetWidth; hot.className = "go l" + l; }
+  box.classList.remove("zap"); void box.offsetWidth; box.classList.add("zap");
+  navigator.vibrate && navigator.vibrate(l === 3 ? [30, 40, 60] : 30);
+}
 function mgJuice(dt) {
-  const b = $("mgScore"), box = $("mgSc");
+  const b = $("mgScore");
   if (!b) return;
   if (FC.over) FC.heat = 0;
   FC.heat = Math.max(0, FC.heat - dt * (1.1 + FC.heat * 0.06));
   const l = mgLevel(); mgHeat(l);
+  if (l > FC.lv && l >= 1) mgHype(l);
+  FC.lv = l;
   // angka bergulir naik, bukan loncat
   if (FC.shown !== FC.score) {
     const d = FC.score - FC.shown, st = Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 14)));
     FC.shown += Math.sign(d) * Math.min(Math.abs(d), st); b.textContent = FC.shown;
   }
-  // bara api naik dari angka waktu lagi panas
-  if (l >= 2 && !reduce) {
-    FC.ember += dt * (l === 3 ? 26 : 12);
-    while (FC.ember >= 1) {
-      FC.ember -= 1;
-      const e = document.createElement("u"), w = b.offsetWidth;
-      e.style.left = `calc(50% + ${(Math.random() - 0.5) * w}px)`;
-      e.style.setProperty("--dx", (Math.random() - 0.5) * 40 + "px");
-      e.style.animationDuration = 0.6 + Math.random() * 0.6 + "s";
-      if (l === 3 && Math.random() < 0.4) e.className = "hot";
-      e.addEventListener("animationend", () => e.remove());
-      box.appendChild(e);
-    }
+  // api: mulai dari panas 3, makin panas makin lebat, tinggi, dan lebar
+  const I = Math.max(0, Math.min(1, (FC.heat - 3) / 15)), G = $("mgGlow");
+  if (G) G.style.opacity = Math.min(1, Math.max(0, (FC.heat - 6) / 12)).toFixed(2);
+  if (reduce) return;
+  if (FC.heat >= 3) {
+    FC.ember += dt * (50 + 300 * I);
+    const n = Math.floor(FC.ember); FC.ember -= n;
+    fireSpawn(n, b.offsetWidth, I, false);
   }
+  // api besar: angkanya gemeteran terus
+  b.style.translate = l === 3 ? `${(Math.random() - 0.5) * 4}px ${(Math.random() - 0.5) * 3}px` : "";
+  fireDraw(dt);
 }
 
 // ---- Fruit catch (v49): keranjang ikut jari
