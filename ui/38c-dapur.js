@@ -102,7 +102,7 @@ function mgStart(k = "potong") {
 }
 function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
 function mgRun() {
-  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k) });
+  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
   if (ARC) ARC.played.add(FC.k);
   mgCard(null); $("mgScore").textContent = "0";
@@ -120,7 +120,7 @@ function mgFrame() {
     const rest = Math.max(0, MG_LEN - el);
     $("mgTime").textContent = Math.ceil(rest);
     if (rest <= 0) return mgDone();
-  } else if (FC.over && now() - FC.over > 900) return mgDone();   // gagal: jeda sebentar biar kelihatan jatuhnya
+  } else if (FC.over && now() - FC.over > 900) return FC.cont || !FC.score ? mgDone() : mgOffer();   // gagal: jeda sebentar biar kelihatan jatuhnya
   requestAnimationFrame(mgFrame);
 }
 const mgAdd = n => { FC.score = Math.max(0, FC.score + n); $("mgScore").textContent = FC.score; };
@@ -391,6 +391,24 @@ function knifeStep(dt, el) {
   ctx.globalAlpha = 1; FC.pops = FC.pops.filter(p => p.life > 0);
 }
 
+// "lanjut sekali" (v54, diskusi 31 Okt): pas kalah di game sampai-gagal, boleh lanjut dari skor itu, sekali per run.
+// Nanti ini yang jadi iklan pilihan ("tonton 15 detik, lanjut"); sekarang gratis dulu buat ngetes rasanya.
+function mgOffer() {
+  FC.run = false;
+  const best = wallet().best[FC.k] || 0, near = FC.score < best && best - FC.score <= Math.max(3, best * 0.3);
+  Tele.ev("minigame", { k: FC.k, a: "lanjut_tawar", skor: FC.score });
+  mgCard(`<b>Continue from ${FC.score}?</b>
+    <small>${near ? `Only ${best - FC.score} to beat your record. ` : FC.score >= best && best ? "You're on a new record. " : ""}Once per run.</small>
+    <button class="choice yes fcx-next" id="mgCont">▶ Continue</button>
+    <button class="choice no" id="mgFin">No, finish</button>`);
+  $("mgCont").onclick = () => {
+    Tele.ev("minigame", { k: FC.k, a: "lanjut", skor: FC.score });
+    FC.cont = true; FC.over = 0;
+    if (FC.k === "stack") stackNew(); else FC.bounce = null;
+    mgCard(null); FC.run = true; FC.last = now(); requestAnimationFrame(mgFrame);
+  };
+  $("mgFin").onclick = () => { Tele.ev("minigame", { k: FC.k, a: "lanjut_tolak", skor: FC.score }); mgDone(); };
+}
 function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
   const W = wallet(), k = FC.k, had = Dapur.SKINS[k] ? Dapur.unlocked(W, k) : [];
