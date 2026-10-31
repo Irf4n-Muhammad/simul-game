@@ -598,6 +598,16 @@ svg { stroke: currentColor; }
 .fcx-sc i.neg { color: #FF7A6B; } .fcx-sc i.go { animation: fcxPlus .7s ease-out; }
 @keyframes fcxPlus { 0% { opacity: 0; transform: translateY(8px) scale(.7); } 20% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-14px) scale(1); } }
 .fcx canvas { z-index: 1; }
+/* v59: dunia tiap game di kanvas paling belakang; kartu dan tombol tebel kayak permen */
+.fcx canvas#mgBg { z-index: 0; }
+.fcx .fcx-card { background: #FFF8EC; border: 3px solid #22182B; box-shadow: 0 8px 0 #22182B, 0 18px 40px rgba(0,0,0,.45); border-radius: 26px; }
+.fcx .fcx-card b { font-size: 21px; font-weight: 900; color: #22182B; letter-spacing: -.01em; }
+.fcx .fcx-card .choice { font-weight: 900; font-size: 16px; color: #22182B; background: #fff; border: 3px solid #22182B; border-radius: 18px; box-shadow: 0 5px 0 #22182B; text-align: center; transition: transform .06s, box-shadow .06s; }
+.fcx .fcx-card .choice.yes { background: linear-gradient(#FFE16B, #FFAA2B); box-shadow: 0 5px 0 #22182B, inset 0 3px 0 rgba(255,255,255,.6); }
+.fcx .fcx-card .choice.no { background: #F3E6D8; }
+.fcx .fcx-card .choice:active { transform: translateY(4px); box-shadow: 0 1px 0 #22182B; }
+.fcx .fcx-card .choice.hot { background: linear-gradient(#9CF5C0, #3FCB83); box-shadow: 0 5px 0 #22182B, inset 0 3px 0 rgba(255,255,255,.6); }
+.fcx-top .x, .fcx-top span { border: 3px solid #22182B; box-shadow: 0 3px 0 #22182B; background: #FFF8EC; color: #22182B !important; font-weight: 900; }
 /* v58: kanvas api di belakang angka, kilat waktu naik tahap, tulisan HOT / ON FIRE, cahaya api dari atas layar */
 .fcx-sc canvas#mgFire { position: absolute; inset: auto; z-index: 0; left: 50%; top: -102px; width: 340px; height: 250px; margin-left: -170px; pointer-events: none; }
 .fcx-sc.zap b { animation: fcxFlash .45s ease-out; }
