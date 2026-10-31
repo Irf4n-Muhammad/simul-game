@@ -600,7 +600,38 @@ svg { stroke: currentColor; }
 .fcx canvas { z-index: 1; }
 /* v59: dunia tiap game di kanvas paling belakang; kartu dan tombol tebel kayak permen */
 .fcx canvas#mgBg { z-index: 0; }
-.fcx .fcx-card { background: #FFF8EC; border: 3px solid #22182B; box-shadow: 0 8px 0 #22182B, 0 18px 40px rgba(0,0,0,.45); border-radius: 26px; }
+/* v60: pop up gaya game: layar belakang redup, kartu mental, pita judul, cincin waktu "Keep going?", skor besar, medali peringkat */
+.fcx .fcx-card { box-shadow: 0 8px 0 #22182B, 0 0 0 100vmax rgba(14,10,24,.58); padding-top: 34px; align-items: stretch; }
+.fcx .fcx-card.pop { animation: ppIn .42s cubic-bezier(.2,1.5,.4,1); }
+@keyframes ppIn { from { transform: translateY(-50%) scale(.6); opacity: 0; } to { transform: translateY(-50%) scale(1); opacity: 1; } }
+.pp-head { position: absolute; top: -24px; left: 50%; transform: translateX(-50%) rotate(-2deg); white-space: nowrap; padding: 9px 26px; border-radius: 14px; border: 3px solid #22182B; box-shadow: 0 5px 0 #22182B; background: linear-gradient(#8F7CFF, #5B45E0); color: #fff; font-weight: 900; font-size: 22px; letter-spacing: .02em; text-transform: uppercase; -webkit-text-stroke: 1.5px #22182B; paint-order: stroke fill; }
+.pp-head.pp-gold { background: linear-gradient(#FFE16B, #FF9F1C); } .pp-head.pp-red { background: linear-gradient(#FF8A6B, #E8434E); }
+.pp-icon { align-self: center; width: 84px; height: 84px; border-radius: 24px; display: grid; place-items: center; font-size: 50px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 80%, #fff), var(--c)); border: 3px solid #22182B; box-shadow: 0 5px 0 #22182B; margin: 6px 0 2px; }
+.fcx .fcx-card .pp-big { font-size: 20px; padding: 16px; }
+.pp-go { animation: ppBeat 1s ease-in-out infinite; }
+@keyframes ppBeat { 50% { transform: scale(1.04); } }
+.pp-link { border: 0; background: none; color: #6A5F78; font-weight: 800; font-size: 15px; padding: 6px; text-decoration: underline; text-underline-offset: 3px; }
+.pp-ring { position: relative; align-self: center; width: 132px; height: 132px; display: grid; place-items: center; margin: 4px 0; }
+.pp-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.pp-ring circle { fill: #2A1F3D; stroke: #E9E1F2; stroke-width: 9; } .pp-ring circle.t { fill: none; stroke: #3FCB83; stroke-linecap: round; stroke-dasharray: 276.5; stroke-dashoffset: 0; animation: ppTimer 6s linear forwards; }
+@keyframes ppTimer { 60% { stroke: #FFC23D; } to { stroke-dashoffset: 276.5; stroke: #E8434E; } }
+.pp-ring span { position: relative; font-size: 46px; font-weight: 900; color: #fff; line-height: 1; margin-top: -8px; } .pp-ring small { position: absolute; bottom: 30px; color: rgba(255,255,255,.65) !important; font-size: 12px !important; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.fcx .fcx-card b.pp-hint { font-size: 16px; font-weight: 800; color: #6A5F78; } .fcx .fcx-card b.pp-hint.hot { color: #D9481F; }
+.pp-score { font-size: 64px; font-weight: 900; line-height: 1; color: #22182B; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.fcx-card small.pp-sub { margin-top: -6px; font-weight: 700; }
+.pp-rank { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border-radius: 16px; background: #F3EAF8; border: 2px solid rgba(34,24,43,.12); }
+.pp-rank i { font-style: normal; font-size: 26px; width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fff, var(--t) 60%); border: 3px solid #22182B; }
+.pp-rank span { flex: 1; display: flex; flex-direction: column; gap: 4px; } .fcx .fcx-card .pp-rank b { font-size: 16px; }
+.pp-rank em { display: block; height: 10px; border-radius: 99px; background: rgba(34,24,43,.12); overflow: hidden; } .pp-rank em u { display: block; height: 100%; border-radius: 99px; background: var(--t); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
+.fcx-card .pp-rank small { font-size: 12.5px; font-weight: 700; }
+.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.pp-chip { font-size: 13.5px; font-weight: 900; padding: 6px 12px; border-radius: 99px; border: 2px solid #22182B; background: #FFF1B8; color: #22182B; }
+.pp-chip.fire { background: #FFD3B8; } .pp-chip.gift { background: #C9F5D8; }
+.fcx-card small.pp-wallet { font-size: 12.5px; margin-top: -2px; }
+.pp-conf { position: absolute; top: 30%; width: 9px; height: 14px; border-radius: 2px; pointer-events: none; animation: ppConf 1.4s cubic-bezier(.2,.6,.4,1) forwards; }
+@keyframes ppConf { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 30% { transform: translate(calc(var(--dx) * .6), -120px) rotate(calc(var(--r) * .4)); } 100% { transform: translate(var(--dx), 260px) rotate(var(--r)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pp-go, .fcx .fcx-card.pop { animation: none; } }
+.fcx .fcx-card { background: #FFF8EC; border: 3px solid #22182B; border-radius: 26px; }
 .fcx .fcx-card b { font-size: 21px; font-weight: 900; color: #22182B; letter-spacing: -.01em; }
 .fcx .fcx-card .choice { font-weight: 900; font-size: 16px; color: #22182B; background: #fff; border: 3px solid #22182B; border-radius: 18px; box-shadow: 0 5px 0 #22182B; text-align: center; transition: transform .06s, box-shadow .06s; }
 .fcx .fcx-card .choice.yes { background: linear-gradient(#FFE16B, #FFAA2B); box-shadow: 0 5px 0 #22182B, inset 0 3px 0 rgba(255,255,255,.6); }
