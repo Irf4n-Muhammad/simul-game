@@ -646,14 +646,14 @@ function mgDone() {
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();
   Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1, skin: fresh.map(x => x.id).join(",") || undefined });
-  FC.res = { r, fresh, dly, finds, puzSkins };
+  FC.res = { r, fresh, dly, finds, puzSkins, step: 0 };
   finds.forEach(f => Tele.ev("minigame", { k, a: "temuan", jenis: f.kind, isi: f.r.kind, n: f.r.n, keping: f.r.have }));
   if (dly) Tele.ev("minigame", { k, a: "harian", skor: FC.score, streak: dly.streak, bonus: dly.bonus });
-  mgShowEnd();
+  finds.length || puzSkins.length ? revealNext() : mgShowEnd();
 }
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
-  const W = wallet(), k = FC.k, { r, fresh, dly, finds, puzSkins } = FC.res;
+  const W = wallet(), k = FC.k, { r, fresh, dly } = FC.res;
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
@@ -662,17 +662,13 @@ function mgShowEnd() {
   const chips = [r.got ? `<span class="pp-chip coin">+${coinTxt(r.got)}</span>` : "",
     dly ? `<span class="pp-chip fire">🔥 ${dly.streak}-day streak${dly.bonus ? ` +${coinTxt(dly.bonus)}` : ""}</span>` : "",
     fresh.filter(x => !x.puzzle).length ? `<span class="pp-chip gift">🎁 New skin: ${fresh.filter(x => !x.puzzle).map(x => x.name).join(", ")}</span>` : ""].join("");
-  const findHtml = finds.map((f, i) => f.open ? findChip(f.r) : `<button class="pp-box" data-box="${i}"><i>🎁</i><b>Mystery box</b><small>Tap to open</small></button>`).join("")
-    + puzSkins.map(sk => `<span class="pp-chip gift big">🧩 Puzzle done! New skin: ${sk.name} (${MG_GAMES[sk.game].name})</span>`).join("");
   mgCard(`<div class="pp-head ${head[1]}">${head[0]}</div>
     <div class="pp-score">${FC.score}</div><small class="pp-sub">${sub}</small>
     <div class="pp-rank" style="--t: ${tierCol(T.ix)}"><i>${T.ix >= 4 ? "💎" : "🏆"}</i><span><b>${T.name}</b><em><u style="width: ${pct}%"></u></em><small>${T.next ? `${T.need} more for ${T.next}` : "Top rank"}</small></span></div>
-    ${findHtml ? `<div class="pp-finds">${findHtml}</div>` : ""}
     ${chips ? `<div class="pp-chips">${chips}</div>` : ""}
     <small class="pp-wallet">You have ${coinTxt(W.koin)}${FC.score && !r.left && !r.got ? " · today's coins are all won" : ""}</small>
     <button class="choice yes pp-big" id="mgAgain">↻ Play again</button>
     <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
-  FC.el.querySelectorAll("[data-box]").forEach(b => { b.onclick = () => boxOpen(b, finds[+b.dataset.box]); });
   if (!FC.res.shown) { ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
@@ -695,19 +691,40 @@ function mgPick(kind) {
   t.innerHTML = `<i>${FIND_ICON[kind]}</i><b>${kind === "box" ? "Mystery box!" : "Puzzle piece!"}</b>`;
   t.addEventListener("animationend", () => t.remove()); FC.el.appendChild(t);
 }
-const findChip = x => x.kind === "piece"
-  ? `<span class="pp-chip piece">🧩 Puzzle piece ${x.have}/${x.need} · ${Dapur.SKINS[x.game].find(s => s.puzzle === x.id).name}</span>`
-  : `<span class="pp-chip coin${x.jackpot ? " big" : ""}">${x.jackpot ? "💰 JACKPOT " : ""}+${coinTxt(x.n)}</span>`;
-function boxOpen(btn, f) {
-  if (f.open) return;
-  f.open = true; btn.onclick = null; btn.classList.add("shake");
-  Tele.ev("minigame", { k: FC.k, a: "buka_peti", isi: f.r.kind });
-  setTimeout(() => {
-    if (!btn.isConnected) return;
-    btn.outerHTML = findChip(f.r).replace("pp-chip", "pp-chip reveal");
-    navigator.vibrate && navigator.vibrate(f.r.jackpot ? [40, 40, 80] : 40);
-    if (f.r.jackpot || f.r.done) ppConfetti($("mgCard"));
-  }, reduce ? 0 : 650);
+// layar buka temuan (v62): sendiri, sebelum kartu akhir, biar nggak numpuk sama "New record" dan lainnya.
+// Peti: tap buat buka (goyang, kilat, isinya keluar). Kepingan: langsung keliatan masuk ke puzzle. Puzzle lengkap: skin baru.
+function revealNext() {
+  const R = FC.res, f = R.finds[R.step], sk = !f && R.puzSkins[R.step - R.finds.length];
+  if (!f && !sk) { const v = FC.el.querySelector(".fcx-reveal"); if (v) v.remove(); return mgShowEnd(); }
+  mgCard(null);
+  let v = FC.el.querySelector(".fcx-reveal");
+  if (!v) { v = document.createElement("div"); v.className = "fcx-reveal"; FC.el.appendChild(v); }
+  const last = R.step + 1 >= R.finds.length + R.puzSkins.length, nextBtn = `<button class="choice yes pp-big" id="rvNext">${last ? "Continue" : "Next"}</button>`;
+  const go = () => { R.step += 1; revealNext(); };
+  if (sk) {
+    v.innerHTML = `<div class="rv-rays gold"></div><div class="rv-in"><small>PUZZLE COMPLETE</small><i class="rv-icon pop">🧩</i><b>New skin: ${sk.name}</b><em>For ${MG_GAMES[sk.game].name}. Wear it from the Skins button.</em>${nextBtn}</div>`;
+    ppConfetti(v); navigator.vibrate && navigator.vibrate([40, 40, 80]);
+  } else if (f.kind === "box" && !f.open) {
+    v.innerHTML = `<div class="rv-rays"></div><div class="rv-in"><small>YOU FOUND</small><i class="rv-icon wiggle">🎁</i><b>Mystery box</b><em>Tap to open</em></div>`;
+    v.onclick = () => {
+      v.onclick = null; f.open = true; v.querySelector(".rv-icon").className = "rv-icon shake";
+      Tele.ev("minigame", { k: FC.k, a: "buka_peti", isi: f.r.kind });
+      setTimeout(() => { if (FC && v.isConnected) revealPrize(v, f.r, nextBtn, go); }, reduce ? 0 : 700);
+    };
+    return;
+  } else revealPrize(v, f.r, nextBtn, go);
+  $("rvNext").onclick = go;
+}
+function revealPrize(v, x, nextBtn, go) {
+  const piece = x.kind === "piece", sk = piece && Dapur.SKINS[x.game].find(s => s.puzzle === x.id);
+  const slots = piece ? `<span class="rv-slots">${Array.from({ length: x.need }, (_, i) => `<u class="${i < x.have ? "on" : ""}${i === x.have - 1 ? " new" : ""}"></u>`).join("")}</span>` : "";
+  v.innerHTML = `<div class="rv-rays${x.jackpot ? " gold" : ""}"></div><div class="rv-in"><small>${x.jackpot ? "JACKPOT!" : piece ? "PUZZLE PIECE" : "COINS"}</small>
+    <i class="rv-icon pop">${piece ? "🧩" : x.jackpot ? "💰" : "🪙"}</i>
+    <b>${piece ? `${x.have} of ${x.need}` : `+${x.n} coins`}</b>${slots}
+    <em>${piece ? `${x.done ? "Puzzle complete" : `${x.need - x.have} more`} for ${sk.name}` : `You have ${coinTxt(wallet().koin)}`}</em>${nextBtn}</div>`;
+  navigator.vibrate && navigator.vibrate(x.jackpot ? [40, 40, 80] : 40);
+  if (x.jackpot) ppConfetti(v);
+  $("rvNext").onclick = go;
 }
 // gambar temuan di permainan: emoji dengan cahaya yang denyut
 function findDraw(ctx, kind, x, y, S) {
