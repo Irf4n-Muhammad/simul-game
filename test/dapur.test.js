@@ -50,3 +50,20 @@ test("peringkat rekor: naik sesuai ambang, tahu sisa poin ke peringkat berikutny
   assert.deepEqual(D.tier("pisau", 999), { ix: 5, name: "Legend", next: null, need: null });
   assert.equal(D.tier("nggak-ada", 12).name, "Bronze");   // game tak dikenal pakai ambang Fruit catch
 });
+
+test("skin: kebuka dari peringkat dan milestone, yang kekunci nggak bisa dipakai", () => {
+  const W = D.fresh();
+  assert.deepEqual(D.unlocked(W, "pisau"), ["dasar"]);
+  assert.equal(D.wear(W, "pisau", "emas"), false); assert.equal(D.skinOf(W, "pisau"), "dasar");
+  W.best.pisau = 26;   // Gold
+  assert.deepEqual(D.unlocked(W, "pisau"), ["dasar", "perunggu", "perak", "emas"]);
+  assert.equal(D.wear(W, "pisau", "emas"), true); assert.equal(D.skinOf(W, "pisau"), "emas");
+  D.track(W, "pisau", 499); assert.ok(!D.unlocked(W, "pisau").includes("tukang"));
+  D.track(W, "pisau", 1); assert.ok(D.unlocked(W, "pisau").includes("tukang"));
+  // tiap game punya skin dasar, satu skin per peringkat Bronze..Legend, dan satu milestone
+  for (const g of Object.keys(D.SKINS)) {
+    assert.equal(D.SKINS[g][0].id, "dasar");
+    assert.deepEqual(D.SKINS[g].filter(k => k.tier).map(k => k.tier), [1, 2, 3, 4, 5]);
+    assert.equal(D.SKINS[g].filter(k => k.stat).length, 1);
+  }
+});

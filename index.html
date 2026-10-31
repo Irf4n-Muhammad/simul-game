@@ -596,6 +596,12 @@ svg { stroke: currentColor; }
 .arc-tile { position: relative; aspect-ratio: 1 / 1.05; border: 0; border-radius: 22px; padding: 14px; text-align: left; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 70%, #000)); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
 .arc-rank { position: absolute; top: 14px; right: 12px; } .arc-rank em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 1.5px var(--t, #ffffff55); color: #fff; }
 .arc-best { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.02em; order: -1; }
+.fcx-unlock { font-size: 14px; font-weight: 800; color: #2E7D5B; } .fcx-card .choice.hot { box-shadow: 0 0 0 2px #2E7D5B inset; }
+.fcx-skins { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.fcx-skin { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+.fcx-skin i { width: 100%; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.fcx-skin b { font-size: 13.5px; } .fcx-skin small { font-size: 11.5px; color: var(--ink-soft); }
+.fcx-skin.on { border-color: #2E7D5B; box-shadow: 0 0 0 2px #2E7D5B inset; } .fcx-skin.lock { opacity: .55; } .fcx-skin.lock i { filter: grayscale(.8); }
 .fcx-tier { font-size: 14px; font-weight: 700; color: var(--ink-soft); } .fcx-tier.up { color: #B07A12; }
 .arc-tile i { position: absolute; top: 12px; left: 14px; font-style: normal; font-size: 44px; } .arc-tile b { font-size: 17px; } .arc-tile small { font-size: 12.5px; opacity: .85; font-weight: 600; }
 .arc-tile:active { transform: scale(.97); }

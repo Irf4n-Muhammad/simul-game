@@ -102,7 +102,7 @@ function mgStart(k = "potong") {
 }
 function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
 function mgRun() {
-  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0 });
+  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k) });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
   if (ARC) ARC.played.add(FC.k);
   mgCard(null); $("mgScore").textContent = "0";
@@ -238,10 +238,41 @@ function slashEnd() {
   FC.combo = 0;
 }
 
+// ---- skin (v53): warna per skin; daftar dan syarat bukanya di dapur.js (Dapur.SKINS)
+const KNIFE_SKIN = {
+  dasar: { blade: "#DDE3EA", handle: "#3B2A20" }, perunggu: { blade: "#D9965A", handle: "#4A2C17" },
+  perak: { blade: "#F4F6F9", handle: "#6B7A8C" }, emas: { blade: "#F2C94C", handle: "#6B3F12", glow: "#F2C94C" },
+  berlian: { blade: "#A8EEFA", handle: "#2A5C8A", glow: "#7FE3F7" }, legenda: { blade: "#FF7A59", handle: "#1B1B1B", glow: "#FF5A2E" },
+  tukang: { blade: "#C0C6CC", handle: "#C27A3A" },
+};
+const STACK_SKIN = {
+  dasar: i => { const h = (200 + i * 11) % 360; return [`hsl(${h} 55% 58%)`, `hsl(${h} 65% 72%)`]; },
+  perunggu: i => { const l = 46 + (i % 3) * 4; return [`hsl(22 45% ${l}%)`, `hsl(24 50% ${l + 12}%)`]; },
+  perak: i => { const l = 52 + (i % 3) * 6; return [`hsl(220 8% ${l}%)`, `hsl(220 10% ${l + 14}%)`]; },
+  emas: i => { const l = 50 + (i % 2) * 6; return [`hsl(44 80% ${l}%)`, `hsl(48 95% ${l + 18}%)`]; },
+  berlian: i => [`hsl(${188 + (i % 4) * 4} 80% 68%)`, "hsl(190 100% 90%)"],
+  legenda: (i, t) => { const h = (i * 30 + t * 60) % 360; return [`hsl(${h} 75% 60%)`, `hsl(${h} 85% 76%)`]; },
+  permen: i => i % 2 ? ["#F48FB1", "#F8BBD0"] : ["#FFFFFF", "#FCE4EC"],
+};
+const SKIN_SWATCH = (game, id) => {
+  if (game === "pisau") { const K = KNIFE_SKIN[id]; return `linear-gradient(90deg, ${K.blade} 0 62%, ${K.handle} 62%)`; }
+  const f = STACK_SKIN[id]; return `linear-gradient(${[0, 1, 2].map(i => f(i, 0)[0]).join(", ")})`;
+};
+const STAT_WORD = { pisau: "knives", perfect: "Perfects" };
+function skinPanel() {
+  const W = wallet(), k = FC.k, on = Dapur.unlocked(W, k), worn = Dapur.skinOf(W, k), S = W.stat || {};
+  mgCard(`<b>${MG_GAMES[k].name} skins</b><div class="fcx-skins">${Dapur.SKINS[k].map(sk => {
+    const open = on.includes(sk.id), why = sk.tier ? `Reach ${Dapur.TIERS[sk.tier]}` : sk.stat ? `${Math.min(S[sk.stat] || 0, sk.n)}/${sk.n} ${STAT_WORD[sk.stat]}` : "";
+    return `<button class="fcx-skin${open ? "" : " lock"}${sk.id === worn ? " on" : ""}" data-skin="${sk.id}"><i style="background: ${SKIN_SWATCH(k, sk.id)}"></i><b>${sk.name}</b><small>${open ? (sk.id === worn ? "Wearing" : "Tap to wear") : "🔒 " + why}</small></button>`;
+  }).join("")}</div><button class="choice yes" id="skBack">Done</button>`);
+  FC.el.querySelectorAll("[data-skin]").forEach(b => { b.onclick = () => { if (Dapur.wear(W, k, b.dataset.skin)) { save(); Tele.ev("minigame", { k, a: "skin", id: b.dataset.skin }); skinPanel(); } }; });
+  $("skBack").onclick = mgShowEnd;
+}
+
 // ---- Stack (v51): balok geser kiri-kanan, tap buat jatuhin; yang nggak numpuk kepotong. Sampai meleset total.
 function stackInit() {
   const { cv } = FC, w = cv.width * 0.62;
-  Object.assign(FC, { tower: [{ x: (cv.width - w) / 2, w }], cam: 0, perfect: 0 });
+  Object.assign(FC, { tower: [{ x: (cv.width - w) / 2, w }], cam: 0, perfect: 0, perfN: 0 });
   stackNew();
 }
 function stackNew() {
@@ -254,7 +285,7 @@ function stackTap() {
   const lo = Math.max(x, top.x), hi = Math.min(x + w, top.x + top.w);
   if (hi - lo <= 0) { FC.bits.push({ x, w, y: FC.tower.length, vy: 0, vx: m.dir * 60 * dpr }); FC.mov = null; FC.over = now(); navigator.vibrate && navigator.vibrate(120); return; }
   if (Math.abs(x - top.x) < 6 * dpr) {
-    x = top.x; FC.perfect += 1; mgAdd(2);
+    x = top.x; FC.perfect += 1; FC.perfN += 1; mgAdd(2);
     FC.pops.push({ txt: FC.perfect > 1 ? `Perfect ×${FC.perfect}` : "Perfect +2", x: x + w / 2, y: FC.tower.length, c: "#FFF6C8", life: 0.9 });
   } else {
     // yang nggantung jatuh
@@ -273,11 +304,12 @@ function stackStep(dt) {
   const want = Math.max(0, tower.length * bh - (base - H * 0.4));
   FC.cam += (want - FC.cam) * Math.min(1, dt * 6);
   const yOf = i => base - i * bh + FC.cam;
+  const sk = STACK_SKIN[FC.skin] || STACK_SKIN.dasar, tt = now() / 1000;
   const slab = (x, w, i, alpha = 1) => {
-    const y = yOf(i), hue = (200 + i * 11) % 360;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = `hsl(${hue} 55% 58%)`; ctx.fillRect(x, y - bh, w, bh);
-    ctx.fillStyle = `hsl(${hue} 65% 72%)`; ctx.fillRect(x, y - bh, w, 7 * dpr);
+    const y = yOf(i), [side, top] = sk(i, tt);
+    ctx.globalAlpha = alpha * (FC.skin === "berlian" ? 0.85 : 1);
+    ctx.fillStyle = side; ctx.fillRect(x, y - bh, w, bh);
+    ctx.fillStyle = top; ctx.fillRect(x, y - bh, w, 7 * dpr);
     ctx.globalAlpha = 1;
   };
   tower.forEach((b, i) => { if (yOf(i) > -bh && yOf(i) - bh < H) slab(b.x, b.w, i); });
@@ -301,10 +333,13 @@ function knifeLog() {
 const knifeNorm = t => ((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 function knifeTap() { if (!FC.fly && !FC.bounce && FC.need > 0) FC.fly = { y: FC.cv.height - 150 * FC.dpr }; }
 function knifeDraw(ctx, x, y, a, dpr, alpha = 1) {
-  // pisau menghadap a: ujung bilah di (x,y), gagang menjauh
+  // pisau menghadap a: ujung bilah di (x,y), gagang menjauh; warnanya dari skin yang dipakai
+  const K = KNIFE_SKIN[FC.skin] || KNIFE_SKIN.dasar;
   ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = alpha;
-  ctx.fillStyle = "#DDE3EA"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, -6 * dpr); ctx.lineTo(10 * dpr, -6 * dpr); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#3B2A20"; ctx.fillRect(44 * dpr, -5 * dpr, 34 * dpr, 10 * dpr);
+  if (K.glow) { ctx.shadowColor = K.glow; ctx.shadowBlur = 14 * dpr; }
+  ctx.fillStyle = K.blade; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, 6 * dpr); ctx.lineTo(44 * dpr, -6 * dpr); ctx.lineTo(10 * dpr, -6 * dpr); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = K.handle; ctx.fillRect(44 * dpr, -5 * dpr, 34 * dpr, 10 * dpr);
   ctx.restore();
 }
 function knifeStep(dt, el) {
@@ -358,20 +393,32 @@ function knifeStep(dt, el) {
 
 function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
-  const W = wallet(), k = FC.k, r = Dapur.earn(W, k, FC.score, today());
+  const W = wallet(), k = FC.k, had = Dapur.SKINS[k] ? Dapur.unlocked(W, k) : [];
+  const r = Dapur.earn(W, k, FC.score, today());
+  if (k === "pisau") Dapur.track(W, "pisau", FC.caught);
+  if (k === "stack") Dapur.track(W, "perfect", FC.perfN);
+  const fresh = Dapur.SKINS[k] ? Dapur.SKINS[k].filter(sk => Dapur.unlocked(W, k).includes(sk.id) && !had.includes(sk.id)) : [];
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();
-  Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1 });
+  Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1, skin: fresh.map(x => x.id).join(",") || undefined });
+  FC.res = { r, fresh };
+  mgShowEnd();
+}
+// kartu akhir; dipanggil lagi waktu balik dari panel skin
+function mgShowEnd() {
+  const W = wallet(), k = FC.k, { r, fresh } = FC.res;
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const line = r.best ? (T.next ? `New record · ${T.name} · ${T.need} more for ${T.next}` : `New record · ${T.name}`)
     : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `So close! ${gap} short of your record (${W.best[k]})` : `Record ${W.best[k] || 0} · ${T.name}`;
   mgCard(`<b>${what} · score ${FC.score}</b><span class="fcx-tier${r.best ? " up" : ""}">${line}</span>
+    ${fresh.length ? `<span class="fcx-unlock">🎁 New skin: ${fresh.map(x => x.name).join(", ")}</span>` : ""}
     <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
     <button class="choice yes fcx-next" id="mgAgain">Play again</button>
-    <button class="choice no" id="mgOk">All games</button>`);
+    <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
+  if ($("mgSkin")) $("mgSkin").onclick = skinPanel;
 }
 function mgEnd(quit) {
   if (!FC) return;
