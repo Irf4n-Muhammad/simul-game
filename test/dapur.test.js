@@ -67,3 +67,19 @@ test("skin: kebuka dari peringkat dan milestone, yang kekunci nggak bisa dipakai
     assert.equal(D.SKINS[g].filter(k => k.stat).length, 1);
   }
 });
+
+test("tantangan harian: game dan level sama buat hari yang sama, streak nyambung, bonus sekali sehari", () => {
+  assert.equal(D.harian(100), D.harian(100));
+  assert.notEqual(D.harian(100), D.harian(101));
+  const a = D.rng(100), b = D.rng(100), c = D.rng(101);
+  const xa = [a(), a(), a()], xb = [b(), b(), b()];
+  assert.deepEqual(xa, xb); assert.notDeepEqual(xa, [c(), c(), c()]);
+  assert.ok(xa.every(x => x >= 0 && x < 1));
+  const W = D.fresh(), k0 = W.koin;
+  let r = D.daily(W, 10, 7); assert.deepEqual(r, { first: true, streak: 1, bonus: 5, best: 7 });
+  r = D.daily(W, 10, 12); assert.deepEqual(r, { first: false, streak: 1, bonus: 0, best: 12 });
+  r = D.daily(W, 11, 3); assert.equal(r.streak, 2); assert.equal(r.bonus, 10);
+  assert.equal(D.streakNow(W, 12), 2); assert.equal(D.streakNow(W, 13), 0);   // bolong sehari = putus
+  r = D.daily(W, 13, 3); assert.equal(r.streak, 1);
+  assert.equal(W.koin, k0 + 5 + 10 + 5);
+});

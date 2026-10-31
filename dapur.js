@@ -16,6 +16,9 @@
 //   Dapur.unlocked(W, game)       -> id skin yang udah kebuka
 //   Dapur.skinOf(W, game)         -> skin yang dipakai (pilihan pemain kalau udah kebuka, kalau nggak "dasar")
 //   Dapur.wear(W, game, id)       -> pakai skin (false kalau masih kekunci)
+//   Dapur.harian(d)               -> game tantangan hari d (v56); Dapur.rng(d) -> angka acak berbenih (level sama buat semua)
+//   Dapur.daily(W, d, skor)       -> catat main tantangan: { first, streak, bonus, best }; bonus koin cuma di main pertama hari itu,
+//                                    nggak kepotong batas harian (CAP). Dapur.streakNow(W, d) -> streak yang masih hidup
 // Skin cuma dari main (diskusi 31 Okt): skin peringkat nggak pernah dijual, koin tetap khusus makhluk.
 //
 // Batas harian: cukup buat dua makan enak sehari kalau main 2-3 ronde; main lebih banyak tetap boleh (seru, rekor), koinnya nggak nambah.
@@ -66,7 +69,27 @@
   }
   const skinOf = (W, game) => { const id = (W.skin || {})[game]; return id && unlocked(W, game).includes(id) ? id : "dasar"; };
   function wear(W, game, id) { if (!unlocked(W, game).includes(id)) return false; W.skin = W.skin || {}; W.skin[game] = id; return true; }
-  const api = { START, CAP, PRICE, TIERS, SKINS, fresh, price, can, spend, earn, left, coinsFor, tier, track, unlocked, skinOf, wear };
+  const DAILY = ["pisau", "potong", "stack", "buah"];
+  // mulberry32: cepat, cukup acak buat susunan level
+  function rng(seed) {
+    let a = (seed * 2654435761) >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  const harian = d => DAILY[((d % DAILY.length) + DAILY.length) % DAILY.length];
+  const streakNow = (W, d) => { const S = W.streak; return S && (S.last === d || S.last === d - 1) ? S.n : 0; };
+  function daily(W, d, skor) {
+    const first = !(W.harian && W.harian.d === d);
+    if (first) W.harian = { d, best: 0, n: 0 };
+    W.harian.n += 1; W.harian.best = Math.max(W.harian.best, skor);
+    let bonus = 0;
+    if (first) {
+      const S = W.streak || { n: 0, last: null };
+      W.streak = { n: S.last === d - 1 ? S.n + 1 : 1, last: d };
+      bonus = Math.min(5 * W.streak.n, 25); W.koin += bonus;
+    }
+    return { first, streak: W.streak.n, bonus, best: W.harian.best };
+  }
+  const api = { START, CAP, PRICE, TIERS, SKINS, fresh, price, can, spend, earn, left, coinsFor, tier, track, unlocked, skinOf, wear, harian, rng, daily, streakNow };
   if (typeof module !== "undefined") module.exports = api;
   else globalThis.Dapur = api;
 })();
