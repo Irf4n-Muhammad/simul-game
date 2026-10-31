@@ -133,13 +133,39 @@ function mgStart(k = "potong", daily = false) {
   window.addEventListener("resize", size);
   worldDraw(0);
   $("mgX").onclick = () => mgEnd(true);
-  mgCard(`<b>${daily ? "Today's challenge · " : ""}${g.name}</b><small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes" id="mgPlay">Start</button>`);
+  mgCard(`<div class="pp-head${daily ? " pp-gold" : ""}">${daily ? "Today's challenge" : g.name}</div>
+    <div class="pp-icon" style="--c: ${g.color}">${g.icon}</div>${daily ? `<b>${g.name}</b>` : ""}
+    <small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes pp-big" id="mgPlay">▶ Start</button>`);
   $("mgPlay").onclick = mgRun;
   Tele.ev("minigame", { k, a: "buka", ke: ARC ? ARC.played.size + 1 : 1 });
   // yang udah pernah dimainkan langsung jalan, tanpa kartu cara main
   if (wallet().best[k]) mgRun();
 }
-function mgCard(html) { const c = $("mgCard"); c.hidden = !html; c.innerHTML = html || ""; }
+// pop up di atas permainan (v60): layar belakangnya diredupin, kartunya muncul mental
+function mgCard(html) {
+  const c = $("mgCard"); clearTimeout(FC.offerT);
+  c.hidden = !html; c.innerHTML = html || "";
+  if (html && !reduce) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
+}
+const tierCol = ix => ix ? "#" + TROPHY_COL[ix].toString(16).padStart(6, "0") : "#B9B2C4";
+function ppCount(el, to, ms = 650) {
+  // angka skor di kartu akhir naik dari 0
+  if (!el) return;
+  if (reduce || !to) { el.textContent = to; return; }
+  const t0 = now(), tick = () => { if (!el.isConnected) return; const f = Math.min(1, (now() - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(tick); };
+  tick();
+}
+function ppConfetti(card) {
+  if (reduce) return;
+  const cols = ["#FFD15C", "#FF6BCB", "#6BF0FF", "#9BFF6B", "#FF7A45"];
+  for (let i = 0; i < 26; i++) {
+    const e = document.createElement("u"); e.className = "pp-conf";
+    e.style.left = 10 + Math.random() * 80 + "%"; e.style.background = cols[i % cols.length];
+    e.style.setProperty("--dx", (Math.random() - 0.5) * 160 + "px"); e.style.setProperty("--r", (Math.random() - 0.5) * 900 + "deg");
+    e.style.animationDelay = Math.random() * 0.25 + "s";
+    e.addEventListener("animationend", () => e.remove()); card.appendChild(e);
+  }
+}
 function mgRun() {
   Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
@@ -557,10 +583,14 @@ function mgOffer() {
   FC.run = false;
   const best = wallet().best[FC.k] || 0, near = FC.score < best && best - FC.score <= Math.max(3, best * 0.3);
   Tele.ev("minigame", { k: FC.k, a: "lanjut_tawar", skor: FC.score });
-  mgCard(`<b>Continue from ${FC.score}?</b>
-    <small>${near ? `Only ${best - FC.score} to beat your record. ` : FC.score >= best && best ? "You're on a new record. " : ""}Once per run.</small>
-    <button class="choice yes fcx-next" id="mgCont">▶ Continue</button>
-    <button class="choice no" id="mgFin">No, finish</button>`);
+  // gaya "save me": lingkaran waktu habis dalam 6 detik, kalau dibiarin ya selesai
+  const hint = near ? `Only ${best - FC.score} to beat your record!` : FC.score >= best && best ? "You're on a new record!" : "Pick up where you fell.";
+  mgCard(`<div class="pp-head pp-red">Keep going?</div>
+    <div class="pp-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44"/><circle class="t" cx="50" cy="50" r="44"/></svg><span>${FC.score}</span><small>score</small></div>
+    <b class="pp-hint${near ? " hot" : ""}">${hint}</b>
+    <button class="choice yes pp-big pp-go" id="mgCont">▶ Continue</button>
+    <button class="pp-link" id="mgFin">No thanks</button>`);
+  FC.offerT = setTimeout(() => { if (FC && $("mgFin")) $("mgFin").click(); }, 6000);
   $("mgCont").onclick = () => {
     Tele.ev("minigame", { k: FC.k, a: "lanjut", skor: FC.score });
     FC.cont = true; FC.over = 0;
@@ -589,14 +619,20 @@ function mgShowEnd() {
   const W = wallet(), k = FC.k, { r, fresh, dly } = FC.res;
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
-  const line = r.best ? (T.next ? `New record · ${T.name} · ${T.need} more for ${T.next}` : `New record · ${T.name}`)
-    : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `So close! ${gap} short of your record (${W.best[k]})` : `Record ${W.best[k] || 0} · ${T.name}`;
-  mgCard(`<b>${what} · score ${FC.score}</b><span class="fcx-tier${r.best ? " up" : ""}">${line}</span>
-    ${dly ? `<span class="fcx-unlock">🔥 ${dly.streak}-day streak${dly.bonus ? ` · +${coinTxt(dly.bonus)} bonus` : ""} · today's best ${dly.best}</span>` : ""}
-    ${fresh.length ? `<span class="fcx-unlock">🎁 New skin: ${fresh.map(x => x.name).join(", ")}</span>` : ""}
-    <small>${r.got ? `+${coinTxt(r.got)} · you have ${coinTxt(W.koin)}` : `You have ${coinTxt(W.koin)}${FC.score && !r.left ? " · today's coins are all won" : ""}`}</small>
-    <button class="choice yes fcx-next" id="mgAgain">Play again</button>
+  const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
+  const sub = r.best && FC.score ? `${what}` : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `${gap} short of your record (${W.best[k]})` : `${what} · record ${W.best[k] || 0}`;
+  const pct = T.next ? Math.round(100 * W.best[k] / (W.best[k] + T.need)) : 100;
+  const chips = [r.got ? `<span class="pp-chip coin">+${coinTxt(r.got)}</span>` : "",
+    dly ? `<span class="pp-chip fire">🔥 ${dly.streak}-day streak${dly.bonus ? ` +${coinTxt(dly.bonus)}` : ""}</span>` : "",
+    fresh.length ? `<span class="pp-chip gift">🎁 New skin: ${fresh.map(x => x.name).join(", ")}</span>` : ""].join("");
+  mgCard(`<div class="pp-head ${head[1]}">${head[0]}</div>
+    <div class="pp-score">${FC.score}</div><small class="pp-sub">${sub}</small>
+    <div class="pp-rank" style="--t: ${tierCol(T.ix)}"><i>${T.ix >= 4 ? "💎" : "🏆"}</i><span><b>${T.name}</b><em><u style="width: ${pct}%"></u></em><small>${T.next ? `${T.need} more for ${T.next}` : "Top rank"}</small></span></div>
+    ${chips ? `<div class="pp-chips">${chips}</div>` : ""}
+    <small class="pp-wallet">You have ${coinTxt(W.koin)}${FC.score && !r.left && !r.got ? " · today's coins are all won" : ""}</small>
+    <button class="choice yes pp-big" id="mgAgain">↻ Play again</button>
     <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
+  if (!FC.res.shown) { ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
   if ($("mgSkin")) $("mgSkin").onclick = skinPanel;
