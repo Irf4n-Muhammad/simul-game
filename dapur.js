@@ -11,6 +11,12 @@
 //   Dapur.coinsFor(skor)          -> koin dari satu ronde (sebelum batas harian)
 //   Dapur.tier(game, skor)        -> peringkat rekor { ix, name, next, need } (v52): Rookie, Bronze, Silver, Gold, Diamond, Legend.
 //                                    next/need = peringkat berikutnya dan berapa poin lagi (null kalau udah Legend)
+//   Dapur.SKINS[game]             -> daftar skin (v53): { id, name, tier } kebuka dari peringkat, { id, name, stat, n } dari milestone total
+//   Dapur.track(W, stat, n)       -> nambah hitungan milestone (W.stat[stat])
+//   Dapur.unlocked(W, game)       -> id skin yang udah kebuka
+//   Dapur.skinOf(W, game)         -> skin yang dipakai (pilihan pemain kalau udah kebuka, kalau nggak "dasar")
+//   Dapur.wear(W, game, id)       -> pakai skin (false kalau masih kekunci)
+// Skin cuma dari main (diskusi 31 Okt): skin peringkat nggak pernah dijual, koin tetap khusus makhluk.
 //
 // Batas harian: cukup buat dua makan enak sehari kalau main 2-3 ronde; main lebih banyak tetap boleh (seru, rekor), koinnya nggak nambah.
 "use strict";
@@ -44,7 +50,23 @@
     let ix = 0; while (ix < b.length && s >= b[ix]) ix++;
     return { ix, name: TIERS[ix], next: ix < b.length ? TIERS[ix + 1] : null, need: ix < b.length ? b[ix] - s : null };
   }
-  const api = { START, CAP, PRICE, TIERS, fresh, price, can, spend, earn, left, coinsFor, tier };
+  const SKINS = {
+    pisau: [{ id: "dasar", name: "Kitchen knife" }, { id: "perunggu", name: "Bronze blade", tier: 1 }, { id: "perak", name: "Silver blade", tier: 2 },
+      { id: "emas", name: "Golden blade", tier: 3 }, { id: "berlian", name: "Crystal blade", tier: 4 }, { id: "legenda", name: "Dragon blade", tier: 5 },
+      { id: "tukang", name: "Carpenter's knife", stat: "pisau", n: 500 }],
+    stack: [{ id: "dasar", name: "Pastel" }, { id: "perunggu", name: "Clay", tier: 1 }, { id: "perak", name: "Stone", tier: 2 },
+      { id: "emas", name: "Gold bars", tier: 3 }, { id: "berlian", name: "Ice", tier: 4 }, { id: "legenda", name: "Rainbow", tier: 5 },
+      { id: "permen", name: "Candy", stat: "perfect", n: 25 }],
+  };
+  const stats = W => (W.stat = W.stat || {});
+  function track(W, stat, n) { const S = stats(W); S[stat] = (S[stat] || 0) + n; return S[stat]; }
+  function unlocked(W, game) {
+    const t = tier(game, (W.best || {})[game]).ix, S = stats(W);
+    return (SKINS[game] || []).filter(k => k.tier ? t >= k.tier : k.stat ? (S[k.stat] || 0) >= k.n : true).map(k => k.id);
+  }
+  const skinOf = (W, game) => { const id = (W.skin || {})[game]; return id && unlocked(W, game).includes(id) ? id : "dasar"; };
+  function wear(W, game, id) { if (!unlocked(W, game).includes(id)) return false; W.skin = W.skin || {}; W.skin[game] = id; return true; }
+  const api = { START, CAP, PRICE, TIERS, SKINS, fresh, price, can, spend, earn, left, coinsFor, tier, track, unlocked, skinOf, wear };
   if (typeof module !== "undefined") module.exports = api;
   else globalThis.Dapur = api;
 })();
