@@ -5,8 +5,33 @@
 const COIN = "🪙";
 function wallet() { if (!state) return null; if (!state.dapur) { state.dapur = Dapur.fresh(); save(); } return state.dapur; }
 const coinTxt = n => `${COIN} ${n}`;
+// ---- rak piala (v55): peringkat mini game jadi piala di rak Playroom. Makhluknya nggak ikut main, tapi bangga sama hasil lu.
+// Dibangun ulang cuma kalau peringkatnya berubah (kunci = daftar peringkat).
+const TROPHY_COL = [null, 0xC98A4B, 0xC9CED6, 0xF2C94C, 0x7FD8F0, 0xE58AF0];
+let trophyKey = null, trophyG = null;
+function trophyShelf() {
+  const R = ROOMS.find(r => r.act === "peluk"), W = state && state.dapur;
+  if (!R || !W) return;
+  const ranks = MG_ORDER.map(k => Dapur.tier(k, W.best[k]).ix), key = ranks.join("");
+  if (key === trophyKey) return;
+  trophyKey = key;
+  if (trophyG) { R.g.remove(trophyG); trophyG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  if (!ranks.some(t => t > 0)) { trophyG = null; return; }
+  const g = trophyG = new THREE.Group(); g.position.set(-1.6, 2.3, R0 + 0.2); R.g.add(g);   // di atas rak mainan, kelihatan dari kamera
+  mesh(RB(2.2, 0.07, 0.36, 0.02), M(0xc9a27a, { roughness: 0.7 }), 0, 0, 0, g);
+  ranks.forEach((t, i) => {
+    if (!t) return;
+    const x = -0.8 + i * 0.53, mat = M(TROPHY_COL[t], { metalness: 0.65, roughness: 0.28, emissive: t >= 4 ? TROPHY_COL[t] : 0x000000, emissiveIntensity: t >= 4 ? 0.25 : 0 });
+    mesh(RB(0.26, 0.07, 0.2, 0.02), M(0x3a332d), x, 0.07, 0, g);                         // alas
+    mesh(CYL(0.035, 0.05, 0.16, 12), mat, x, 0.18, 0, g);                                 // batang
+    mesh(CYL(0.15, 0.07, 0.22, 24), mat, x, 0.37, 0, g);                                  // mangkuk
+    for (const sx of [-1, 1]) { const h = mesh(new THREE.TorusGeometry(0.06, 0.016, 8, 16, Math.PI), mat, x + sx * 0.15, 0.4, 0, g); h.rotation.z = sx * Math.PI / 2; }
+    if (t === 5) mesh(SPH(0.05, 12, 10), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 }), x, 0.55, 0, g);   // Legend: bintang kecil di atas
+  });
+}
 // tombol koin: saldo + jalan ke mini game
 function dapurChip() {
+  trophyShelf();
   const b = $("coinBtn"); if (!b) return;
   const on = !!(state && game && cur && cur.fase !== "meninggal" && cur.fase !== "merantau");
   b.hidden = !on; if (!on) return;
@@ -29,7 +54,7 @@ function showKitchen() {
   const el = document.createElement("div");
   el.className = "arc"; el.id = "arcBox";
   document.body.appendChild(el);
-  ARC = { el, played: new Set(), rounds: 0, t0: now() };
+  ARC = { el, played: new Set(), rounds: 0, t0: now(), ranks: MG_ORDER.map(k => Dapur.tier(k, wallet().best[k]).ix).join("") };
   arcDraw();
   Tele.ev("minigame", { a: "hub" });
 }
@@ -54,8 +79,11 @@ function arcClose() {
   if (!ARC) return;
   if (FC) mgEnd(true);
   Tele.ev("minigame", { a: "hub_tutup", game: ARC.played.size, ronde: ARC.rounds, dtk: Math.round((now() - ARC.t0) / 1000) });
+  const up = MG_ORDER.some((k, i) => Dapur.tier(k, wallet().best[k]).ix > +ARC.ranks[i]);
   ARC.el.remove(); ARC = null;
   dapurChip();
+  // peringkat naik di sesi ini: ada piala baru di Playroom, makhluknya ikut bangga
+  if (up && cur) { play("jump", 900); say(ROOMS[roomIx].act === "peluk" ? "A new trophy on the shelf!" : "There's a new trophy in the playroom!", 3000); }
 }
 
 // ---- layar mini game bersama: kanvas 2D di atas layar (adegan 3D berhenti selama FC ada, lihat ui/29)
