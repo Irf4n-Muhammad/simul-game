@@ -64,6 +64,7 @@ function arcDraw() {
   ARC.el.innerHTML = `<header><b>Games</b><span class="arc-coin">${coinTxt(W.koin)}</span><button class="x" id="arcX" aria-label="Close">✕</button></header>
     <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
     ${arcDaily(W)}
+    ${arcPuzzle(W)}
     <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i>${g.icon}</i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
     <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
   ARC.el.querySelector("#arcX").onclick = arcClose;
@@ -78,6 +79,12 @@ function arcRank(k, best) {
   return `<span class="arc-rank" style="--t: ${TIER_COL[t.ix]}"><em>${t.name}</em></span><span class="arc-best">${best}</span>`;
 }
 // tantangan harian (v56): satu game per hari, level sama buat semua, streak harian + bonus koin di luar batas harian
+function arcPuzzle(W) {
+  const P = Dapur.puzzleNow(W);
+  if (!P) return "";
+  const sk = Dapur.SKINS[P.game].find(s => s.puzzle === P.id);
+  return `<div class="arc-puzzle"><i>🧩</i><span><small>PUZZLE · FIND PIECES WHILE YOU PLAY</small><b>${sk.name}</b><em>${Array.from({ length: P.need }, (_, i) => `<u class="${i < P.have ? "on" : ""}"></u>`).join("")}</em></span><strong>${P.have}/${P.need}</strong></div>`;
+}
 function arcDaily(W) {
   const d = today(), k = Dapur.harian(d), g = MG_GAMES[k], H = W.harian && W.harian.d === d ? W.harian : null;
   const st = Dapur.streakNow(W, d);
@@ -171,6 +178,7 @@ function mgRun() {
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
+  FC.got = []; FC.drop = dropPlan();
   if (ARC) ARC.played.add(FC.k);
   mgCard(null); Object.assign(FC, { heat: 0, shown: 0, ember: 0, fire: [], lv: 0 }); mgHeat(0); $("mgScore").textContent = "0";
   requestAnimationFrame(mgFrame);
@@ -320,14 +328,17 @@ function catchStep(dt, el) {
     const r = FC.rnd(), kind = r < 0.05 ? "star" : r < 0.23 ? "bug" : "fruit";
     FC.items.push({ x: S / 2 + FC.rnd() * (W - S), y: -S, vy: (170 + FC.rnd() * 110 + el * 6) * dpr, kind, e: kind === "star" ? "⭐" : kind === "bug" ? "🐛" : MG_GOOD[Math.floor(FC.rnd() * MG_GOOD.length)] });
   }
+  const D = FC.drop;
+  if (D && !D.done && el >= D.at) { D.done = true; FC.items.push({ x: S + Math.random() * (W - 2 * S), y: -S, vy: 190 * dpr, kind: D.kind, find: true }); }
   ctx.font = mgFont(S);
   for (const it of FC.items) {
     it.y += it.vy * dt;
     if (!it.done && it.y > by - S * 0.6 && it.y < by + S * 0.3 && Math.abs(it.x - FC.bx) < bw / 2 + S * 0.2) {
       it.done = true;
-      if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; }
+      if (it.find) mgPick(it.kind);
+      else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; }
     }
-    if (!it.done) ctx.fillText(it.e, it.x, it.y);
+    if (!it.done) { if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); } else ctx.fillText(it.e, it.x, it.y); }
   }
   FC.items = FC.items.filter(it => !it.done && it.y < H + S);
   FC.shake = Math.max(0, FC.shake - dt);
@@ -353,10 +364,16 @@ function slashStep(dt, el) {
         e: bomb ? "💣" : gold ? "🌟" : SL_FRUIT[Math.floor(FC.rnd() * SL_FRUIT.length)], up: true });
     }
   }
+  const D = FC.drop;
+  if (D && !D.done && el >= D.at) {
+    D.done = true; const x = W * (0.3 + Math.random() * 0.4);
+    FC.items.push({ x, y: H + S * 0.6, vx: (W / 2 - x) * 0.3, vy: -Math.sqrt(2 * g * H * 0.62), rot: 0, vr: 0, kind: D.kind, find: true, up: true });
+  }
   ctx.font = mgFont(S);
   for (const it of FC.items) {
     it.vy += g * dt; it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.vr * dt;
     if (it.vy > 0) it.up = false;
+    if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S); ctx.font = mgFont(S); continue; }
     ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot); ctx.fillText(it.e, 0, 0); ctx.restore();
   }
   FC.items = FC.items.filter(it => !it.cut && !(it.y > H + S && !it.up));
@@ -400,6 +417,7 @@ function slashTo(p) {
   for (const it of FC.items) {
     if (it.cut || segDist(a, p, [it.x, it.y]) > R) continue;
     it.cut = true;
+    if (it.find) { mgPick(it.kind); continue; }
     if (it.kind === "bomb") {
       mgAdd(-5); FC.shake = 0.35; navigator.vibrate && navigator.vibrate(120);
       FC.pops.push({ txt: "−5", x: it.x, y: it.y, c: "#B23A3A", life: 0.9 });
@@ -429,7 +447,7 @@ const KNIFE_SKIN = {
   dasar: { blade: "#DDE3EA", handle: "#3B2A20" }, perunggu: { blade: "#D9965A", handle: "#4A2C17" },
   perak: { blade: "#F4F6F9", handle: "#6B7A8C" }, emas: { blade: "#F2C94C", handle: "#6B3F12", glow: "#F2C94C" },
   berlian: { blade: "#A8EEFA", handle: "#2A5C8A", glow: "#7FE3F7" }, legenda: { blade: "#FF7A59", handle: "#1B1B1B", glow: "#FF5A2E" },
-  tukang: { blade: "#C0C6CC", handle: "#C27A3A" },
+  tukang: { blade: "#C0C6CC", handle: "#C27A3A" }, ninja: { blade: "#3A3550", handle: "#B23A5A", glow: "#B26BFF" },
 };
 const STACK_SKIN = {
   dasar: i => { const h = (200 + i * 11) % 360; return [`hsl(${h} 55% 58%)`, `hsl(${h} 65% 72%)`]; },
@@ -439,16 +457,18 @@ const STACK_SKIN = {
   berlian: i => [`hsl(${188 + (i % 4) * 4} 80% 68%)`, "hsl(190 100% 90%)"],
   legenda: (i, t) => { const h = (i * 30 + t * 60) % 360; return [`hsl(${h} 75% 60%)`, `hsl(${h} 85% 76%)`]; },
   permen: i => i % 2 ? ["#F48FB1", "#F8BBD0"] : ["#FFFFFF", "#FCE4EC"],
+  galaksi: (i, t) => { const h = 250 + 40 * Math.sin(i * 0.7 + t); return [`hsl(${h} 60% ${22 + (i % 3) * 6}%)`, `hsl(${h + 30} 90% 70%)`]; },
 };
 const SKIN_SWATCH = (game, id) => {
   if (game === "pisau") { const K = KNIFE_SKIN[id]; return `linear-gradient(90deg, ${K.blade} 0 62%, ${K.handle} 62%)`; }
   const f = STACK_SKIN[id]; return `linear-gradient(${[0, 1, 2].map(i => f(i, 0)[0]).join(", ")})`;
 };
 const STAT_WORD = { pisau: "knives", perfect: "Perfects" };
+const puzzleWhy = (W, id) => { const P = Dapur.puzzleNow(W); return P && P.id === id ? `🧩 ${P.have}/${P.need} pieces` : "🧩 Puzzle (later)"; };
 function skinPanel() {
   const W = wallet(), k = FC.k, on = Dapur.unlocked(W, k), worn = Dapur.skinOf(W, k), S = W.stat || {};
   mgCard(`<b>${MG_GAMES[k].name} skins</b><div class="fcx-skins">${Dapur.SKINS[k].map(sk => {
-    const open = on.includes(sk.id), why = sk.tier ? `Reach ${Dapur.TIERS[sk.tier]}` : sk.stat ? `${Math.min(S[sk.stat] || 0, sk.n)}/${sk.n} ${STAT_WORD[sk.stat]}` : "";
+    const open = on.includes(sk.id), why = sk.tier ? `Reach ${Dapur.TIERS[sk.tier]}` : sk.stat ? `${Math.min(S[sk.stat] || 0, sk.n)}/${sk.n} ${STAT_WORD[sk.stat]}` : sk.puzzle ? puzzleWhy(W, sk.puzzle) : "";
     return `<button class="fcx-skin${open ? "" : " lock"}${sk.id === worn ? " on" : ""}" data-skin="${sk.id}"><i style="background: ${SKIN_SWATCH(k, sk.id)}"></i><b>${sk.name}</b><small>${open ? (sk.id === worn ? "Wearing" : "Tap to wear") : "🔒 " + why}</small></button>`;
   }).join("")}</div><button class="choice yes" id="skBack">Done</button>`);
   FC.el.querySelectorAll("[data-skin]").forEach(b => { b.onclick = () => { if (Dapur.wear(W, k, b.dataset.skin)) { save(); Tele.ev("minigame", { k, a: "skin", id: b.dataset.skin }); skinPanel(); } }; });
@@ -464,6 +484,8 @@ function stackInit() {
 function stackNew() {
   const { cv, dpr, tower } = FC, top = tower[tower.length - 1], n = tower.length, fromL = n % 2 === 1;
   FC.mov = { x: fromL ? -top.w : cv.width, w: top.w, dir: fromL ? 1 : -1, v: (230 + Math.min(n, 40) * 9) * dpr };
+  // temuan nebeng di atas balok; dapet kalau baloknya berhasil numpuk
+  const D = FC.drop; if (D && !D.done && n >= D.at) { D.done = true; FC.mov.find = D.kind; }
 }
 function stackTap() {
   const m = FC.mov, top = FC.tower[FC.tower.length - 1], dpr = FC.dpr; if (!m) return;
@@ -479,6 +501,7 @@ function stackTap() {
     FC.bits.push({ ...cut, y: FC.tower.length, vy: 0, vx: (x < top.x ? -1 : 1) * 80 * dpr });
     x = lo; w = hi - lo; FC.perfect = 0; mgAdd(1);
   }
+  if (m.find) mgPick(m.find);
   FC.tower.push({ x, w }); FC.caught = FC.tower.length - 1;
   stackNew();
 }
@@ -499,7 +522,7 @@ function stackStep(dt) {
     ctx.globalAlpha = 1;
   };
   tower.forEach((b, i) => { if (yOf(i) > -bh && yOf(i) - bh < H) slab(b.x, b.w, i); });
-  if (m) slab(m.x, m.w, tower.length);
+  if (m) { slab(m.x, m.w, tower.length); if (m.find) findDraw(ctx, m.find, m.x + m.w / 2, yOf(tower.length) - bh - 20 * dpr, 34 * dpr); }
   for (const b of FC.bits) { b.vy += H * 2.2 * dt; b.x += b.vx * dt; b.dy = (b.dy || 0) + b.vy * dt; ctx.save(); ctx.translate(0, b.dy); slab(b.x, b.w, b.y, 0.9); ctx.restore(); }
   FC.bits = FC.bits.filter(b => b.dy < H * 1.5);
   ctx.font = `800 ${22 * dpr}px system-ui, sans-serif`;
@@ -508,7 +531,7 @@ function stackStep(dt) {
 }
 
 // ---- Knife throw (v51): kayu berputar, tap buat lempar pisau. Kena pisau lain = selesai. Kayu penuh = +3, kayu baru.
-function knifeInit() { Object.assign(FC, { lvl: 0, fly: null, bounce: null, hitT: 0 }); knifeLog(); }
+function knifeInit() { Object.assign(FC, { lvl: 0, fly: null, bounce: null, hitT: 0, gift: null }); knifeLog(); }
 function knifeLog() {
   const L = FC.lvl;
   FC.ang = 0; FC.stuck = []; FC.need = 6 + Math.min(L, 6);
@@ -543,16 +566,26 @@ function knifeStep(dt, el) {
       if (hit) { FC.bounce = { y: cy + R, vy: 900 * dpr, rot: 0 }; FC.over = now(); navigator.vibrate && navigator.vibrate(120); }
       else {
         FC.stuck.push({ t }); FC.need -= 1; FC.caught += 1; mgAdd(1); FC.hitT = 0.08;
+        if (FC.gift && Math.abs(knifeNorm(FC.gift.t - t + Math.PI) - Math.PI) < 0.32) { mgPick(FC.gift.kind); FC.gift = null; }
         if (FC.need === 0) {
           mgAdd(3); FC.pops.push({ txt: "Log cleared +3", x: cx, y: cy, c: "#FFF6C8", life: 1.1 });
           for (let i = 0; i < 16; i++) FC.pops.push({ x: cx, y: cy, vx: (Math.random() - 0.5) * 800 * dpr, vy: (Math.random() - 0.7) * 700 * dpr, r: (4 + Math.random() * 5) * dpr, c: i % 2 ? "#A9743F" : "#7A4E2A", life: 0.7 });
-          FC.lvl += 1; setTimeout(() => { if (FC && FC.k === "pisau" && FC.run) knifeLog(); }, 450);
+          FC.gift = null; FC.lvl += 1; setTimeout(() => { if (FC && FC.k === "pisau" && FC.run) knifeLog(); }, 450);
         }
       }
     }
   }
+  // temuan: nempel di pinggir kayu, di sudut yang paling jauh dari pisau-pisau; kena pisau = dapet
+  const D = FC.drop;
+  if (D && !D.done && FC.caught >= D.at && FC.need > 1 && !FC.fly) {
+    D.done = true;
+    let bt = 0, bd = -1;
+    for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, d = Math.min(...FC.stuck.map(k => Math.abs(knifeNorm(k.t - a + Math.PI) - Math.PI))); if (d > bd) { bd = d; bt = a; } }
+    FC.gift = { t: bt, kind: D.kind };
+  }
   // kayu
   const off = FC.hitT ? -6 * dpr : 0;
+  if (FC.gift && FC.need > 0) { const a = FC.gift.t + FC.ang; findDraw(ctx, FC.gift.kind, cx + Math.cos(a) * (R + 20 * dpr), cy + off + Math.sin(a) * (R + 20 * dpr), 34 * dpr); }
   if (FC.need > 0 || !FC.run) {
     for (const k of FC.stuck) { const a = k.t + FC.ang; knifeDraw(ctx, cx + Math.cos(a) * (R - 14 * dpr), cy + off + Math.sin(a) * (R - 14 * dpr), a, dpr); }
     ctx.save(); ctx.translate(cx, cy + off); ctx.rotate(FC.ang);
@@ -601,7 +634,10 @@ function mgOffer() {
 }
 function mgDone() {
   FC.run = false; FC.trail = null; FC.el.style.transform = "";
-  const W = wallet(), k = FC.k, had = Dapur.SKINS[k] ? Dapur.unlocked(W, k) : [];
+  const W = wallet(), k = FC.k, had = Dapur.SKINS[k] ? Dapur.unlocked(W, k) : [], hadAll = MG_ORDER.map(g => Dapur.SKINS[g] ? Dapur.unlocked(W, g) : []);
+  // temuan ronde ini: kepingan langsung masuk puzzle, peti udah dihitung isinya tapi baru "dibuka" di kartu akhir
+  const finds = FC.got.map(kind => ({ kind, r: kind === "piece" ? Dapur.addPiece(W) : Dapur.openBox(W, Math.random(), Math.random()), open: kind === "piece" }));
+  const puzSkins = MG_ORDER.flatMap((g, i) => (Dapur.SKINS[g] || []).filter(sk => sk.puzzle && Dapur.unlocked(W, g).includes(sk.id) && !hadAll[i].includes(sk.id)).map(sk => ({ ...sk, game: g })));
   const r = Dapur.earn(W, k, FC.score, today());
   const dly = FC.daily ? Dapur.daily(W, today(), FC.score) : null;
   if (k === "pisau") Dapur.track(W, "pisau", FC.caught);
@@ -610,13 +646,14 @@ function mgDone() {
   if (ARC) ARC.rounds += 1;
   save(); dapurChip();
   Tele.ev("minigame", { k, a: "selesai", skor: FC.score, koin: r.got, ke: ARC ? ARC.played.size : 1, skin: fresh.map(x => x.id).join(",") || undefined });
-  FC.res = { r, fresh, dly };
+  FC.res = { r, fresh, dly, finds, puzSkins };
+  finds.forEach(f => Tele.ev("minigame", { k, a: "temuan", jenis: f.kind, isi: f.r.kind, n: f.r.n, keping: f.r.have }));
   if (dly) Tele.ev("minigame", { k, a: "harian", skor: FC.score, streak: dly.streak, bonus: dly.bonus });
   mgShowEnd();
 }
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
-  const W = wallet(), k = FC.k, { r, fresh, dly } = FC.res;
+  const W = wallet(), k = FC.k, { r, fresh, dly, finds, puzSkins } = FC.res;
   const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
@@ -624,22 +661,67 @@ function mgShowEnd() {
   const pct = T.next ? Math.round(100 * W.best[k] / (W.best[k] + T.need)) : 100;
   const chips = [r.got ? `<span class="pp-chip coin">+${coinTxt(r.got)}</span>` : "",
     dly ? `<span class="pp-chip fire">🔥 ${dly.streak}-day streak${dly.bonus ? ` +${coinTxt(dly.bonus)}` : ""}</span>` : "",
-    fresh.length ? `<span class="pp-chip gift">🎁 New skin: ${fresh.map(x => x.name).join(", ")}</span>` : ""].join("");
+    fresh.filter(x => !x.puzzle).length ? `<span class="pp-chip gift">🎁 New skin: ${fresh.filter(x => !x.puzzle).map(x => x.name).join(", ")}</span>` : ""].join("");
+  const findHtml = finds.map((f, i) => f.open ? findChip(f.r) : `<button class="pp-box" data-box="${i}"><i>🎁</i><b>Mystery box</b><small>Tap to open</small></button>`).join("")
+    + puzSkins.map(sk => `<span class="pp-chip gift big">🧩 Puzzle done! New skin: ${sk.name} (${MG_GAMES[sk.game].name})</span>`).join("");
   mgCard(`<div class="pp-head ${head[1]}">${head[0]}</div>
     <div class="pp-score">${FC.score}</div><small class="pp-sub">${sub}</small>
     <div class="pp-rank" style="--t: ${tierCol(T.ix)}"><i>${T.ix >= 4 ? "💎" : "🏆"}</i><span><b>${T.name}</b><em><u style="width: ${pct}%"></u></em><small>${T.next ? `${T.need} more for ${T.next}` : "Top rank"}</small></span></div>
+    ${findHtml ? `<div class="pp-finds">${findHtml}</div>` : ""}
     ${chips ? `<div class="pp-chips">${chips}</div>` : ""}
     <small class="pp-wallet">You have ${coinTxt(W.koin)}${FC.score && !r.left && !r.got ? " · today's coins are all won" : ""}</small>
     <button class="choice yes pp-big" id="mgAgain">↻ Play again</button>
     <div class="row2">${Dapur.SKINS[k] ? `<button class="choice${fresh.length ? " hot" : ""}" id="mgSkin">Skins</button>` : ""}<button class="choice no" id="mgOk">All games</button></div>`);
+  FC.el.querySelectorAll("[data-box]").forEach(b => { b.onclick = () => boxOpen(b, finds[+b.dataset.box]); });
   if (!FC.res.shown) { ppCount(FC.el.querySelector(".pp-score"), FC.score); if (r.best && FC.score) ppConfetti($("mgCard")); FC.res.shown = true; }
   $("mgAgain").onclick = mgRun;
   $("mgOk").onclick = () => mgEnd(false);
   if ($("mgSkin")) $("mgSkin").onclick = skinPanel;
 }
+// ---- peti misteri dan kepingan puzzle (v61): muncul sesekali di tengah permainan, paling banyak Dapur.BOX_DAY sehari
+const FIND_ICON = { box: "🎁", piece: "🧩" };
+function dropPlan() {
+  // setengah ronde dapet satu temuan; kepingan lebih jarang dari peti. Kapan munculnya beda per game
+  if (!Dapur.canDrop(wallet(), today()) || Math.random() > 0.5) return null;
+  const kind = Math.random() < 0.25 ? "piece" : "box", r = Math.random();
+  const at = MG_GAMES[FC.k].timed ? 5 + r * 18 : FC.k === "stack" ? 4 + Math.floor(r * 9) : 3 + Math.floor(r * 7);
+  return { kind, at, done: false };
+}
+function mgPick(kind) {
+  FC.got.push(kind); Dapur.found(wallet(), today()); save();
+  Tele.ev("minigame", { k: FC.k, a: "nemu", jenis: kind });
+  navigator.vibrate && navigator.vibrate([20, 30, 40]);
+  const t = document.createElement("div"); t.className = "fcx-find";
+  t.innerHTML = `<i>${FIND_ICON[kind]}</i><b>${kind === "box" ? "Mystery box!" : "Puzzle piece!"}</b>`;
+  t.addEventListener("animationend", () => t.remove()); FC.el.appendChild(t);
+}
+const findChip = x => x.kind === "piece"
+  ? `<span class="pp-chip piece">🧩 Puzzle piece ${x.have}/${x.need} · ${Dapur.SKINS[x.game].find(s => s.puzzle === x.id).name}</span>`
+  : `<span class="pp-chip coin${x.jackpot ? " big" : ""}">${x.jackpot ? "💰 JACKPOT " : ""}+${coinTxt(x.n)}</span>`;
+function boxOpen(btn, f) {
+  if (f.open) return;
+  f.open = true; btn.onclick = null; btn.classList.add("shake");
+  Tele.ev("minigame", { k: FC.k, a: "buka_peti", isi: f.r.kind });
+  setTimeout(() => {
+    if (!btn.isConnected) return;
+    btn.outerHTML = findChip(f.r).replace("pp-chip", "pp-chip reveal");
+    navigator.vibrate && navigator.vibrate(f.r.jackpot ? [40, 40, 80] : 40);
+    if (f.r.jackpot || f.r.done) ppConfetti($("mgCard"));
+  }, reduce ? 0 : 650);
+}
+// gambar temuan di permainan: emoji dengan cahaya yang denyut
+function findDraw(ctx, kind, x, y, S) {
+  const t = now() / 1000, k = 1 + 0.08 * Math.sin(t * 8);
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.shadowColor = kind === "box" ? "#FFE16B" : "#7FF3FF"; ctx.shadowBlur = 24 * FC.dpr;
+  ctx.font = mgFont(S); ctx.fillText(FIND_ICON[kind], 0, 0);
+  ctx.restore();
+}
 function mgEnd(quit) {
   if (!FC) return;
   if (quit && FC.run) Tele.ev("minigame", { k: FC.k, a: "berhenti", skor: FC.score });
+  // keluar di tengah main: temuan yang udah diambil tetap jadi milik pemain, dibuka diam-diam
+  if (quit && FC.run && FC.got && FC.got.length) { const W = wallet(); FC.got.forEach(kind => kind === "piece" ? Dapur.addPiece(W) : Dapur.openBox(W, Math.random(), Math.random())); save(); }
   FC.run = false;
   if (FC.key) window.removeEventListener("keydown", FC.key);
   window.removeEventListener("resize", FC.size);

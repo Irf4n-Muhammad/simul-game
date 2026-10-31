@@ -83,3 +83,25 @@ test("tantangan harian: game dan level sama buat hari yang sama, streak nyambung
   r = D.daily(W, 13, 3); assert.equal(r.streak, 1);
   assert.equal(W.koin, k0 + 5 + 10 + 5);
 });
+
+test("peti misteri dan puzzle (v61)", () => {
+  const W = D.fresh(); W.best = {};
+  for (let i = 0; i < D.BOX_DAY; i++) { assert.ok(D.canDrop(W, 10)); D.found(W, 10); }
+  assert.ok(!D.canDrop(W, 10)); assert.ok(D.canDrop(W, 11));
+  // koin dari peti masuk langsung, jackpot 50
+  let k = W.koin; assert.deepEqual(D.openBox(W, 0.9, 0), { kind: "coin", n: 8, jackpot: false }); assert.equal(W.koin, k + 8);
+  assert.equal(D.openBox(W, 0.32, 0).n, 50);
+  // kepingan ngisi puzzle pertama; lengkap = skin Ninja blade kebuka, lanjut ke puzzle berikutnya
+  assert.ok(!D.unlocked(W, "pisau").includes("ninja"));
+  assert.equal(D.puzzleNow(W).id, "ninja");
+  for (let i = 1; i < 6; i++) assert.equal(D.openBox(W, 0.1, 0).have, i);
+  const last = D.addPiece(W); assert.ok(last.done); assert.equal(last.have, 6);
+  assert.ok(D.unlocked(W, "pisau").includes("ninja"));
+  assert.equal(D.puzzleNow(W).id, "galaksi"); assert.equal(D.puzzleNow(W).have, 0);
+  for (let i = 0; i < 6; i++) D.addPiece(W);
+  assert.ok(D.unlocked(W, "stack").includes("galaksi")); assert.equal(D.puzzleNow(W), null);
+  // semua lengkap: kepingan jadi 20 koin
+  k = W.koin; assert.equal(D.addPiece(W).kind, "coin"); assert.equal(W.koin, k + 20);
+  // skin puzzle tercatat di daftar skin, satu per game
+  for (const p of D.PUZZLES) assert.equal(D.SKINS[p.game].filter(s => s.puzzle === p.id).length, 1);
+});
