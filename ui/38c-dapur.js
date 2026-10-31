@@ -105,7 +105,8 @@ function mgStart(k = "potong", daily = false) {
   const g = MG_GAMES[k] || MG_GAMES.potong;
   const el = document.createElement("div");
   el.className = "fcx fcx-" + k; el.id = "fcBox";
-  el.innerHTML = `<div class="fcx-top"><b id="mgScore">0</b><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
+  // skor gede di tengah atas, di BELAKANG kanvas: buah dan pisau tetap kegambar di atasnya, jadi ga pernah nutupin permainan
+  el.innerHTML = `<div class="fcx-sc" id="mgSc"><b id="mgScore">0</b><i id="mgPlus"></i></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
   const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -144,7 +145,7 @@ function mgRun() {
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
   if (FC.k === "stack") stackInit(); else if (FC.k === "pisau") knifeInit();
   if (ARC) ARC.played.add(FC.k);
-  mgCard(null); $("mgScore").textContent = "0";
+  mgCard(null); Object.assign(FC, { heat: 0, shown: 0, ember: 0 }); mgHeat(0); $("mgScore").textContent = "0";
   requestAnimationFrame(mgFrame);
 }
 function mgFrame() {
@@ -155,6 +156,7 @@ function mgFrame() {
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
   const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep }[FC.k];
   step(dt, el);
+  mgJuice(dt);
   if (MG_GAMES[FC.k].timed) {
     const rest = Math.max(0, MG_LEN - el);
     $("mgTime").textContent = Math.ceil(rest);
@@ -162,7 +164,62 @@ function mgFrame() {
   } else if (FC.over && now() - FC.over > 900) return FC.cont || !FC.score ? mgDone() : mgOffer();   // gagal: jeda sebentar biar kelihatan jatuhnya
   requestAnimationFrame(mgFrame);
 }
-const mgAdd = n => { FC.score = Math.max(0, FC.score + n); $("mgScore").textContent = FC.score; };
+// ---- skor (v57): angka naik bergulir, nendang tiap dapet poin, makin panas makin nyala sampai keluar api
+// "panas" naik dari poin yang beruntun dan turun sendiri kalau jeda; kena bom/serangga atau gagal langsung padam
+const HEAT_LV = [0, 4, 9, 16];   // hangat, api, api besar
+function mgAdd(n) {
+  FC.score = Math.max(0, FC.score + n);
+  if (n < 0) { FC.heat = 0; mgKick(-1); mgPlus(n); return; }
+  FC.heat = Math.min(24, (FC.heat || 0) + n);
+  mgKick(n); mgPlus(n);
+}
+function mgLevel() { let l = 0; HEAT_LV.forEach((h, i) => { if (FC.heat >= h) l = i; }); return l; }
+function mgHeat(l) { const el = $("mgSc"); if (el && el.dataset.l !== String(l)) el.dataset.l = l; }
+function mgKick(n) {
+  const b = $("mgScore");
+  if (!b || reduce || !b.animate) return;
+  if (n < 0) { b.animate([{ transform: "translateX(0)", color: "#FF6B5B" }, { transform: "translateX(-10px)" }, { transform: "translateX(9px)" }, { transform: "translateX(-5px)" }, { transform: "translateX(0)" }], { duration: 320 }); return; }
+  // makin panas, makin gede tendangannya dan getarnya
+  const l = mgLevel(), s = 1.18 + 0.08 * l + Math.min(0.12, n * 0.03), a = 2 + 3 * l, r = 2 + 2.5 * l;
+  b.animate([
+    { transform: `scale(${s}) rotate(${-r}deg)` },
+    { transform: `scale(${(s + 1) / 2}) translate(${a}px, ${-a / 2}px) rotate(${r}deg)` },
+    { transform: `scale(1.04) translate(${-a / 2}px, ${a / 3}px) rotate(${-r / 2}deg)` },
+    { transform: "scale(1) rotate(0)" }
+  ], { duration: 260 + 40 * l, easing: "cubic-bezier(.2,.9,.3,1.4)" });
+}
+function mgPlus(n) {
+  const p = $("mgPlus");
+  if (!p) return;
+  p.textContent = n > 0 ? "+" + n : String(n); p.className = n < 0 ? "neg" : "";
+  void p.offsetWidth; p.className += " go";
+}
+function mgJuice(dt) {
+  const b = $("mgScore"), box = $("mgSc");
+  if (!b) return;
+  if (FC.over) FC.heat = 0;
+  FC.heat = Math.max(0, FC.heat - dt * (1.1 + FC.heat * 0.06));
+  const l = mgLevel(); mgHeat(l);
+  // angka bergulir naik, bukan loncat
+  if (FC.shown !== FC.score) {
+    const d = FC.score - FC.shown, st = Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 14)));
+    FC.shown += Math.sign(d) * Math.min(Math.abs(d), st); b.textContent = FC.shown;
+  }
+  // bara api naik dari angka waktu lagi panas
+  if (l >= 2 && !reduce) {
+    FC.ember += dt * (l === 3 ? 26 : 12);
+    while (FC.ember >= 1) {
+      FC.ember -= 1;
+      const e = document.createElement("u"), w = b.offsetWidth;
+      e.style.left = `calc(50% + ${(Math.random() - 0.5) * w}px)`;
+      e.style.setProperty("--dx", (Math.random() - 0.5) * 40 + "px");
+      e.style.animationDuration = 0.6 + Math.random() * 0.6 + "s";
+      if (l === 3 && Math.random() < 0.4) e.className = "hot";
+      e.addEventListener("animationend", () => e.remove());
+      box.appendChild(e);
+    }
+  }
+}
 
 // ---- Fruit catch (v49): keranjang ikut jari
 function catchStep(dt, el) {
