@@ -54,7 +54,41 @@ function hopStep(dt) {
   }
   // kodok: miring ngikutin arah, gepeng dikit waktu mantul
   const sq = FC.fvy < 0 ? 1 + Math.min(0.15, -FC.fvy / (9000 * dpr)) : 1;
-  ctx.save(); ctx.translate(FC.fx, FC.fy); ctx.scale(FC.face * (2 - sq), sq); stamp(ctx, "🐸", 0, 0, 46 * dpr); ctx.restore();
+  // digambar 1.3x lebih besar dan digeser naik dikit biar kakinya tetap pas di awan
+  ctx.save(); ctx.translate(FC.fx, FC.fy - 10 * dpr); ctx.scale(FC.face * (2 - sq), sq); pipDraw(ctx, 1.3 * dpr, FC.fvy < 0, now() / 1000); ctx.restore();
+}
+// Pip (v68, kitab dunia arcade): kodok kecil bersyal merah yang pengen sampai ke bulan. Digambar sendiri, bukan emoji.
+// Titik (0,0) = tengah badan, menghadap kanan; kaki bawah di sekitar +18 (sama kayak kaki di tabrakan awan).
+function pipDraw(ctx, k, up, t) {
+  const G = (x0, y0, r, a, b) => { const g = ctx.createRadialGradient(x0 * k, y0 * k, 0, x0 * k, y0 * k, r * k); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+  const oval = (x, y, rx, ry, fill, line = 3) => { ctx.beginPath(); ctx.ellipse(x * k, y * k, rx * k, ry * k, 0, 0, 7); ctx.fillStyle = fill; ctx.fill(); if (line) { ctx.lineWidth = line * k; ctx.strokeStyle = OUTL; ctx.stroke(); } };
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  // ekor syal berkibar ke belakang
+  const w = Math.sin(t * 14) * 3;
+  ctx.beginPath(); ctx.moveTo(-10 * k, -2 * k); ctx.quadraticCurveTo(-22 * k, (-6 + w) * k, -30 * k, (-1 - w) * k); ctx.lineTo(-29 * k, (5 - w) * k); ctx.quadraticCurveTo(-21 * k, (3 + w) * k, -10 * k, 4 * k); ctx.closePath();
+  ctx.fillStyle = "#E8404F"; ctx.fill(); ctx.lineWidth = 2.5 * k; ctx.strokeStyle = OUTL; ctx.stroke();
+  // kaki belakang: lurus waktu naik, ditekuk waktu turun
+  const legC = "#4FA845";
+  if (up) { oval(-9, 19, 4, 7, legC); oval(9, 19, 4, 7, legC); }
+  else { oval(-16, 12, 7, 4.5, legC); oval(16, 12, 7, 4.5, legC); }
+  // badan
+  oval(0, 3, 20, 16, G(-7, -5, 26, "#A8EA74", "#3C9A3A"));
+  oval(2, 8, 11, 7.5, "#ECF8BE", 0);
+  // syal di leher
+  ctx.beginPath(); ctx.moveTo(-15 * k, -3 * k); ctx.quadraticCurveTo(0, 4 * k, 15 * k, -3 * k); ctx.lineWidth = 5 * k; ctx.strokeStyle = "#E8404F"; ctx.stroke();
+  // tali kacamata terbang di dahi, mata nongol di atasnya
+  ctx.beginPath(); ctx.moveTo(-18 * k, -8 * k); ctx.quadraticCurveTo(0, -14 * k, 18 * k, -8 * k); ctx.lineWidth = 3 * k; ctx.strokeStyle = "#8A5A2B"; ctx.stroke();
+  for (const ex of [-8, 8]) {
+    oval(ex, -13, 7.5, 7, G(ex - 2, -16, 9, "#A8EA74", "#3C9A3A"));
+    oval(ex + 0.5, -13, 4.8, 4.8, "#FFFFFF", 0);
+    oval(ex + 2, up ? -14.5 : -12.5, 2.4, 2.6, OUTL, 0);
+    oval(ex + 2.8, up ? -15.5 : -13.5, 0.8, 0.8, "#FFFFFF", 0);
+  }
+  // senyum dan pipi
+  ctx.beginPath(); ctx.arc(5 * k, 0, 5 * k, 0.15 * Math.PI, 0.85 * Math.PI); ctx.lineWidth = 2.2 * k; ctx.strokeStyle = OUTL; ctx.stroke();
+  oval(14, 1, 3, 2, "rgba(255,120,140,.55)", 0);
+  // kilau
+  oval(-9, -3, 5, 3, "rgba(255,255,255,.45)", 0);
 }
 function hopRevive() {
   // lanjut: awan baru tepat di bawah layar tengah, kodok mantul lagi dari situ
@@ -175,6 +209,11 @@ function wSky(ctx, W, H, dpr, t) {
   ctx.fillRect(0, 0, W, H);
   const r = Dapur.rng(41);
   for (let i = 0; i < 50; i++) { const x = r() * W, y = ((r() * H * 2 + cam * 0.1) % (H * 1.2)) - 20, k = 0.4 + 0.6 * Math.sin(t * 2 + i); ctx.fillStyle = `rgba(255,250,230,${(0.15 + hi * 0.85) * k})`; ctx.fillRect(x, y, 2 * dpr, 2 * dpr); }
+  // bulan = tujuan Pip: makin tinggi, makin besar dan terang
+  const mr = (22 + 46 * hi) * dpr, mx = W * 0.76, my = H * 0.13;
+  wGlow(ctx, mx, my, mr * 3, `rgba(255,240,200,${0.25 + 0.35 * hi})`);
+  ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fillStyle = "#FFF4D6"; ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
+  ctx.fillStyle = "rgba(200,180,140,.45)"; [[-0.3, -0.2, 0.22], [0.25, 0.15, 0.16], [-0.05, 0.4, 0.12]].forEach(([cx, cy, cr]) => { ctx.beginPath(); ctx.arc(mx + cx * mr, my + cy * mr, cr * mr, 0, 7); ctx.fill(); });
   for (let i = 0; i < 3; i++) {
     const y = ((i * H * 0.45 + cam * 0.2) % (H * 1.4)) - H * 0.2, x = W * (0.15 + ((i * 0.37) % 0.7)) + Math.sin(t * 0.3 + i) * 10 * dpr, s = (40 + i * 10) * dpr;
     // pulau jauh: pudar dan tanpa garis, biar nggak dikira pijakan
