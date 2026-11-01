@@ -71,7 +71,7 @@ function arcDraw() {
     <p class="arc-sub">${left ? `Win up to ${coinTxt(left)} more today. Coins go to the kitchen.` : "Today's coins are all won. Play for your best score."}</p>
     ${arcDaily(W)}
     ${arcPuzzle(W)}
-    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i><img alt="" src="${stickerURL(g.icon, 96)}"></i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
+    <div class="arc-grid">${MG_ORDER.map(k => { const g = MG_GAMES[k]; return `<button class="arc-tile" data-mg="${k}" style="--c: ${g.color}"><i><img alt="" src="${mgIconSrc(k, 96)}"></i><b>${g.name}</b>${arcRank(k, W.best[k])}</button>`; }).join("")}</div>
     <small class="arc-foot">Basic food is always free. The nice ones cost coins.</small>`;
   ARC.el.querySelector("#arcX").onclick = arcClose;
   ARC.el.querySelectorAll("[data-mg]").forEach(b => { b.onclick = () => mgStart(b.dataset.mg); });
@@ -94,7 +94,7 @@ function arcPuzzle(W) {
 function arcDaily(W) {
   const d = today(), k = Dapur.harian(d), g = MG_GAMES[k], H = W.harian && W.harian.d === d ? W.harian : null;
   const st = Dapur.streakNow(W, d);
-  return `<button class="arc-daily" id="arcDaily" style="--c: ${g.color}"><i>${g.icon}</i><span><small>TODAY'S CHALLENGE</small><b>${g.name}</b>
+  return `<button class="arc-daily" id="arcDaily" style="--c: ${g.color}"><i>${MG_ART[k] ? `<img alt="" src="${mgIconSrc(k, 64)}">` : g.icon}</i><span><small>TODAY'S CHALLENGE</small><b>${g.name}</b>
     <em>${H ? `Today's best ${H.best}` : "Same level for everyone today"}${st ? ` · 🔥 ${st}-day streak` : ""}</em></span><strong>${H ? "Again" : "Play"}</strong></button>`;
 }
 function arcClose() {
@@ -160,7 +160,7 @@ function mgStart(k = "potong", daily = false) {
   el.addEventListener("pointerdown", () => Sfx.unlock());
   el.addEventListener("click", e => { if (e.target.closest("button") && e.target.id !== "mgSnd") Sfx.play("ui"); });
   mgCard(`<div class="pp-head${daily ? " pp-gold" : ""}">${daily ? "Today's challenge" : g.name}</div>
-    <div class="pp-icon" style="--c: ${g.color}">${g.icon}</div>${daily ? `<b>${g.name}</b>` : ""}
+    <div class="pp-icon" style="--c: ${g.color}">${MG_ART[k] ? `<img alt="" src="${mgIconSrc(k, 96)}">` : g.icon}</div>${daily ? `<b>${g.name}</b>` : ""}
     <small>${daily ? "Same level for everyone today. " : ""}${g.how}</small><button class="choice yes pp-big" id="mgPlay">▶ Start</button>`);
   $("mgPlay").onclick = mgRun;
   Tele.ev("minigame", { k, a: "buka", ke: ARC ? ARC.played.size + 1 : 1 });
