@@ -6,7 +6,7 @@
 function hopInit() {
   const { cv, dpr } = FC, W = cv.width, H = cv.height;
   Object.assign(FC, { fx: W / 2, fy: H - 160 * dpr, fvy: -1150 * dpr, aimX: W / 2, cam: 0, plats: [], hopTop: 0, face: 1 });
-  FC.plats.push({ x: W / 2, y: H - 120 * dpr, w: 110 * dpr, i: 0 });
+  FC.plats.push(hopShape({ x: W / 2, y: H - 120 * dpr, w: 110 * dpr, i: 0, kind: "biasa", v: 0 }, false));
   while (FC.plats.length < 14) hopAdd();
 }
 function hopAdd() {
@@ -15,8 +15,17 @@ function hopAdd() {
   const kind = i > 25 && FC.rnd() < 0.25 ? "geser" : i > 15 && FC.rnd() < 0.2 ? "rapuh" : "biasa";
   const p = { x: w / 2 + FC.rnd() * (W - w), y: last.y - gap, w, i, kind, v: (FC.rnd() < 0.5 ? -1 : 1) * (60 + i) * dpr };
   if (kind === "biasa" && i > 5 && FC.rnd() < 0.08) p.spring = true;
+  // v69: bentuk dan hiasan tiap pijakan beda (acak biasa, bukan acak harian: cuma tampilan)
+  hopShape(p); if (p.spring) p.deco = null;
   const D = FC.drop; if (D && !D.done && i >= D.at + 2) { D.done = true; p.find = D.kind; }
   FC.plats.push(p);
+}
+// bentuk gumpalan awan dan hiasan; dipakai semua pijakan, termasuk awan awal dan awan "lanjut"
+function hopShape(p, deco = true) {
+  const vr = Math.random, n = Math.max(3, Math.round(p.w / (19 * FC.dpr))) + Math.floor(vr() * 2);
+  p.puffs = Array.from({ length: n }, (_, j) => ({ u: j / (n - 1), r: (j && j < n - 1 ? 0.95 : 0.75) + vr() * 0.45 }));
+  p.deco = deco && vr() < 0.55 ? ["bunga", "burung", "kilau", "pelangi", "jamur"][Math.floor(vr() * 5)] : null;
+  return p;
 }
 function hopStep(dt) {
   const { cv, ctx, dpr } = FC, W = cv.width, H = cv.height, g = 2300 * dpr;
@@ -29,7 +38,7 @@ function hopStep(dt) {
       if (p.gone || FC.fvy <= 0) continue;
       const foot = FC.fy + 18 * dpr, prev = foot - FC.fvy * dt;
       if (prev <= p.y && foot >= p.y && Math.abs(FC.fx - p.x) < p.w / 2 + 12 * dpr) {
-        FC.fvy = -(p.spring ? 1900 : 1150) * dpr; FC.fy = p.y - 18 * dpr;
+        FC.fvy = -(p.spring ? 1900 : 1150) * dpr; FC.fy = p.y - 18 * dpr; FC.landT = now(); hopPuff(FC.fx, p.y, p.spring);
         Sfx.play(p.spring ? "temu" : "taruh", Math.min(p.i, 24));
         if (p.kind === "rapuh") { p.gone = true; Sfx.play("iris"); }
         if (p.find) { mgPick(p.find); p.find = null; }
@@ -43,58 +52,159 @@ function hopStep(dt) {
     while (FC.plats.length < 14) hopAdd();
     if (FC.fy > H + 40 * dpr) { FC.over = now(); Sfx.play("jatuh"); navigator.vibrate && navigator.vibrate(120); }
   }
-  // awan pijakan
-  for (const p of FC.plats) {
-    if (p.gone) continue;
-    const col = p.kind === "rapuh" ? "#E8D7C9" : p.kind === "geser" ? "#BFE8FF" : "#FFFFFF", s = p.w / 2.9;
-    wCloud(ctx, p.x - p.w / 2 + s * 0.55, p.y + s * 0.2, s, col);
-    if (p.kind === "rapuh") { ctx.strokeStyle = "rgba(34,24,43,.5)"; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(p.x - 8 * dpr, p.y - 4 * dpr); ctx.lineTo(p.x, p.y + 6 * dpr); ctx.lineTo(p.x + 9 * dpr, p.y - 2 * dpr); ctx.stroke(); }
-    if (p.spring) stamp(ctx, "🌀", p.x, p.y - 14 * dpr, 26 * dpr);
-    if (p.find) findDraw(ctx, p.find, p.x, p.y - 30 * dpr, 30 * dpr);
+  // pijakan: tiap zona punya bentuk sendiri (awan siang, awan senja, awan malam bercahaya, batu angkasa)
+  for (const p of FC.plats) if (!p.gone) hopPlat(ctx, p, dpr);
+  // debu dan kilau waktu mendarat
+  FC.puffs = (FC.puffs || []).filter(q => (q.life -= dt) > 0);
+  for (const q of FC.puffs) {
+    q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 300 * dpr * dt;
+    ctx.globalAlpha = Math.min(1, q.life * 2.5);
+    if (q.star) { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.life * 6); hopStar(ctx, 0, 0, q.r, "#FFE36B"); ctx.restore(); }
+    else { ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (1.6 - q.life), 0, 7); ctx.fillStyle = "#FFFFFF"; ctx.fill(); }
   }
-  // kodok: miring ngikutin arah, gepeng dikit waktu mantul
-  const sq = FC.fvy < 0 ? 1 + Math.min(0.15, -FC.fvy / (9000 * dpr)) : 1;
-  // digambar 1.3x lebih besar dan digeser naik dikit biar kakinya tetap pas di awan
-  ctx.save(); ctx.translate(FC.fx, FC.fy - 10 * dpr); ctx.scale(FC.face * (2 - sq), sq); pipDraw(ctx, 1.3 * dpr, FC.fvy < 0, now() / 1000); ctx.restore();
+  ctx.globalAlpha = 1;
+  // Pip: gepeng waktu baru mendarat, memanjang waktu melesat naik
+  const since = (now() - (FC.landT || 0)) / 1000, land = since < 0.12 ? 1 - since / 0.12 : 0;
+  const sy = FC.fvy < 0 ? 1 + Math.min(0.12, -FC.fvy / (12000 * dpr)) - land * 0.25 : 1;
+  ctx.save(); ctx.translate(FC.fx, FC.fy - 7 * dpr + land * 4 * dpr); ctx.scale(FC.face * (2 - sy), sy);
+  pipDraw(ctx, 1.2 * dpr, { vy: FC.fvy / dpr, t: now() / 1000, happy: since < 0.35, over: !!FC.over });
+  ctx.restore();
 }
-// Pip (v68, kitab dunia arcade): kodok kecil bersyal merah yang pengen sampai ke bulan. Digambar sendiri, bukan emoji.
-// Titik (0,0) = tengah badan, menghadap kanan; kaki bawah di sekitar +18 (sama kayak kaki di tabrakan awan).
-function pipDraw(ctx, k, up, t) {
+function hopPuff(x, y, big) {
+  const dpr = FC.dpr; FC.puffs = FC.puffs || [];
+  for (let i = 0; i < (big ? 10 : 6); i++) { const a = Math.PI + (i / 5) * Math.PI; FC.puffs.push({ x, y, vx: Math.cos(a) * (60 + Math.random() * 60) * dpr * (i % 2 ? 1 : -1), vy: -Math.random() * 60 * dpr, r: (4 + Math.random() * 4) * dpr, life: 0.45 }); }
+  if (big) for (let i = 0; i < 6; i++) FC.puffs.push({ x, y: y - 20 * dpr, vx: (Math.random() - 0.5) * 300 * dpr, vy: -(200 + Math.random() * 200) * dpr, r: 7 * dpr, life: 0.8, star: true });
+}
+function hopStar(ctx, x, y, r, col) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = Math.max(1.5, r * 0.18); ctx.strokeStyle = OUTL; ctx.stroke();
+}
+// zona ketinggian dari skor: 0 siang, 1 senja (20+), 2 malam (40+), 3 luar angkasa (70+). Nilainya halus buat transisi warna.
+function hopZone(sc) { return sc < 20 ? sc / 20 : sc < 40 ? 1 + (sc - 20) / 20 : sc < 70 ? 2 + (sc - 40) / 30 : 3; }
+function hopPlat(ctx, p, dpr) {
+  const z = Math.floor(hopZone(p.i)), t = now() / 1000, x0 = p.x - p.w / 2, yb = p.y + 7 * dpr;
+  if (p.kind === "rapuh") {
+    // awan mendung retak: abu-abu, ada tetes hujan, jelas beda dari pijakan aman
+    hopPuffRow(ctx, p, yb, dpr, "#A9A3B8", "#7D7690");
+    ctx.strokeStyle = OUTL; ctx.lineWidth = 2.5 * dpr; ctx.beginPath(); ctx.moveTo(p.x - 10 * dpr, p.y - 2 * dpr); ctx.lineTo(p.x - 2 * dpr, p.y + 7 * dpr); ctx.lineTo(p.x + 4 * dpr, p.y); ctx.lineTo(p.x + 11 * dpr, p.y + 8 * dpr); ctx.stroke();
+    ctx.fillStyle = "#7FC4FF"; for (let j = 0; j < 3; j++) { const dx = (j - 1) * p.w * 0.25, dy = ((t * 60 + j * 13) % 22) * dpr; ctx.beginPath(); ctx.ellipse(p.x + dx, yb + 14 * dpr + dy, 1.8 * dpr, 3.2 * dpr, 0, 0, 7); ctx.fill(); }
+    return;
+  }
+  if (z === 3) {
+    // pulau batu angkasa: permukaan atas datar, bawahnya runcing bergerigi, ada kristal kecil yang berpendar
+    const hw = p.w / 2, ty = yb - 3 * dpr, J = p.puffs;
+    ctx.beginPath(); ctx.moveTo(p.x - hw, ty);
+    J.forEach((q, j) => { const u = (j + 0.5) / J.length, d = Math.sin(u * Math.PI) * (16 + q.r * 10) * dpr; ctx.lineTo(x0 + p.w * u, ty + 6 * dpr + d); });
+    ctx.lineTo(p.x + hw, ty); ctx.closePath();
+    ctx.fillStyle = wGrad(ctx, ty, ty + 30 * dpr, [[0, "#8E7FC4"], [1, "#4A3C78"]]); ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(p.x, ty, hw, 7 * dpr, 0, 0, 7); ctx.fillStyle = wGrad(ctx, ty - 7 * dpr, ty + 7 * dpr, [[0, "#D9CCFF"], [1, "#A493DE"]]); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(90,70,150,.45)"; J.slice(0, 3).forEach((q, j) => { ctx.beginPath(); ctx.ellipse(x0 + p.w * (0.25 + 0.25 * j), ty + (j % 2 ? 1.5 : -1.5) * dpr, 4 * q.r * dpr, 2 * q.r * dpr, 0, 0, 7); ctx.fill(); });
+    if (J.length > 3) { const cx = x0 + p.w * 0.78, cy = ty + 12 * dpr; wGlow(ctx, cx, cy, 14 * dpr, "rgba(120,240,255,.6)"); ctx.beginPath(); ctx.moveTo(cx, cy - 6 * dpr); ctx.lineTo(cx + 3.5 * dpr, cy); ctx.lineTo(cx, cy + 6 * dpr); ctx.lineTo(cx - 3.5 * dpr, cy); ctx.closePath(); ctx.fillStyle = "#8FF3FF"; ctx.fill(); ctx.lineWidth = 1.8 * dpr; ctx.stroke(); }
+  } else {
+    const top = ["#FFFFFF", "#FFF1E6", "#E9E4FF"][z], bot = ["#CFE6FA", "#F6C9C2", "#9C8FE0"][z];
+    if (p.kind === "geser") hopPuffRow(ctx, p, yb, dpr, "#E6F7FF", "#9ED6F2"); else hopPuffRow(ctx, p, yb, dpr, top, bot);
+    if (z === 2) wGlow(ctx, p.x, yb, p.w * 0.7, "rgba(190,170,255,.25)");
+  }
+  if (p.kind === "geser") {
+    // garis angin di belakang awan yang geser
+    ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 2.5 * dpr; const dir = p.v > 0 ? -1 : 1;
+    for (let j = 0; j < 2; j++) { const yy = yb - (4 + j * 8) * dpr, xx = p.x + dir * (p.w / 2 + 6 * dpr); ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx + dir * (14 + j * 6) * dpr, yy); ctx.stroke(); }
+  }
+  if (p.spring) {
+    // jamur pantul: tudung merah bintik putih
+    const mx = p.x, my = p.y - 4 * dpr;
+    ctx.fillStyle = "#FFF3DC"; ctx.fillRect(mx - 4 * dpr, my - 2 * dpr, 8 * dpr, 8 * dpr); ctx.lineWidth = 2 * dpr; ctx.strokeStyle = OUTL; ctx.strokeRect(mx - 4 * dpr, my - 2 * dpr, 8 * dpr, 8 * dpr);
+    ctx.beginPath(); ctx.ellipse(mx, my - 2 * dpr, 15 * dpr, 10 * dpr, 0, Math.PI, 0); ctx.closePath(); ctx.fillStyle = "#F0484F"; ctx.fill(); ctx.lineWidth = 2.5 * dpr; ctx.stroke();
+    ctx.fillStyle = "#FFFFFF"; [[-7, -6, 2.6], [3, -9, 2.2], [9, -4, 1.8]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.arc(mx + dx * dpr, my + dy * dpr, r * dpr, 0, 7); ctx.fill(); });
+  }
+  const d = p.deco, dx = x0 + p.w * 0.72, dy = p.y - 3 * dpr;
+  if (d === "bunga") [[-10, "#FF7EB6"], [-2, "#FFD45C"], [6, "#FF9F5C"]].forEach(([o, c]) => { const fx = x0 + p.w * 0.3 + o * dpr; ctx.strokeStyle = "#3E9B3A"; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(fx, dy + 3 * dpr); ctx.lineTo(fx, dy - 5 * dpr); ctx.stroke(); ctx.beginPath(); ctx.arc(fx, dy - 7 * dpr, 3.2 * dpr, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = OUTL; ctx.stroke(); });
+  else if (d === "burung" && z < 2) { const by = dy - 5 * dpr + Math.abs(Math.sin(t * 3 + p.i)) * -2 * dpr; ctx.beginPath(); ctx.ellipse(dx, by, 7 * dpr, 6 * dpr, 0, 0, 7); ctx.fillStyle = "#FFCF4A"; ctx.fill(); ctx.lineWidth = 2 * dpr; ctx.strokeStyle = OUTL; ctx.stroke(); ctx.fillStyle = "#FF8A3D"; ctx.beginPath(); ctx.moveTo(dx + 6 * dpr, by - 1 * dpr); ctx.lineTo(dx + 11 * dpr, by + 1 * dpr); ctx.lineTo(dx + 6 * dpr, by + 2.5 * dpr); ctx.closePath(); ctx.fill(); ctx.fillStyle = OUTL; ctx.beginPath(); ctx.arc(dx + 2.5 * dpr, by - 2 * dpr, 1.3 * dpr, 0, 7); ctx.fill(); }
+  else if (d === "kilau" || (d === "burung" && z >= 2)) { const k = 0.7 + 0.3 * Math.sin(t * 4 + p.i); hopStar(ctx, dx, dy - 8 * dpr, 7 * k * dpr, z >= 2 ? "#FFF1A8" : "#FFE36B"); }
+  else if (d === "pelangi" && z < 2) { ["#FF6B6B", "#FFB84D", "#FFE66B", "#6BD98A", "#6BB8FF"].forEach((c, j) => { ctx.beginPath(); ctx.arc(x0 + p.w * 0.25, yb, (16 - j * 2.4) * dpr, Math.PI, 0); ctx.lineWidth = 2.4 * dpr; ctx.strokeStyle = c; ctx.stroke(); }); }
+  else if (d === "jamur" && z < 3) { ctx.beginPath(); ctx.ellipse(dx, dy - 1 * dpr, 6 * dpr, 4.5 * dpr, 0, Math.PI, 0); ctx.closePath(); ctx.fillStyle = "#B57BFF"; ctx.fill(); ctx.lineWidth = 1.8 * dpr; ctx.strokeStyle = OUTL; ctx.stroke(); }
+  if (p.find) findDraw(ctx, p.find, p.x, p.y - 30 * dpr, 30 * dpr);
+}
+function hopPuffRow(ctx, p, yb, dpr, top, bot) {
+  // awan tebal: badan bulat-pipih, gumpalan besar numpuk di atas, gumpalan kecil di bawah, bayangan lembut di bawahnya.
+  // Garis luar tebal digambar dulu, isi gradasi di atasnya, kilau di puncak gumpalan.
+  const x0 = p.x - p.w / 2, w = p.w, base = 13 * dpr;
+  const pts = p.puffs.map(q => ({ x: x0 + base * 0.9 + (w - base * 1.8) * q.u, y: yb - 3 * dpr - (q.r - 0.75) * 6 * dpr, r: base * q.r }));
+  const und = [0.25, 0.5, 0.75].map((u, j) => ({ x: x0 + w * u, y: yb + 8 * dpr, r: (j === 1 ? 8 : 6.5) * dpr }));
+  ctx.fillStyle = "rgba(40,30,80,.13)"; ctx.beginPath(); ctx.ellipse(p.x, yb + 20 * dpr, w * 0.42, 5 * dpr, 0, 0, 7); ctx.fill();
+  const shape = grow => {
+    ctx.beginPath();
+    for (const q of pts.concat(und)) { ctx.moveTo(q.x + q.r + grow, q.y); ctx.arc(q.x, q.y, q.r + grow, 0, 7); }
+    const h = 16 * dpr, y0 = yb - 4 * dpr;
+    ctx.moveTo(x0 + h / 2, y0 - grow);
+    ctx.roundRect ? ctx.roundRect(x0 - grow, y0 - grow, w + 2 * grow, h + 2 * grow, h / 2 + grow) : ctx.rect(x0 - grow, y0 - grow, w + 2 * grow, h + 2 * grow);
+  };
+  shape(3 * dpr); ctx.fillStyle = OUTL; ctx.fill();
+  shape(0); ctx.fillStyle = wGrad(ctx, yb - base * 1.6, yb + 16 * dpr, [[0, top], [0.5, top], [1, bot]]); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.85)";
+  for (const q of pts) { ctx.beginPath(); ctx.ellipse(q.x - q.r * 0.3, q.y - q.r * 0.5, q.r * 0.32, q.r * 0.17, -0.4, 0, 7); ctx.fill(); }
+}
+// ikon game yang digambar sendiri (bukan emoji): dipakai di ubin arcade, kartu cara main, dan tantangan harian
+const MG_ART = { hop: (ctx, S) => { ctx.translate(S * 0.54, S * 0.5); pipDraw(ctx, S / 64, { vy: 0, t: 1, happy: true }); } };
+const MG_ART_C = {};
+function mgIconSrc(k, px) {
+  const g = MG_GAMES[k];
+  if (!MG_ART[k] || typeof document === "undefined") return stickerURL(g.icon, px);
+  const id = k + px; if (MG_ART_C[id]) return MG_ART_C[id];
+  const c = document.createElement("canvas"); c.width = c.height = px * 2; const ctx = c.getContext("2d");
+  if (!ctx) return stickerURL(g.icon, px);
+  MG_ART[k](ctx, px * 2); return (MG_ART_C[id] = c.toDataURL());
+}
+// Pip (v69, kitab dunia arcade): kodok kecil bersyal merah yang pengen sampai ke bulan. Gaya chibi buat anak-anak:
+// badan bulat menyatu sama kepala, mata gede berkilau di depan, pipi merah, ekspresi ikut gerakan, kedip sendiri.
+// Titik (0,0) = tengah badan, menghadap kanan; bawah kaki sekitar +21 (dikali skala di hopStep supaya pas sama tabrakan +18).
+function pipDraw(ctx, k, st) {
+  const { vy, t, happy, over } = st;
   const G = (x0, y0, r, a, b) => { const g = ctx.createRadialGradient(x0 * k, y0 * k, 0, x0 * k, y0 * k, r * k); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
   const oval = (x, y, rx, ry, fill, line = 3) => { ctx.beginPath(); ctx.ellipse(x * k, y * k, rx * k, ry * k, 0, 0, 7); ctx.fillStyle = fill; ctx.fill(); if (line) { ctx.lineWidth = line * k; ctx.strokeStyle = OUTL; ctx.stroke(); } };
+  const skin = G(-8, -10, 30, "#B6FF8E", "#3DBB4A"), up = vy < 0, scared = over || vy > 900;
   ctx.lineJoin = "round"; ctx.lineCap = "round";
-  // ekor syal berkibar ke belakang
-  const w = Math.sin(t * 14) * 3;
-  ctx.beginPath(); ctx.moveTo(-10 * k, -2 * k); ctx.quadraticCurveTo(-22 * k, (-6 + w) * k, -30 * k, (-1 - w) * k); ctx.lineTo(-29 * k, (5 - w) * k); ctx.quadraticCurveTo(-21 * k, (3 + w) * k, -10 * k, 4 * k); ctx.closePath();
-  ctx.fillStyle = "#E8404F"; ctx.fill(); ctx.lineWidth = 2.5 * k; ctx.strokeStyle = OUTL; ctx.stroke();
-  // kaki belakang: lurus waktu naik, ditekuk waktu turun
-  const legC = "#4FA845";
-  if (up) { oval(-9, 19, 4, 7, legC); oval(9, 19, 4, 7, legC); }
-  else { oval(-16, 12, 7, 4.5, legC); oval(16, 12, 7, 4.5, legC); }
-  // badan
-  oval(0, 3, 20, 16, G(-7, -5, 26, "#A8EA74", "#3C9A3A"));
-  oval(2, 8, 11, 7.5, "#ECF8BE", 0);
-  // syal di leher
-  ctx.beginPath(); ctx.moveTo(-15 * k, -3 * k); ctx.quadraticCurveTo(0, 4 * k, 15 * k, -3 * k); ctx.lineWidth = 5 * k; ctx.strokeStyle = "#E8404F"; ctx.stroke();
-  // tali kacamata terbang di dahi, mata nongol di atasnya
-  ctx.beginPath(); ctx.moveTo(-18 * k, -8 * k); ctx.quadraticCurveTo(0, -14 * k, 18 * k, -8 * k); ctx.lineWidth = 3 * k; ctx.strokeStyle = "#8A5A2B"; ctx.stroke();
-  for (const ex of [-8, 8]) {
-    oval(ex, -13, 7.5, 7, G(ex - 2, -16, 9, "#A8EA74", "#3C9A3A"));
-    oval(ex + 0.5, -13, 4.8, 4.8, "#FFFFFF", 0);
-    oval(ex + 2, up ? -14.5 : -12.5, 2.4, 2.6, OUTL, 0);
-    oval(ex + 2.8, up ? -15.5 : -13.5, 0.8, 0.8, "#FFFFFF", 0);
+  // ekor syal berkibar ke belakang, keluar dari simpul di sisi belakang leher
+  const w = Math.sin(t * 16) * 3;
+  ctx.beginPath(); ctx.moveTo(-15 * k, 10 * k); ctx.quadraticCurveTo(-25 * k, (6 + w) * k, -34 * k, (9 - w) * k); ctx.lineTo(-32 * k, (16 - w) * k); ctx.quadraticCurveTo(-24 * k, (15 + w) * k, -15 * k, 15 * k); ctx.closePath();
+  ctx.fillStyle = "#E8323F"; ctx.fill(); ctx.lineWidth = 2.5 * k; ctx.strokeStyle = OUTL; ctx.stroke();
+  // kaki: lurus ke bawah waktu melesat, menekuk ke samping waktu turun
+  if (up) { oval(-8, 18, 4.5, 5.5, "#3DBB4A"); oval(8, 18, 4.5, 5.5, "#3DBB4A"); }
+  else { oval(-17, 13, 6.5, 4.5, "#3DBB4A"); oval(17, 13, 6.5, 4.5, "#3DBB4A"); }
+  // tonjolan mata di atas kepala (gede, digambar sebelum badan supaya garisnya nyatu)
+  oval(-10, -14, 10.5, 10, skin); oval(10, -14, 10.5, 10, skin);
+  // badan bulat
+  oval(0, 2, 23, 18, skin);
+  oval(0, 13, 12, 6.5, "#F2FFD2", 0);
+  // syal kain di leher (di bawah mulut, ada garis luar dan lipatan) + simpul di belakang
+  ctx.beginPath(); ctx.moveTo(-20 * k, 7 * k); ctx.quadraticCurveTo(0, 14 * k, 20 * k, 7 * k); ctx.lineTo(19 * k, 12 * k); ctx.quadraticCurveTo(0, 19 * k, -19 * k, 12 * k); ctx.closePath();
+  ctx.fillStyle = "#E8323F"; ctx.fill(); ctx.lineWidth = 2.5 * k; ctx.strokeStyle = OUTL; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-14 * k, 10.5 * k); ctx.quadraticCurveTo(0, 15.5 * k, 14 * k, 10.5 * k); ctx.lineWidth = 1.4 * k; ctx.strokeStyle = "rgba(255,255,255,.45)"; ctx.stroke();
+  oval(-16, 11, 4, 4, "#C9202E", 2.2);
+  // mata: putih besar, pupil gede, dua kilau; kedip tiap ~3 detik
+  const blink = (t % 3.2) < 0.12 && !scared, look = up ? -1.5 : 1.5;
+  for (const ex of [-10, 10]) {
+    if (blink) { ctx.beginPath(); ctx.arc(ex * k, -13 * k, 5 * k, 0.15 * Math.PI, 0.85 * Math.PI); ctx.lineWidth = 2.6 * k; ctx.strokeStyle = OUTL; ctx.stroke(); continue; }
+    oval(ex, -14, 7.8, scared ? 8.5 : 7.8, "#FFFFFF", 0);
+    oval(ex + 1.6, -14 + look, scared ? 3 : 5, scared ? 3 : 5.4, "#24163A", 0);
+    oval(ex + 3.4, -16.4 + look, 1.9, 1.9, "#FFFFFF", 0);
+    oval(ex - 0.2, -11.6 + look, 0.9, 0.9, "#FFFFFF", 0);
   }
-  // senyum dan pipi
-  ctx.beginPath(); ctx.arc(5 * k, 0, 5 * k, 0.15 * Math.PI, 0.85 * Math.PI); ctx.lineWidth = 2.2 * k; ctx.strokeStyle = OUTL; ctx.stroke();
-  oval(14, 1, 3, 2, "rgba(255,120,140,.55)", 0);
-  // kilau
-  oval(-9, -3, 5, 3, "rgba(255,255,255,.45)", 0);
+  // mulut: ketawa lebar habis mendarat, "o" kaget waktu jatuh cepat, senyum kecil biasanya
+  ctx.lineWidth = 2.4 * k; ctx.strokeStyle = OUTL;
+  if (scared) oval(3, 0, 3.4, 4.2, "#7A2340", 2.2);
+  else if (happy) { ctx.beginPath(); ctx.moveTo(-4 * k, -2 * k); ctx.quadraticCurveTo(3 * k, 8 * k, 10 * k, -2 * k); ctx.closePath(); ctx.fillStyle = "#7A2340"; ctx.fill(); ctx.stroke(); oval(3, 2.6, 3, 1.6, "#FF8AA0", 0); }
+  else { ctx.beginPath(); ctx.arc(3 * k, -3 * k, 5 * k, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); }
+  // pipi merah dan kilau badan
+  oval(-12, -1, 4.2, 2.6, "#FF8FB1", 0); oval(16, -1, 3.6, 2.4, "#FF8FB1", 0);
+  oval(-12, -4, 4.5, 2.6, "rgba(255,255,255,.5)", 0);
 }
 function hopRevive() {
   // lanjut: awan baru tepat di bawah layar tengah, kodok mantul lagi dari situ
   const { cv, dpr } = FC, W = cv.width, H = cv.height;
   FC.fx = FC.aimX = W / 2; FC.fy = H * 0.7; FC.fvy = -1300 * dpr;
-  FC.plats.unshift({ x: W / 2, y: H * 0.7 + 40 * dpr, w: 120 * dpr, i: FC.hopTop, kind: "biasa", v: 0 });   // di depan: hopAdd tetap nyambung dari awan paling atas
+  FC.plats.unshift(hopShape({ x: W / 2, y: H * 0.7 + 40 * dpr, w: 120 * dpr, i: FC.hopTop, kind: "biasa", v: 0 }, false));   // di depan: hopAdd tetap nyambung dari awan paling atas
 }
 
 // ========== Memory match (30 detik): balik dua kartu, kalau sama +2, berantai nambah bonus. Papan habis = papan baru, +5.
@@ -202,24 +312,79 @@ function runRevive() { FC.obs = FC.obs.filter(o => o !== FC.hitObs && o.x > FC.c
 
 // ========== dunia buat tiga game baru
 // Frog hop: langit senja yang makin tinggi makin malam, pulau melayang lewat pelan
+// v69: langit berzona. Siang biru cerah (balon udara, burung, awan jauh), senja, malam berbintang (bulan makin besar),
+// luar angkasa (planet bercincin, bintang jatuh). Zona ngikutin skor, warnanya nyampur halus.
+const SKY_Z = [["#4FB3FF", "#8ED6FF", "#DDF5FF"], ["#7B6CF6", "#FF9EB5", "#FFD59E"], ["#141A4A", "#2C2F7A", "#5A4A9A"], ["#07061A", "#1A0F3D", "#2E1660"]];
 function wSky(ctx, W, H, dpr, t) {
-  const cam = FC.cam || 0, hi = Math.min(1, cam / (H * 6));
-  const mix = (a, b) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * hi)).join(",")})`;
-  ctx.fillStyle = wGrad(ctx, 0, H, [[0, mix([90, 70, 170], [12, 10, 40])], [0.6, mix([255, 150, 170], [60, 40, 110])], [1, mix([255, 210, 160], [110, 70, 140])]]);
-  ctx.fillRect(0, 0, W, H);
-  const r = Dapur.rng(41);
-  for (let i = 0; i < 50; i++) { const x = r() * W, y = ((r() * H * 2 + cam * 0.1) % (H * 1.2)) - 20, k = 0.4 + 0.6 * Math.sin(t * 2 + i); ctx.fillStyle = `rgba(255,250,230,${(0.15 + hi * 0.85) * k})`; ctx.fillRect(x, y, 2 * dpr, 2 * dpr); }
-  // bulan = tujuan Pip: makin tinggi, makin besar dan terang
-  const mr = (22 + 46 * hi) * dpr, mx = W * 0.76, my = H * 0.13;
-  wGlow(ctx, mx, my, mr * 3, `rgba(255,240,200,${0.25 + 0.35 * hi})`);
-  ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fillStyle = "#FFF4D6"; ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
-  ctx.fillStyle = "rgba(200,180,140,.45)"; [[-0.3, -0.2, 0.22], [0.25, 0.15, 0.16], [-0.05, 0.4, 0.12]].forEach(([cx, cy, cr]) => { ctx.beginPath(); ctx.arc(mx + cx * mr, my + cy * mr, cr * mr, 0, 7); ctx.fill(); });
-  for (let i = 0; i < 3; i++) {
-    const y = ((i * H * 0.45 + cam * 0.2) % (H * 1.4)) - H * 0.2, x = W * (0.15 + ((i * 0.37) % 0.7)) + Math.sin(t * 0.3 + i) * 10 * dpr, s = (40 + i * 10) * dpr;
-    // pulau jauh: pudar dan tanpa garis, biar nggak dikira pijakan
-    ctx.globalAlpha = 0.28; ctx.fillStyle = "#4A3A70"; ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.lineTo(x, y + s * 0.9); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#3E7A55"; ctx.fillRect(x - s, y - 6 * dpr, s * 2, 8 * dpr); ctx.globalAlpha = 1;
+  const cam = FC.cam || 0;
+  FC.zs = (FC.zs || 0) + (hopZone(FC.hopTop || 0) - (FC.zs || 0)) * 0.03;
+  const zf = FC.zs, z0 = Math.min(3, Math.floor(zf)), z1 = Math.min(3, z0 + 1), f = zf - z0;
+  const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b) => { const A = hx(a), B = hx(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(",")})`; };
+  ctx.fillStyle = wGrad(ctx, 0, H, SKY_Z[z0].map((c, i) => [i / 2, mix(c, SKY_Z[z1][i])])); ctx.fillRect(0, 0, W, H);
+  const night = Math.max(0, Math.min(1, zf - 1.3)), day = Math.max(0, 1 - zf);
+  // benda latar ditaruh di "dunia" per lapis: posisi layar = posisi dunia + kamera × parallax, jadi naiknya beda kecepatan
+  const layer = (par, gap, seed, draw) => { const off = cam * par, j0 = Math.floor((off - H) / gap) - 1, j1 = Math.floor((off + H) / gap) + 1; for (let j = j0; j <= j1; j++) { const r = Dapur.rng(seed * 977 + j * 131); draw(r, H - j * gap + off, j); } };
+  // bintang (malam dan angkasa)
+  if (night > 0) layer(0.05, 60 * dpr, 3, (r, y) => { for (let i = 0; i < 4; i++) { const x = r() * W, yy = y + r() * 60 * dpr, k = 0.5 + 0.5 * Math.sin(t * 2 + x); ctx.fillStyle = `rgba(255,250,230,${night * k})`; ctx.beginPath(); ctx.arc(x, yy, (0.8 + r() * 1.4) * dpr, 0, 7); ctx.fill(); } });
+  // matahari siang, bulan dari senja ke malam (makin besar)
+  // muka imut buat matahari dan bulan: mata lengkung senyum (bulan: mata tidur), pipi merah, senyum kecil
+  const face = (x, y, r, sleepy) => {
+    ctx.strokeStyle = OUTL; ctx.lineWidth = Math.max(2, r * 0.09); ctx.lineCap = "round";
+    for (const sx of [-1, 1]) { ctx.beginPath(); sleepy ? ctx.arc(x + sx * r * 0.32, y - r * 0.08, r * 0.13, 0.15 * Math.PI, 0.85 * Math.PI) : ctx.arc(x + sx * r * 0.32, y - r * 0.02, r * 0.13, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(x, y + r * 0.18, r * 0.16, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    ctx.fillStyle = "rgba(255,110,110,.45)"; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + sx * r * 0.55, y + r * 0.2, r * 0.15, r * 0.09, 0, 0, 7); ctx.fill(); }
+  };
+  if (day > 0.05) {
+    const sx = W * 0.18, sy = H * 0.12, sr = 28 * dpr;
+    ctx.globalAlpha = day; wGlow(ctx, sx, sy, 120 * dpr, "rgba(255,240,150,.7)");
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(t * 0.25); ctx.fillStyle = "#FFC93C"; ctx.strokeStyle = OUTL; ctx.lineWidth = 2.5 * dpr;
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, l = (i % 2 ? 44 : 50) * dpr; ctx.beginPath(); ctx.moveTo(Math.cos(a - 0.16) * sr * 0.9, Math.sin(a - 0.16) * sr * 0.9); ctx.lineTo(Math.cos(a) * l, Math.sin(a) * l); ctx.lineTo(Math.cos(a + 0.16) * sr * 0.9, Math.sin(a + 0.16) * sr * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fillStyle = wGrad(ctx, sy - sr, sy + sr, [[0, "#FFF39A"], [1, "#FFC93C"]]); ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
+    face(sx, sy, sr, false); ctx.globalAlpha = 1;
   }
+  const mo = Math.max(0, Math.min(1, zf - 0.6));
+  if (mo > 0 && zf < 3.2) {
+    const mr = (20 + 50 * Math.min(1, zf / 3)) * dpr, mx = W * 0.76, my = H * 0.13;
+    ctx.globalAlpha = mo; wGlow(ctx, mx, my, mr * 3, "rgba(255,240,200,.45)");
+    ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fillStyle = wGrad(ctx, my - mr, my + mr, [[0, "#FFFBEA"], [1, "#F3DFA8"]]); ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
+    ctx.fillStyle = "rgba(200,170,120,.35)"; [[-0.5, -0.45, 0.14], [0.5, -0.5, 0.1], [0.55, 0.45, 0.12]].forEach(([cx, cy, cr]) => { ctx.beginPath(); ctx.arc(mx + cx * mr, my + cy * mr, cr * mr, 0, 7); ctx.fill(); });
+    face(mx, my, mr, true); ctx.globalAlpha = 1;
+  }
+  // planet (angkasa)
+  if (zf > 2.4) { ctx.globalAlpha = Math.min(1, (zf - 2.4) * 1.6); layer(0.12, 340 * dpr, 7, (r, y) => { const x = W * (0.1 + r() * 0.8), pr = (18 + r() * 26) * dpr, hue = Math.floor(r() * 360); ctx.beginPath(); ctx.arc(x, y, pr, 0, 7); ctx.fillStyle = `hsl(${hue} 65% 62%)`; ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke(); ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.beginPath(); ctx.arc(x - pr * 0.3, y - pr * 0.3, pr * 0.35, 0, 7); ctx.fill(); if (r() < 0.6) { ctx.beginPath(); ctx.ellipse(x, y, pr * 1.7, pr * 0.42, -0.35, 0, 7); ctx.lineWidth = 3.5 * dpr; ctx.strokeStyle = `hsl(${(hue + 40) % 360} 70% 75%)`; ctx.stroke(); } }); ctx.globalAlpha = 1; }
+  // awan jauh lembut, dua lapis (siang dan senja)
+  const soft = Math.max(0, 1 - Math.max(0, zf - 1.4));
+  if (soft > 0) for (const [par, gap, a, sz] of [[0.18, 230, 0.45, 0.8], [0.35, 300, 0.7, 1.15]]) layer(par, gap * dpr, gap, (r, y) => { const x = r() * W, s = (28 + r() * 30) * dpr * sz; ctx.fillStyle = `rgba(255,255,255,${a * soft})`; [[0, 0, 1], [0.9, -0.35, 0.8], [1.8, 0, 0.9], [0.9, 0.25, 0.85]].forEach(([dx, dy, rr]) => { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, rr * s, 0, 7); ctx.fill(); }); });
+  // balon udara dan burung (siang ke senja)
+  if (soft > 0.2) layer(0.28, 520 * dpr, 11, (r, y, j) => {
+    const x = W * (0.12 + r() * 0.76) + Math.sin(t * 0.5 + j) * 12 * dpr, s = (16 + r() * 10) * dpr, cols = [["#FF6B6B", "#FFE66B"], ["#6BB8FF", "#FFFFFF"], ["#B57BFF", "#FFB84D"]][Math.floor(r() * 3)];
+    ctx.globalAlpha = soft; ctx.lineWidth = 2.5 * dpr; ctx.strokeStyle = OUTL;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(x, y, s * (1 - i * 0.24), s * 1.15, 0, 0, 7); ctx.fillStyle = cols[i % 2]; ctx.fill(); }
+    ctx.beginPath(); ctx.ellipse(x, y, s, s * 1.15, 0, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - s * 0.5, y + s); ctx.lineTo(x - s * 0.3, y + s * 1.6); ctx.moveTo(x + s * 0.5, y + s); ctx.lineTo(x + s * 0.3, y + s * 1.6); ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+    ctx.fillStyle = "#A5683A"; ctx.fillRect(x - s * 0.35, y + s * 1.6, s * 0.7, s * 0.5); ctx.lineWidth = 2 * dpr; ctx.strokeRect(x - s * 0.35, y + s * 1.6, s * 0.7, s * 0.5);
+    ctx.globalAlpha = 1;
+  });
+  if (soft > 0.2) layer(0.4, 420 * dpr, 13, (r, y, j) => {
+    const sp = 40 + r() * 30, x = ((r() * W + t * sp * dpr) % (W + 120 * dpr)) - 60 * dpr, n = 3 + Math.floor(r() * 3);
+    ctx.strokeStyle = `rgba(60,40,90,${0.7 * soft})`; ctx.lineWidth = 2.2 * dpr;
+    for (let i = 0; i < n; i++) { const bx = x - i * 16 * dpr, by = y + (i % 2) * 10 * dpr + i * 4 * dpr, fl = Math.sin(t * 10 + i) * 4 * dpr; ctx.beginPath(); ctx.moveTo(bx - 7 * dpr, by - fl); ctx.quadraticCurveTo(bx - 3 * dpr, by - 4 * dpr, bx, by); ctx.quadraticCurveTo(bx + 3 * dpr, by - 4 * dpr, bx + 7 * dpr, by - fl); ctx.stroke(); }
+  });
+  // padang awal di bawah (cuma kelihatan di awal): bukit jauh, desa kecil, rumput depan. Nempel ke kamera biar kerasa naik.
+  if (cam < H * 1.2) {
+    const gy = H - 34 * dpr + cam;
+    ctx.fillStyle = "#9ED67A"; ctx.strokeStyle = OUTL; ctx.lineWidth = 3 * dpr;
+    ctx.beginPath(); ctx.moveTo(0, H + cam); ctx.lineTo(0, gy - 40 * dpr); ctx.quadraticCurveTo(W * 0.25, gy - 110 * dpr, W * 0.55, gy - 50 * dpr); ctx.quadraticCurveTo(W * 0.8, gy - 120 * dpr, W, gy - 60 * dpr); ctx.lineTo(W, H + cam); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const hs = [[0.16, "#FF8A8A"], [0.3, "#FFD36B"], [0.7, "#8AC6FF"], [0.86, "#C59BFF"]];
+    for (const [u, c] of hs) { const hx = W * u, hy = gy - 30 * dpr - Math.sin(u * 6) * 10 * dpr, hw = 22 * dpr; ctx.fillStyle = "#FFF6E8"; ctx.fillRect(hx - hw / 2, hy - hw * 0.7, hw, hw * 0.7); ctx.strokeRect(hx - hw / 2, hy - hw * 0.7, hw, hw * 0.7); ctx.beginPath(); ctx.moveTo(hx - hw * 0.7, hy - hw * 0.65); ctx.lineTo(hx, hy - hw * 1.3); ctx.lineTo(hx + hw * 0.7, hy - hw * 0.65); ctx.closePath(); ctx.fillStyle = c; ctx.fill(); ctx.stroke(); ctx.fillStyle = "#6B4A3A"; ctx.fillRect(hx - 3 * dpr, hy - 9 * dpr, 6 * dpr, 9 * dpr); }
+    for (const u of [0.05, 0.45, 0.6, 0.97]) { const tx = W * u, ty = gy - 22 * dpr; ctx.fillStyle = "#7A5236"; ctx.fillRect(tx - 3 * dpr, ty - 4 * dpr, 6 * dpr, 16 * dpr); ctx.beginPath(); ctx.arc(tx, ty - 12 * dpr, 13 * dpr, 0, 7); ctx.fillStyle = "#4FB45A"; ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = "#6CC46A"; ctx.beginPath(); ctx.moveTo(0, gy); for (let x = 0; x <= W; x += 18 * dpr) ctx.quadraticCurveTo(x + 9 * dpr, gy - 8 * dpr, x + 18 * dpr, gy); ctx.lineTo(W, H + cam + 40 * dpr); ctx.lineTo(0, H + cam + 40 * dpr); ctx.closePath(); ctx.fill(); ctx.stroke();
+    for (let i = 0; i < 9; i++) { const fx = (i * 0.113 + 0.04) % 1 * W, fy = gy + (10 + (i * 7) % 18) * dpr; ctx.beginPath(); ctx.arc(fx, fy, 3 * dpr, 0, 7); ctx.fillStyle = ["#FF7EB6", "#FFE36B", "#FFFFFF"][i % 3]; ctx.fill(); }
+  }
+  // bintang jatuh (angkasa), sesekali
+  if (zf > 2.6) { const k = (t * 0.35) % 1, sx = W * (1 - k * 1.3), sy = H * (0.1 + 0.3 * ((Math.floor(t * 0.35) * 0.37) % 1)) + k * H * 0.3; ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 2.5 * dpr; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 40 * dpr, sy - 18 * dpr); ctx.stroke(); }
 }
 // Memory match: meja kayu di bawah lampu gantung yang hangat
 function wTable(ctx, W, H, dpr, t) {
