@@ -23,7 +23,7 @@ function aheadSnap() {
 let aheadKey = null, aheadCache = null, somedayCache = null;
 function drawAhead() {
   const el = $("soon"), el2 = $("someday"); if (!el || !state) return;
-  const off = !cur || !game || state.tut < COACH.length || (TOWN && TOWN.on) || cur.fase === "meninggal" || cur.fase === "merantau";
+  const off = !cur || !game || state.tut < COACH.length || outView() || cur.fase === "meninggal" || cur.fase === "merantau";
   const S = off ? null : aheadSnap();
   const L = S ? Soon.line(S) : null, M = S ? Soon.someday(S) : null;
   el.hidden = !L; el2.hidden = !M;
@@ -42,7 +42,7 @@ function drawAhead() {
 const EXTRA_TOURS = [{ id: "ahead", when: () => !$("soon").hidden || !$("someday").hidden },
   { id: "tonggak", when: () => !!aheadCache && aheadCache.k.startsWith("tonggak:") }];
 function aheadTourMaybe() {
-  if (!state || !game || !cur || tour || sheetKind || PH || (TOWN && TOWN.on) || coachEl || state.tut < COACH.length || game.pending) return;
+  if (!state || !game || !cur || tour || sheetKind || PH || outView() || coachEl || state.tut < COACH.length || game.pending) return;
   if (cur.fase === "meninggal" || cur.fase === "merantau") return;
   const T = (state.tur_pintu ||= {});
   for (const X of EXTRA_TOURS) if (!T[X.id] && TOURS[X.id] && X.when()) { tourStart(X.id, false); return; }

@@ -2,18 +2,16 @@
 // Rumah tiap keluarga berdiri di lingkungan sesuai rumah yang dia beli, mobilnya parkir di depan.
 // Belum ada server, jadi tetangganya keluarga NPC; rumah dan mobil mereka ikut kekayaan mereka hari ini.
 // Kavling yang belum dibeli masih tanah kosong. Rumah baru dibangun pakai waktu nyata, kelihatan dari perancahnya.
+// v73: di sekeliling Main Street sekarang ada kotanya (kota.js): jalan silang, sungai, rel dan kereta, sekolah, kantor, Bazaar, taman,
+// warga yang jalan sesuai jadwal dari jam asli, dan makhluk kita di tempat dia lagi berada. Kamera bird view: geser ke mana aja,
+// zoom dari jalan sampai peta kota, zoom keluar lagi = balik ke globe (globe.js).
 "use strict";
 (function () {
-  const HOODS = [
-    { id: "rented", name: "Old Town", lot: 2.3, per: 4, ground: 0xcdbfae, kind: "apartment" },
-    { id: "flat", name: "Suburb", lot: 2.3, per: 4, ground: 0xb3b897, kind: "flat" },
-    { id: "house", name: "Downtown", lot: 3.3, per: 3, ground: 0xa6b18d, kind: "house" },
-    { id: "villa", name: "Hillside", lot: 4.4, per: 2, ground: 0x9cad86, kind: "villa" },
-    { id: "mansion", name: "Royal Heights", lot: 5.6, per: 2, ground: 0x93a77f, kind: "mansion" },
-  ];
-  const ROAD_W = 2, WALK = 0.9, GAP = 2.4;
+  // v73: lingkungan dan tata kota pindah ke kota.js (dipakai juga buat jadwal warga dan tes)
+  const HOODS = Kota.HOODS;
+  const { ROAD_W, WALK, GAP } = Kota;
   const TURN = 0.75;   // homes turn a little toward the viewer so both sides of the street show their fronts
-  const PLAZA = 15;    // length of the town square block before Old Town
+  const PLAZA = Kota.PLAZA;    // length of the town square block before Old Town
   // public places open as more families own a home in town; the mayor will pick the order later
   const CIVIC = [
     { id: "cafe", name: "Café", need: 150, side: -1, z: 12.4, len: 4.2, about: "A spot to meet the neighbours." },
@@ -43,7 +41,7 @@
     const walkers = [];
     const signs = [];
     let previewG = null, lastSite = 0;
-    let focusX = 0, built = false, focusZ = 0, zMin = 0, zMax = 0;
+    let focusX = 0, built = false, focusZ = 0;
     const T = { on: false, scene, camera };
 
     // ---------------------------------------------------------------- Kenney models
@@ -403,11 +401,219 @@
       s.scale.set(4.6 * k, 1.2 * k, 1); s.position.set(x, y, z); s.renderOrder = 10; scene.add(s); signs.push(s); return s;
     }
 
+    // ---------------------------------------------------------------- v73: the city around Main Street (kota.js)
+    // Streets that run off the map, the river with bridges, the railway and station, named places, filler blocks and woods.
+    // Everything here is the same for every player; only the homes on Main Street come from the family and the neighbours.
+    const mapLabels = [];   // names that stay readable on the city map
+    const TINTS = { home: [0xe8d9c4, 0xd9c2a8, 0xc9d1c4, 0xe3cfc1, 0xd5d8dc, 0xefe4d0], shop: [0xe6d3b8, 0xd8b99a, 0xc8d3d8, 0xe9c9b8, 0xd2c5e0, 0xf0dcc0],
+      shed: [0xb9b1a6, 0xa8a39a, 0xc2b8a6, 0x9fa6a8, 0xb7a996, 0xaab2b0], tower: [0xbfc8cf, 0xa9b6c0, 0xd2d6d8, 0x9fb0bd, 0xc9c4bc, 0xb4c2c9] };
+    const ROOFC = [0x8a5a44, 0x6d6460, 0x9b6b52, 0x5f6b72, 0x7a6a5a, 0x84624e];
+    const TREEC = [0x6f8a5a, 0x7f9a62, 0x5f7d55, 0x8aa36a, 0x6a8560];
+    let winTex = null;
+    const windowsTex = () => winTex || (winTex = canvasTex((c, w, h) => {
+      c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
+      for (let y = 8; y < h - 4; y += 16) for (let x = 6; x < w - 4; x += 14) { c.fillStyle = Math.random() < 0.6 ? "#ffd59a" : "#2a2622"; c.fillRect(x, y, 8, 10); }
+    }, 128, 128));
+    function mapLabel(text, sub, x, y, z, k = 0.8) { const s = label(text, sub, x, y, z, false, k); s.userData.map = true; s.userData.base = s.scale.clone(); s.userData.y0 = y; mapLabels.push(s); return s; }
+    function inst(geo, mat, list, set) {
+      if (!list.length) return null;
+      const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), col = new THREE.Color(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
+      list.forEach((b, i) => { const o = set(b); p.set(o.x, o.y || 0, o.z); s.set(o.sx, o.sy, o.sz); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); m4.compose(p, q, s); im.setMatrixAt(i, m4); col.setHex(o.c).convertSRGBToLinear(); im.setColorAt(i, col); });
+      im.castShadow = im.receiveShadow = true; scene.add(im); return im;
+    }
+    const unitBox = () => { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return g; };
+    function buildCity() {
+      const roadM = M(0x6a6460, { roughness: 0.95 }), walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
+      // ground everywhere, a touch under the Main Street blocks
+      const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xb7b397, { roughness: 1 })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
+      const strip = (x, z, w, d, mat, y, h) => { const m = mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z); m.castShadow = false; return m; };
+      for (const S of Kota.STREETS) {
+        if (S.v) {
+          const segs = S.id === "main" ? [[Kota.PLAZA, R], [Kota.ZMIN, -R]] : [[R, -R]];
+          for (const [a, b] of segs) { const zc = (a + b) / 2, len = Math.abs(a - b); strip(S.at, zc, ROAD_W, len, roadM, 0.03, 0.06); for (const sx of [-1, 1]) strip(S.at + sx * (ROAD_W / 2 + WALK / 2), zc, WALK, len, walkM, 0.04, 0.08); }
+        } else {
+          for (const [a, b] of [[-R, -ROAD_W / 2], [ROAD_W / 2, R]]) { const xc = (a + b) / 2, len = Math.abs(a - b); strip(xc, S.at, len, ROAD_W, roadM, 0.031, 0.06); for (const sz of [-1, 1]) strip(xc, S.at + sz * (ROAD_W / 2 + WALK / 2), len, WALK, walkM, 0.041, 0.08); }
+          // bridge rails over the river
+          for (const sz of [-1, 1]) strip((Kota.RIVER.x0 + Kota.RIVER.x1) / 2, S.at + sz * (ROAD_W / 2 + WALK), Kota.RIVER.x1 - Kota.RIVER.x0 + 1.2, 0.12, M(0xe9e2d6), 0.3, 0.5);
+        }
+      }
+      // river
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(Kota.RIVER.x1 - Kota.RIVER.x0, 2 * R), M(0x6fa9c4, { roughness: 0.25, metalness: 0.1 }));
+      water.rotation.x = -Math.PI / 2; water.position.set((Kota.RIVER.x0 + Kota.RIVER.x1) / 2, 0.012, 0); scene.add(water);
+      for (const x of [Kota.RIVER.x0, Kota.RIVER.x1]) strip(x, 0, 0.35, 2 * R, M(0xc9bfa8), 0.02, 0.1);
+      // railway: ballast, two rails, the station platform
+      strip(Kota.RAIL.x, 0, 2.4, 2 * R, M(0x8f857a), 0.035, 0.07);
+      for (const sx of [-0.5, 0.5]) strip(Kota.RAIL.x + sx, 0, 0.09, 2 * R, M(0x5b5550, { roughness: 0.4, metalness: 0.4 }), 0.1, 0.06);
+      // named places
+      for (const P of Kota.PLACES) if (P.kind !== "square") placeModel(P);
+      // filler blocks: one draw call per kind
+      const F = Kota.fillers(), bl = F.buildings;
+      const plain = bl.filter(b => b.kind !== "tower"), towers = bl.filter(b => b.kind === "tower"), roofed = bl.filter(b => b.kind === "home" || b.kind === "shop");
+      inst(unitBox(), M(0xffffff, { roughness: 0.9 }), plain, b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS[b.kind][b.tint] }));
+      const tm = M(0xffffff, { roughness: 0.6, emissive: 0xffc98a, emissiveMap: windowsTex(), emissiveIntensity: 0 }); lit.push(tm);
+      inst(unitBox(), tm, towers, b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS.tower[b.tint] }));
+      const pyr = new THREE.ConeGeometry(0.71, 1, 4); pyr.rotateY(Math.PI / 4); pyr.translate(0, 0.5, 0);
+      inst(pyr, M(0xffffff, { roughness: 0.8 }), roofed, b => ({ x: b.x, y: b.h, z: b.z, sx: b.w, sy: 0.4 + Math.min(b.w, b.d) * 0.22, sz: b.d, c: ROOFC[b.tint] }));
+      const trunk = new THREE.CylinderGeometry(0.07, 0.1, 0.6, 5); trunk.translate(0, 0.3, 0);
+      const crown = new THREE.IcosahedronGeometry(0.55, 0); crown.translate(0, 1.05, 0);
+      inst(trunk, M(0xffffff), F.trees, t => ({ x: t.x, z: t.z, sx: t.s, sy: t.s, sz: t.s, c: 0x7a5a44 }));
+      inst(crown, M(0xffffff, { roughness: 1, flatShading: true }), F.trees, t => ({ x: t.x, z: t.z, sx: t.s, sy: t.s * 1.1, sz: t.s, ry: t.x * 7, c: TREEC[Math.abs(Math.round(t.x * 3 + t.z)) % TREEC.length] }));
+      // street names at the edge of town, district names for the map
+      for (const S of Kota.STREETS) { if (S.id === "main") continue; const s = mapLabel(S.name, "", S.v ? S.at + 3 : -54, 0.9, S.v ? 36 : S.at - 1.4, 0.55); s.userData.street = true; }
+      for (const B of Kota.BANDS) { const s = mapLabel(HOODS.find(h => h.id === B.id).name, "", 0, 4.2, B.zc, 0.7); s.userData.hood = true; }
+      // the train: four cars, comes every few minutes (same moment for everyone, from the real clock)
+      train = new THREE.Group(); scene.add(train);
+      const body = M(0xefe6d6, { roughness: 0.5 }), band = M(0xc2704f), tw = M(0x8c9aa3, { roughness: 0.2, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(tw);
+      for (let k = 0; k < 4; k++) {
+        const z = k * 4.6; mesh(RB(1.5, 1.4, 4.3, 0.18), body, 0, 0.95, z, train); mesh(new THREE.BoxGeometry(1.52, 0.18, 4.32), band, 0, 0.55, z, train);
+        for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.02, 0.45, 3.4), tw, sx * 0.76, 1.15, z, train);
+      }
+      train.position.set(Kota.RAIL.x, 0, 400); train.userData.len = 4 * 4.6;
+    }
+    function placeModel(P) {
+      const g = new THREE.Group(); g.position.set(P.x, 0, P.z); scene.add(g);
+      const door = Kota.doorOf(P), face = Math.atan2(door.x - P.x, door.z - P.z);   // front faces the street with the door
+      const front = new THREE.Group(); front.rotation.y = face; g.add(front);
+      const W = Math.abs(Math.sin(face)) > 0.5 ? P.d : P.w, D = Math.abs(Math.sin(face)) > 0.5 ? P.w : P.d;   // width along the street
+      // gable roof with the ridge along the street; depth = how deep the building is, z = where its middle sits
+      const roofOn = (len, h, depth, y, col, z = 0) => { const rf = gable(depth, h, len, M(col, { roughness: 0.7 })); rf.rotation.y = Math.PI / 2; rf.position.set(0, y, z); front.add(rf); return rf; };
+      if (P.kind === "office") {
+        const m = M(0xffffff, { roughness: 0.5, emissive: 0xffc98a, emissiveMap: windowsTex(), emissiveIntensity: 0 }); m.color.setHex(0xc9d2d8).convertSRGBToLinear(); lit.push(m);
+        mesh(new THREE.BoxGeometry(W, P.h, D), m, 0, P.h / 2, 0, front);
+        mesh(new THREE.BoxGeometry(W + 0.3, 0.35, D + 0.3), M(0x7d858c), 0, P.h + 0.17, 0, front);
+        const sg = board(P.name.toUpperCase(), W * 0.8, 0.5, "#2E2A26", "#F2D3B3"); sg.position.set(0, 1.4, D / 2 + 0.02); front.add(sg);
+      } else if (P.kind === "school") {
+        const wall = M(P.id === "academy" ? 0xd9c7ae : P.id === "arts" ? 0xe8d6c6 : 0xefe6d6);
+        mesh(new THREE.BoxGeometry(W, P.h, D * 0.6), wall, 0, P.h / 2, -D * 0.2, front);
+        roofOn(W + 0.4, P.h * 0.4, D * 0.6 + 0.4, P.h, P.id === "academy" ? 0x5f6b72 : 0xa8624a, -D * 0.2);
+        const yard = mesh(new THREE.BoxGeometry(W, 0.04, D * 0.4), M(0xd8cdb8, { roughness: 1 }), 0, 0.02, D * 0.3, front); yard.castShadow = false;
+        for (let x = -W / 2 + 0.8; x < W / 2 - 0.4; x += 1.1) for (const y of [P.h * 0.32, P.h * 0.72]) mesh(new THREE.BoxGeometry(0.6, 0.6, 0.05), winMat(), x, y, D * 0.1 + 0.01, front);
+        const sg = board(P.name.toUpperCase(), Math.min(W * 0.8, 6), 0.42, "#F7F2EA", "#2E2A26"); sg.position.set(0, P.h * 0.92, D * 0.1 + 0.03); front.add(sg);
+        mesh(CYL(0.04, 0.04, 3, 6), M(0xe9e2d6), W / 2 - 0.4, 1.5, D / 2 - 0.4, front); mesh(new THREE.BoxGeometry(0.7, 0.42, 0.02), M(0xc2704f), W / 2 - 0.05, 2.7, D / 2 - 0.4, front);
+        if (P.track) {
+          const tr = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.4, 40), M(0xc0674a, { roughness: 1, side: THREE.DoubleSide })); tr.rotation.x = -Math.PI / 2; tr.scale.set(1.7, 1, 1); tr.position.set(P.track.x, 0.03, P.track.z); tr.receiveShadow = true; scene.add(tr);
+          const inF = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40), M(0x8fb06a, { roughness: 1 })); inF.rotation.x = -Math.PI / 2; inF.scale.set(1.7, 1, 1); inF.position.set(tr.position.x, 0.025, tr.position.z); scene.add(inF);
+        }
+      } else if (P.kind === "park") {
+        const lawn = mesh(RB(P.w, 0.05, P.d, 0.04), M(0x9cbf7a, { roughness: 1 }), 0, 0.025, 0, g); lawn.castShadow = false;
+        const pond = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), M(0x6fa9c4, { roughness: 0.2 })); pond.rotation.x = -Math.PI / 2; pond.scale.set(1, 1.6, 1); pond.position.set(0.6, 0.06, 3); g.add(pond);
+        mesh(new THREE.BoxGeometry(0.8, 0.055, P.d - 1), walkM2(), -2.6, 0.04, 0, g).castShadow = false;
+        mesh(new THREE.BoxGeometry(P.w - 1, 0.055, 0.8), walkM2(), 0, 0.04, -5, g).castShadow = false;
+        for (const [x, z, ry] of [[-1.8, -2, Math.PI / 2], [-1.8, 2, Math.PI / 2], [1, -6, 0], [3, -6, 0], [-3.4, -8, Math.PI / 2]]) bench(x, z, ry, g);
+      } else if (P.kind === "market") {
+        mesh(new THREE.BoxGeometry(W, P.h, D * 0.62), M(0xe3d4bd), 0, P.h / 2, -D * 0.19, front);
+        roofOn(W + 0.6, 1.4, D * 0.62 + 0.6, P.h, 0x7a6a5a, -D * 0.19);
+        const cols = [0xc2704f, 0x5f8a6e, 0xd4a853, 0x6d7790, 0xb86f8a];
+        for (let k = 0; k < 5; k++) { const x = -W / 2 + 1.1 + k * (W - 2.2) / 4; mesh(RB(1.4, 0.7, 0.8, 0.03), M(0xb08d6a), x, 0.35, D * 0.26, front); const aw = mesh(RB(1.6, 0.06, 1.0, 0.02), M(cols[k]), x, 1.25, D * 0.26, front); aw.rotation.x = 0.25; for (const sx of [-0.7, 0.7]) mesh(CYL(0.03, 0.03, 1.2, 6), M(0x3a332d), x + sx, 0.6, D * 0.26 + 0.4, front); }
+        const sg = board("BAZAAR", 3, 0.6, "#2E2A26", "#F2D3B3"); sg.position.set(0, P.h - 0.6, D * 0.12 + 0.02); front.add(sg);
+      } else if (P.kind === "station") {
+        mesh(new THREE.BoxGeometry(W, P.h, D), M(0xe6dccb), 0, P.h / 2, 0, front);
+        roofOn(W + 0.5, 1.3, D + 0.5, P.h, 0x5f6b72);
+        const sg = board("STATION", 3.2, 0.55, "#2E2A26", "#F7F2EA"); sg.position.set(0, P.h - 0.5, D / 2 + 0.02); front.add(sg);
+        mesh(new THREE.BoxGeometry(1.8, 0.4, 16), M(0xcfc3b0), Kota.RAIL.x + 2.2 - P.x, 0.2, 0, g);   // platform beside the track
+        mesh(new THREE.BoxGeometry(1.8, 0.08, 9), M(0x5f6b72), Kota.RAIL.x + 2.2 - P.x, 2.3, 0, g);
+        for (const z of [-4, 0, 4]) mesh(CYL(0.05, 0.05, 2.1, 6), M(0x3a332d), Kota.RAIL.x + 2.9 - P.x, 1.25, z, g);
+      }
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(P.w, Math.max(1.5, P.h), P.d), new THREE.MeshBasicMaterial({ visible: false })); hit.position.set(P.x, Math.max(0.75, P.h / 2), P.z); scene.add(hit);
+      const entry = { hit, place: P }; lots.push(entry);
+      entry.tag = mapLabel(P.name, PLACE_SUB[P.kind] || "", P.x, (P.h || 0.5) + (P.kind === "office" ? 1.2 : 1.8), P.z);
+    }
+    let _walk2 = null; const walkM2 = () => _walk2 || (_walk2 = M(0xddd3c4, { roughness: 1 }));
+    const PLACE_SUB = { office: "Offices", school: "School", park: "Park", market: "Market", station: "Trains" };
+    // ---------------------------------------------------------------- v73: townsfolk and your creature, on the real clock
+    // Everyone has a day plan (kota.js): who walks, who sits in the park, who is inside. Near the camera they are little
+    // creatures; on the city map they are dots. Only the nearest few get a full model ("full AI only for the near ones").
+    const FOLK = [0xe8d8be, 0xa9adb3, 0xd99a6c, 0x9db8c9, 0x4d4a52, 0xe5bfbf];
+    const folk = Kota.people(120);
+    let TL = null, tlKey = "", pool = [], dots = null, train = null;
+    let you = null, youG = null, youPin = null, youTag = null, youNow = null, youAt = -1, youLineDrawn = "";
+    function clock() {
+      const d = new Date(), sec = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+      return { sec, dow: d.getDay(), day: Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5) };
+    }
+    function plans(c) {
+      const k = c.day + ":" + c.dow; if (k === tlKey && TL) return TL;
+      tlKey = k; TL = folk.map(p => Kota.timeline(Kota.plan(p, c.day, c.dow), p.home, p.side)); return TL;
+    }
+    function buildLife(data) {
+      pool = []; for (let i = 0; i < 26; i++) { const g = walker(FOLK[i % FOLK.length]); g.visible = false; g.userData.who = -1; pool.push(g); }
+      dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.42, 8, 6), F(0xf6ead6), folk.length); dots.count = 0; dots.frustumCulled = false; scene.add(dots);
+      you = data.you || null; youNow = null; youAt = -1; youLineDrawn = "";
+      youG = null; youPin = null; youTag = null;
+      if (you) {
+        youG = walker(you.color, true); youG.scale.setScalar(1.15); youG.visible = false;
+        youPin = new THREE.Group(); scene.add(youPin);
+        const pm = F(0xc2704f);
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 16), pm); cone.rotation.x = Math.PI; cone.position.y = 0.35; youPin.add(cone);
+        const ball = new THREE.Mesh(SPH(0.36, 20, 14), pm); ball.position.y = 0.85; youPin.add(ball);
+        const eye = new THREE.Mesh(SPH(0.16, 14, 10), F(0xffffff)); eye.position.set(0, 0.88, 0.25); youPin.add(eye);
+        youPin.visible = false;
+      }
+    }
+    function youTagDraw(line) {
+      if (youTag) { scene.remove(youTag); const i = signs.indexOf(youTag); if (i >= 0) signs.splice(i, 1); }
+      youTag = label(you.name, line, 0, 0, 0, true, 0.8); youTag.userData.base = youTag.scale.clone(); youLineDrawn = line;
+    }
+    const smooth = k => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+    function updateLife(t, dt) {
+      const c = clock(), T0 = plans(c), near = zoom < 0.56, d = distNow();
+      // townsfolk
+      const vis = [];
+      for (let i = 0; i < folk.length; i++) { const L = Kota.locate(T0[i], c.sec, (i * 0.618) % 1); if (L.show) { L.i = i; L.d = Math.hypot(L.x - focusX, L.z - focusZ); vis.push(L); } }
+      T.crowdNow = vis.length;
+      if (near) {
+        vis.sort((a, b) => a.d - b.d);
+        const R = d * 1.1 + 6;
+        pool.forEach((g, k) => {
+          const L = vis[k]; if (!L || L.d > R) { g.visible = false; return; }
+          g.visible = true;
+          if (g.userData.who !== L.i) { g.userData.who = L.i; g.children[0].material.color.setHex(FOLK[folk[L.i].tint]).convertSRGBToLinear(); }
+          const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 160 * 1.1 + L.i)) : Math.abs(Math.sin(t / 900 + L.i)) * 0.3;
+          g.position.set(L.x, bob * 0.06, L.z); g.rotation.y = L.dir; g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1);
+        });
+        dots.count = 0;
+      } else {
+        for (const g of pool) g.visible = false;
+        const m4 = new THREE.Matrix4(), s = Math.max(1, d / 110);
+        vis.forEach((L, k) => { m4.makeScale(s, s, s); m4.setPosition(L.x, 0.4 * s, L.z); dots.setMatrixAt(k, m4); });
+        dots.count = vis.length; dots.instanceMatrix.needsUpdate = true;
+      }
+      // the train
+      if (train) {
+        const tr = Kota.trainAt(c.sec);
+        train.visible = !!tr;
+        if (tr) train.position.z = tr.z - train.userData.len / 2;   // cars sit at 0..len from the group, so this centres the train on tr.z
+      }
+      // your creature: plan refreshed every few seconds, position every frame
+      if (!you) { T.you = null; return; }
+      if (!youNow || t - youAt > 4000) { youAt = t; youNow = Kota.creatureNow(you.o, you.day, c.sec, T.homeDoor || Kota.PLACE.square.spot); }
+      if (!youNow) { youG.visible = youPin.visible = false; if (youTag) youTag.visible = false; T.you = null; return; }
+      const L = youNow.T ? Kota.locate(youNow.T, c.sec, 0.37) : youNow;
+      const line = youNow.line;
+      T.you = { line, at: L.at, show: !!L.show, away: !!youNow.away };
+      if (line !== youLineDrawn) youTagDraw(line);
+      const k = Math.max(1, d / 34), pinS = Math.max(1, d / 26);
+      let px, pz, py;
+      if (youNow.away) { youG.visible = youPin.visible = false; youTag.visible = false; return; }
+      if (L.show) {
+        const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 150)) : 0;
+        youG.visible = near; youG.position.set(L.x, bob * 0.07, L.z); youG.rotation.y = L.dir;
+        px = L.x; pz = L.z; py = near ? 1.5 : 0.6;
+      } else {
+        youG.visible = false;
+        const P = L.at === "home" ? null : Kota.PLACE[L.at];
+        px = P ? P.x : (T.homeX ?? Kota.PLACE.square.x); pz = P ? P.z : (T.homeZ ?? Kota.PLACE.square.z); py = P ? (P.h || 0.5) + 0.8 : (T.homeTall || 3) + 0.6;
+      }
+      T.youX = px; T.youZ = pz;
+      youPin.visible = !near || !L.show;
+      youPin.position.set(px, py + Math.sin(t / 320) * 0.12 * pinS, pz); youPin.scale.setScalar(pinS); youPin.rotation.y = t / 900;
+      youTag.visible = true; youTag.position.set(px, py + (youPin.visible ? 1.9 * pinS : 1.0) + 0.6 * k, pz); youTag.scale.copy(youTag.userData.base).multiplyScalar(k);
+    }
     // ---------------------------------------------------------------- layout
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
@@ -500,17 +706,14 @@
         label(H.name, hoodSub(H, npcs, prices), 0, 3.0, z0 - 0.6, false);
         // a little park between neighbourhoods
         const pz = z1 + GAP / 2 - 0.2;
-        for (const sx of [-1, 1]) tree(sx * (ROAD_W / 2 + WALK + 0.9), pz, 1.4);
+        if (!Kota.HZ.some(h => Math.abs(h - z1) < 0.3)) for (const sx of [-1, 1]) tree(sx * (ROAD_W / 2 + WALK + 0.9), pz, 1.4);   // v73: a cross street runs here
         z = z1;
       });
-      zMax = PLAZA - 2; zMin = z;
-      // the big ground under everything
-      const base = mesh(new THREE.BoxGeometry(80, 0.2, -zMin + PLAZA + 60), M(0xbcb6a0, { roughness: 1 }), 0, -0.25, (zMin + PLAZA) / 2); base.castShadow = false;
-      // walkers on the sidewalks
-      const wc = [0xe8d8be, 0xa9adb3, 0xd99a6c, 0x9db8c9, 0x4d4a52, 0xe5bfbf];
-      const r = rnd("pejalan");
-      walkers.push({ g: walker(player.color, true), side: -1, z: (T.homeZ ?? -4) + 1.5, dir: -1, speed: 0.9, you: true });
-      for (let i = 0; i < 14; i++) walkers.push({ g: walker(pick(r, wc)), side: r() < 0.5 ? -1 : 1, z: zMin + r() * (zMax - zMin), dir: r() < 0.5 ? -1 : 1, speed: 0.6 + r() * 0.6, night: i >= 3 });
+      // v73: the city around the street, then the people in it
+      buildCity();
+      const mine = lots.find(l => l.who && l.who.you && !l.build) || lots.find(l => l.who && l.who.you);
+      if (mine) { const hx = mine.hit.position.x, hz = mine.hit.position.z; T.homeX = hx; T.homeZ = T.homeZ ?? hz; T.homeDoor = { x: Math.sign(hx) * (ROAD_W / 2 + WALK / 2), z: hz }; T.homeTall = mine.hood && (mine.hood.kind === "mansion" ? 4.6 : 3.4); }
+      buildLife(data);
       focusZ = T.buildZ ?? T.homeZ ?? -4;
       applyPeriod(true);
     }
@@ -532,61 +735,115 @@
       for (const w of walkers) w.g.visible = !(w.night && p === "night");
     }
 
-    // ---------------------------------------------------------------- camera and input
+    // ---------------------------------------------------------------- camera and input (v73: bird view over the whole city)
+    // Drag = move around, pinch / wheel = zoom from the street to the city map, a little more out = back to the globe.
+    // The camera tilts more as it rises ("slightly tilted" up close, almost top-down on the map).
+    const ZD0 = 13, ZD1 = 320, LZ = Math.log(ZD1 / ZD0), Z_STREET = 0.26, Z_MAP = 0.62, Z_OUT = 1.06;
+    let zoom = Z_STREET, tgt = null, leaving = false, shHalf = 16;
+    const fitK = () => 1 / Math.max(0.55, Math.min(1, camera.aspect) / 0.6);
+    const distNow = () => ZD0 * Math.exp(LZ * Math.min(1.1, zoom)) * fitK();
+    const pitchOf = zm => (33 + 31 * smooth((zm - 0.28) / 0.72)) * Math.PI / 180;
+    const clampFocus = () => { const B = Kota.BOUNDS; focusX = Math.max(B.x0, Math.min(B.x1, focusX)); focusZ = Math.max(B.z0, Math.min(B.z1, focusZ)); };
     function place() {
-      const d = 33 / Math.max(0.55, Math.min(1, camera.aspect) / 0.6);
-      camera.position.set(focusX + 1.5 * d / 23, 12 * d / 23, focusZ + 17 * d / 23); camera.lookAt(focusX, 0, focusZ);
-      sun.position.set(-8, 16, focusZ + 10); sun.target.position.set(0, 0, focusZ - 2);
+      const d = distNow(), p = pitchOf(zoom), yaw = 0.085;
+      camera.position.set(focusX + d * Math.cos(p) * Math.sin(yaw), d * Math.sin(p), focusZ + d * Math.cos(p) * Math.cos(yaw)); camera.lookAt(focusX, 0, focusZ);
+      const nf = Math.max(0.5, d * 0.04); if (Math.abs(camera.near - nf) > 0.01) { camera.near = nf; camera.far = d * 6 + 150; camera.updateProjectionMatrix(); }
+      scene.fog.near = d * 1.05 + 8; scene.fog.far = d * 2.4 + 50;
+      const sh = Math.round(Math.min(110, Math.max(16, d * 0.62)));
+      if (sh !== shHalf) { shHalf = sh; Object.assign(sun.shadow.camera, { left: -sh, right: sh, top: sh, bottom: -sh, far: sh * 5 + 40 }); sun.shadow.camera.updateProjectionMatrix(); }
+      sun.position.set(focusX - sh * 0.5, sh * 1.05, focusZ + sh * 0.65); sun.target.position.set(focusX, 0, focusZ - 2);
+      // labels: house labels fade out on the map; place and street names grow so they stay readable
+      const kM = Math.max(1, d / 42), fade = 1 - smooth((zoom - 0.4) / 0.1);
+      for (const s of signs) {
+        if (s === youTag) continue;
+        if (s.userData.map) {
+          const hood = s.userData.hood, street = s.userData.street;
+          s.scale.copy(s.userData.base).multiplyScalar(hood ? Math.max(1, d / 30) : kM);
+          s.position.y = s.userData.y0 * (hood ? Math.max(1, d / 30) : 1) + (kM - 1) * 0.8;
+          s.material.opacity = street ? smooth((zoom - 0.35) / 0.15) : hood ? smooth((zoom - 0.5) / 0.1) : 1;
+        } else s.material.opacity = fade;
+        s.visible = s.material.opacity > 0.02;
+      }
     }
-    let drag = null, moved = 0;
-    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    T.down = e => { drag = { x: e.clientX, y: e.clientY, z: focusZ, t: performance.now() }; moved = 0; };
+    const ptr = new Map(); let drag = null, moved = 0, pinch = null;
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    function setZoom(z) {
+      zoom = Math.max(0, Math.min(Z_OUT + 0.02, z));
+      if (zoom >= Z_OUT && !leaving && env.toGlobe) { leaving = true; env.toGlobe(); }
+    }
+    T.down = e => {
+      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tgt = null;
+      if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom }; drag = null; moved = 99; return; }
+      drag = { x: e.clientX, y: e.clientY, fx: focusX, fz: focusZ }; moved = 0;
+    };
     T.move = e => {
+      if (!ptr.has(e.pointerId)) return;
+      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptr.size >= 2) { const [a, b] = [...ptr.values()]; setZoom(pinch.zoom - Math.log(Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d) / LZ); return; }
       if (!drag) return;
       const dy = e.clientY - drag.y, dx = e.clientX - drag.x; moved = Math.max(moved, Math.hypot(dx, dy));
-      if (moved > 8) focusX *= 0.9;
-      const k = 34 / env.canvas.clientHeight;
-      focusZ = Math.min(zMax + 2, Math.max(zMin - 2, drag.z - dy * k - dx * k * 0.6));
+      const k = 2 * distNow() * Math.tan(17 * Math.PI / 180) / env.canvas.clientHeight;
+      focusX = drag.fx - dx * k; focusZ = drag.fz - dy * k / Math.sin(pitchOf(zoom)); clampFocus();
     };
     T.up = e => {
-      if (drag && moved < 8) {
+      const tap = drag && moved < 8 && ptr.size === 1;
+      ptr.delete(e.pointerId); if (ptr.size < 2) pinch = null;
+      if (tap) {
         const r = env.canvas.getBoundingClientRect();
         ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
         ray.setFromCamera(ndc, camera);
-        const hit = ray.intersectObjects(lots.map(l => l.hit))[0];
-        if (hit) env.showLot(lots.find(l => l.hit === hit.object));
+        const hit = ray.intersectObjects(lots.map(l => l.hit))[0], l = hit && lots.find(x => x.hit === hit.object);
+        if (zoom > Z_MAP) {
+          // on the map: tap a place to see it, tap anywhere else to fly down there
+          if (l && l.place) { env.showLot(l); T.flyTo(l.place.x, l.place.z, 0.4); }
+          else { const v = new THREE.Vector3(); if (ray.ray.intersectPlane(ground, v)) T.flyTo(v.x, v.z, Z_STREET + 0.08); }
+        } else if (l) env.showLot(l);
       }
       drag = null;
     };
-    T.wheel = e => { focusZ = Math.min(zMax + 2, Math.max(zMin - 2, focusZ + e.deltaY * 0.02)); };
+    T.cancel = e => { ptr.delete(e.pointerId); pinch = null; drag = null; };
+    T.wheel = e => { tgt = null; setZoom(zoom + e.deltaY * 0.0011); };
+    T.zoomBy = dz => { const z0 = tgt ? tgt.zoom : zoom; if (dz > 0 && z0 >= 0.995) return setZoom(Z_OUT); tgt = { x: tgt ? tgt.x : focusX, z: tgt ? tgt.z : focusZ, zoom: Math.max(0, Math.min(1, z0 + dz)) }; };
+    T.flyTo = (x, z, zm) => { tgt = { x, z, zoom: zm ?? zoom }; };
+    T.mapView = () => { tgt = zoom > Z_MAP ? { x: T.homeX ?? 0, z: (T.homeZ ?? -4) + 3.6, zoom: Z_STREET } : { x: 6, z: -24, zoom: 0.97 }; };
+    T.findYou = () => { if (T.youX === undefined) return false; tgt = { x: T.youX, z: T.youZ + 2, zoom: 0.22 }; return true; };
+    T.zoomLevel = () => zoom;
     T.resize = (w, h) => { camera.aspect = w / h; camera.updateProjectionMatrix(); };
-    T.hoodAt = () => focusZ > 1.5 ? "Town Square" : (HOODS.find(H => focusZ <= H.z0 + 0.5 && focusZ > H.z1) || HOODS[focusZ > 0 ? 0 : HOODS.length - 1]).name;
+    const DISTRICT = x => x < Kota.RAIL.x ? "Westfield" : x < -22 ? "Station Quarter" : x < 0 ? "Office Row" : x < 22 ? "Eastside" : x < Kota.RIVER.x0 ? "Riverside" : x < Kota.RIVER.x1 ? "The river" : "Far Bank";
+    T.hoodAt = () => {
+      if (zoom > Z_MAP) return "Old Town · city map";
+      if (Math.abs(focusX) < Kota.STRIP && focusZ < Kota.PLAZA + 1 && focusZ > Kota.ZMIN - 2)
+        return focusZ > 1.5 ? "Town Square" : (HOODS.find(H => focusZ <= H.z0 + 0.5 && focusZ > H.z1) || HOODS[focusZ > 0 ? 0 : HOODS.length - 1]).name;
+      const P = Kota.PLACES.filter(p => p.kind !== "square").map(p => ({ p, d: Math.hypot(p.x - focusX, p.z - focusZ) - Math.max(p.w, p.d) / 2 })).sort((a, b) => a.d - b.d)[0];
+      return P && P.d < 7 ? P.p.name : DISTRICT(focusX);
+    };
 
-    T.enter = async (data, keepFocus) => {
+    // opt.map: arrive from the globe, high over the city; keepFocus: rebuilt after buying, stay where we were
+    T.enter = async (data, keepFocus, opt = {}) => {
       await T.ready();
-      const fz = focusZ; build(data); if (keepFocus) focusZ = fz; T.on = true; place();
+      const fx = focusX, fz = focusZ, zm = zoom; build(data); leaving = false; tgt = null; ptr.clear(); drag = pinch = null;
+      if (keepFocus) { focusX = fx; focusZ = fz; zoom = zm; }
+      else if (opt.map) { focusX = 6; focusZ = -24; zoom = 1.04; tgt = { x: T.homeX ?? 0, z: (T.homeZ ?? -4) - 4, zoom: 0.8 }; }
+      else { focusX = 0; zoom = Z_STREET; }
+      T.on = true; place();
       for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05);
     };
     T.exit = () => { T.on = false; };
     T.frame = (t, dt) => {
-      applyPeriod(false); place();
-      for (const w of walkers) {
-        if (!w.g.visible) continue;
-        w.z += w.dir * w.speed * dt;
-        if (w.z < zMin + 1) w.dir = 1; if (w.z > zMax - 1) w.dir = -1;
-        const bob = Math.abs(Math.sin(t / 160 * w.speed));
-        w.g.position.set(w.side * (ROAD_W / 2 + WALK / 2), bob * 0.06, w.z); w.g.rotation.y = w.dir > 0 ? 0 : Math.PI;
-        w.g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1);
-        if (w.g.userData.marker) w.g.userData.marker.position.y = 1.0 + Math.sin(t / 300) * 0.08;
+      if (tgt) {
+        const k = 1 - Math.pow(0.025, dt);
+        focusX += (tgt.x - focusX) * k; focusZ += (tgt.z - focusZ) * k; zoom += (tgt.zoom - zoom) * k;
+        if (Math.abs(tgt.x - focusX) + Math.abs(tgt.z - focusZ) < 0.03 && Math.abs(tgt.zoom - zoom) < 0.002) tgt = null;
       }
+      applyPeriod(false); updateLife(t, dt); place();
       if (T.homeMarker) T.homeMarker.rotation.y = t / 700;
       drawClock();
       if (t - lastSite > 1000) { lastSite = t; for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05); }
       for (const S of sites) { S.worker.position.y = Math.abs(Math.sin(t / 220)) * 0.08; S.worker.rotation.y = Math.sin(t / 900) * 1.2; }
     };
     // look at a neighbourhood (from the shop) or a lot
-    T.focusHood = id => { const H = HOODS.find(h => h.id === id); if (H) { focusX = 0; focusZ = H.zc; } };
-    T.focusLot = l => { focusX = l.hit.position.x * 0.6; focusZ = l.hit.position.z + 3.6; };
+    T.focusHood = id => { const H = HOODS.find(h => h.id === id); if (H) { focusX = 0; focusZ = H.zc; zoom = Z_STREET; tgt = null; } };
+    T.focusLot = l => { focusX = l.hit.position.x * 0.6; focusZ = l.hit.position.z + 3.6; zoom = Math.min(zoom, Z_STREET); tgt = null; };
     // show what the chosen model would look like on an empty lot, before buying
     T.preview = (l, model, paint) => {
       T.clearPreview();

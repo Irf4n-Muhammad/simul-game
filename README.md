@@ -6,7 +6,7 @@ https://irf4n-muhammad.github.io/simul-game/ on your phone. The same game with t
 (`?dev=1`, or seven taps on the version label) is at https://irf4n-muhammad.github.io/simul-game/dev/;
 both share one save, so you can switch between them.
 
-Build: **v49**. The game clock runs in real time (one real day = one game day), so a
+Build: **v73**. The game clock runs in real time (one real day = one game day), so a
 creature grows over weeks, not minutes.
 
 ## Install it like an app

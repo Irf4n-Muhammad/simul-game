@@ -39,7 +39,7 @@ function todayLine() {
 }
 function drawToday() {
   const el = $("today"); if (!el || !state) return;
-  const L = state.tut < COACH.length || (TOWN && TOWN.on) ? null : todayLine();
+  const L = state.tut < COACH.length || outView() ? null : todayLine();
   el.hidden = !L;
   if (!L) { todayKey = null; todayCache = null; return; }
   if (L.k !== todayKey) {
@@ -55,7 +55,7 @@ $("today").onclick = () => { const L = todayCache; if (!L || !L.go) return; Tele
 const TOURS = {
   dadu: { el: () => $("diceBtn"), steps: n => [`This is the <b>die</b>. Roll it once a day. A high roll helps on ${n}'s big days.`, `Keep up to two good rolls for a day that matters. Luck can't be bought, and there's no second roll.`] },
   plan: { el: () => $("planBtn"), steps: n => [`The <b>daily plan</b>. Pick what ${n}'s days look like, or let them choose.`, `They get bored of the same thing after five days. The older they get, the more they decide on their own.`] },
-  town: { el: () => (TOWN && TOWN.on) ? $("homeBtn") : $("townBtn"), steps: n => [`The <b>town</b>. Walk the street and tap a place to look inside.`, `A few places are open now. More open as the town grows, and ${n} will have reasons to go.`] },
+  town: { el: () => outView() ? $("homeBtn") : $("townBtn"), steps: n => [`The <b>world outside</b>. Spin the globe, zoom into Old Town, and keep zooming down to the street. Tap a place to look inside.`, `A few places are open now. More open as the town grows, and ${n} will have reasons to go.`] },
   chirp: { el: () => $("lifeBtn"), steps: n => [`<b>Chirp</b> is on the phone now: the town's feed. Neighbours, news, and one day ${n}'s own posts.`] },
   stars: { el: () => $("lifeBtn"), steps: n => [`<b>Stars</b> is on the phone: ${n}'s talents, drawn as constellations.`, `Points come from what ${n} actually does. You choose which star to light next.`] },
   mag: { el: () => $("lifeBtn"), steps: () => [`The <b>Magazine</b> is on the phone: a new issue every month about the town, and sometimes about your family.`] },
@@ -84,7 +84,7 @@ const TOURS = {
 const TOUR_VIS = { burrow: () => cur && phKind(game.home.get(cur.id)) !== "tablet", bazaar: () => cur && phKind(game.home.get(cur.id)) !== "tablet" };
 let tour = null;
 function tourMaybe() {
-  if (!state || !game || !cur || tour || sheetKind || PH || (TOWN && TOWN.on) || $("townBtn").disabled || coachEl || state.tut < COACH.length || game.pending) return;
+  if (!state || !game || !cur || tour || sheetKind || PH || outView() || $("townBtn").disabled || coachEl || state.tut < COACH.length || game.pending) return;
   if (cur.fase === "meninggal" || cur.fase === "merantau") return;
   const P = doorsNow(), T = (state.tur_pintu ||= {});
   for (const D of Wants.DOORS) if (P[D.id] && !T[D.id] && TOURS[D.id] && (!TOUR_VIS[D.id] || TOUR_VIS[D.id]())) { tourStart(D.id, false); return; }
