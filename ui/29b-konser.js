@@ -24,11 +24,30 @@ function konserInit() {
     makeKiko: p => (cur && cur.fase !== "meninggal" && cur.fase !== "merantau" ? makeCreature(cur, p) : null), say: konserSay, onEnd: konserEnd });
   return KONSER;
 }
+// Landscape: konser itu momen imersif, jadi di HP kita minta layar penuh + miring. Harus dipanggil langsung dari tap
+// (sebelum await), karena browser cuma ngizinin fullscreen/lock orientasi dari gestur pengguna. iPhone nggak dukung lock,
+// jadi di sana (atau kalau ditolak) muncul ajakan "miringin HP" yang bisa dilewati.
+const KTOUCH = matchMedia("(pointer: coarse)");
+let kUpright = false;
+function konserLandscape() {
+  if (!KTOUCH.matches) return;
+  const el = document.documentElement, fs = el.requestFullscreen || el.webkitRequestFullscreen;
+  const lock = () => { try { const p = screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape"); if (p && p.catch) p.catch(() => {}); } catch (e) { /* nggak didukung */ } };
+  try { const p = fs && !document.fullscreenElement ? fs.call(el, { navigationUI: "hide" }) : null; if (p && p.then) p.then(lock, () => {}); else lock(); } catch (e) { lock(); }
+}
+function konserUpright() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) { /* nggak didukung */ }
+  try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) { /* nggak didukung */ }
+}
+function konserTurn() { const el = $("kTurn"); if (el) el.hidden = !(KONSER && KONSER.on && KTOUCH.matches && !kUpright && app.clientHeight > app.clientWidth); }
+addEventListener("resize", konserTurn);
+$("kTurnSkip").onclick = () => { kUpright = true; konserTurn(); };
 async function konserEnter(o) {
+  konserLandscape(); kUpright = false;
   sndInit(); closeSheet(); await veil(true);
   konserInit(); if (TOWN) TOWN.exit();
   KONSER.enter(o); KONSER.resize(app.clientWidth, app.clientHeight);
-  outMode("konser"); Tele.layar("app", "konser"); Tele.ev("kota", { a: "konser", p: o.live ? "live" : "latihan" });
+  outMode("konser"); resize(); konserTurn(); Tele.layar("app", "konser"); Tele.ev("kota", { a: "konser", p: o.live ? "live" : "latihan" });
   if (SND) SND.band(() => KONSER.sec(), Konser.step, Konser.STEP);
   $("kTitle").textContent = o.name; $("kLive").textContent = o.live ? "● LIVE" : "Rehearsal"; $("kLive").classList.toggle("on", !!o.live);
   const touch = matchMedia("(pointer: coarse)").matches, h = $("kHelp");
@@ -39,8 +58,8 @@ async function konserEnter(o) {
 async function konserLeave() {
   if (!KONSER || !KONSER.on) return;
   closeSheet(); await veil(true);
-  if (SND) SND.bandStop(); KONSER.exit(); joyReset();
-  if (TOWN) { TOWN.resume(); TOWN.resize(app.clientWidth, app.clientHeight); outMode("town"); Tele.layar("app", "town"); } else outMode(null);
+  if (SND) SND.bandStop(); KONSER.exit(); joyReset(); konserUpright(); konserTurn();
+  if (TOWN) { TOWN.resume(); outMode("town"); resize(); Tele.layar("app", "town"); } else { outMode(null); resize(); }
   veil(false);
 }
 let kSayT = 0;
