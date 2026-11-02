@@ -1,5 +1,7 @@
 // ================================================================ the town
-let TOWN = null;
+// v73: tampilan luar bertingkat. Tombol kota buka globe (5 benua); zoom ke Old Town = masuk peta kota; zoom terus = jalan.
+// Dari peta kota zoom keluar = balik ke globe. Pindah lapisan pakai tirai awan (#veil) biar kerasa satu gerakan.
+let TOWN = null, GLOBE = null;
 function townData() {
   const day = today(), fv = famStatus();
   const members = game.home.members.filter(m => m.st && m.alive(day) && !("keluar" in m.info));
@@ -7,13 +9,83 @@ function townData() {
   const prices = Object.fromEntries(Status.ITEMS.filter(i => i.cat === "House").map(i => [i.id, `${i.label} · ${coins(i.price)}`]));
   return { npcs: Status.npcTown(day), prices,
     player: { name: `${cur ? cur.nama : "Your"}'s family`, title: fv.house.label + (car ? ` · ${car.label}` : ""), house: fv.house.id, car: car ? car.id : null, color: FUR[cur?.rupa.warna] || 0xE5BFBF,
-      lot: fv.lot, build: fv.build } };
+      lot: fv.lot, build: fv.build },
+    you: youData() };
+}
+// makhluk di kota: jadwalnya dihitung kota.js dari fase, sekolah pilihan, kerja, dan agenda hari ini
+function youData() {
+  if (!cur || !game) return null;
+  const c = game.home.get(cur.id); if (!c) return null;
+  const day = today(), s = statusOf(cur.id), ag = c.info.agenda_hari && c.info.agenda_hari.hari === day ? c.info.agenda_hari.id : null;
+  return { name: cur.nama, color: FUR[cur.rupa.warna] || 0xE5BFBF, day,
+    o: { fase: cur.fase, umur: cur.umur, dow: new Date().getDay(), agenda: ag, school: (c.info.sekolah_pilihan || {}).id || "dekat",
+      job: s && s.job ? { co: s.job.co || s.job.id, label: s.job.title } : null, libur: c.has("libur", day), studyTour: c.has("study_tour", day), sambilan: !!c.info.sambilan } };
 }
 function townInit() {
   if (!TOWN) TOWN = Town.create({ THREE, renderer, canvas, M, F, RB, SPH, CYL, canvasTex, environment: scene.environment,
     getLit: () => LIT, getPeriod: () => litName, bgColor: () => (LIT.tint || ROOMS[roomIx].bg)[1], showLot,
-    now: () => dayFloat(), PAINTS: Status.PAINTS });
+    now: () => dayFloat(), PAINTS: Status.PAINTS, toGlobe: () => toGlobe() });
   return TOWN;
+}
+function globeInit() {
+  if (!GLOBE && globalThis.Globe) GLOBE = Globe.create({ THREE, renderer, canvas, canvasTex, F, reduce,
+    enterCity: () => cityFromGlobe(), showContinent, showCity, soonHint: C => say(`${C.name} opens later. Old Town is the live city for now.`) });
+  return GLOBE;
+}
+const veil = (on) => new Promise(res => { const v = $("veil"); v.classList.toggle("on", on); setTimeout(res, on ? 380 : 0); });
+function outMode(m) {
+  app.classList.toggle("in-town", !!m); app.classList.toggle("in-globe", m === "globe"); $("townUI").hidden = !m;
+  $("townHint").textContent = m === "globe" ? "Drag to spin · pinch to zoom in · tap a continent" : "Drag to move · pinch to zoom · tap a place";
+}
+// tombol kota: mulai dari globe
+async function enterWorld() {
+  if (!game || !globalThis.Globe) return enterTown();
+  hideHint(); closeSheet(); if (tour) tourEnd("lanjut"); Tele.layar("app", "globe");
+  globeInit(); if (TOWN) TOWN.exit();
+  GLOBE.enter(); GLOBE.resize(app.clientWidth, app.clientHeight); outMode("globe");
+}
+async function cityFromGlobe() {
+  closeSheet(); await veil(true);
+  townInit(); Tele.layar("app", "town");   // globe tetap "on" sampai kota siap, biar tur dan pengingat nggak nongol di tengah tirai
+  await TOWN.enter(townData(), false, { map: true }); TOWN.resize(app.clientWidth, app.clientHeight);
+  GLOBE.exit(); outMode("town"); veil(false);
+}
+async function toGlobe() {
+  closeSheet(); await veil(true);
+  if (TOWN) TOWN.exit(); globeInit(); Tele.layar("app", "globe");
+  GLOBE.enter({ back: true }); GLOBE.resize(app.clientWidth, app.clientHeight); outMode("globe"); veil(false);
+}
+function showContinent(C) {
+  sheet.classList.add("clear");
+  const city = Bumi.CITIES.find(c => c.cont === C.id);
+  openSheet("lot", `<span class="ribbon">Continent</span><h2>${esc(C.name)}</h2><p>${esc(C.look)}.</p>
+    <div class="facts"><span>Climate</span><span>${esc(C.climate)}</span><span>Festival</span><span>${esc(C.festival)}</span><span>Main city</span><span>${esc(city.name)}${city.live ? "" : " · coming soon"}</span></div>
+    ${city.live ? `<button class="big" id="goCity">Go to ${esc(city.name)}</button>` : `<p class="muted">Every continent starts with one big city. ${esc(city.name)} opens later; new towns arrive each season.</p>`}
+    <button class="close" data-close="1">Close</button>`);
+  sheet.querySelector("[data-close]").onclick = closeSheet;
+  if (city.live) $("goCity").onclick = () => { closeSheet(); GLOBE.goHome(); }; else GLOBE.goContinent(C);
+}
+function showCity(C) {
+  const K = Bumi.CONT[C.cont];
+  if (C.live) { GLOBE.goHome(); return; }
+  sheet.classList.add("clear");
+  openSheet("lot", `<span class="ribbon">${esc(K.name)}</span><h2>${esc(C.name)}</h2><p>${esc(K.look)}. Coming soon.</p>
+    <p class="muted">For now every creature lives in Old Town. Later, new creatures are born all over the world, and moving away is how you get somewhere else.</p>
+    <button class="close" data-close="1">Close</button>`);
+  sheet.querySelector("[data-close]").onclick = closeSheet;
+  GLOBE.flyTo(C.lat, C.lon, 1.7);
+}
+// a named place in the city: what it is, who's there now
+function showPlace(l) {
+  const P = l.place, c = new Date(), sec = c.getHours() * 3600 + c.getMinutes() * 60;
+  const day = Math.floor((c.getTime() - c.getTimezoneOffset() * 60000) / 864e5), n = Kota.crowd(day, c.getDay(), sec)[P.id] || 0;
+  const Y = TOWN.you, here = Y && Y.at === P.id;
+  sheet.classList.add("clear");
+  openSheet("lot", `<span class="ribbon">Old Town</span><h2>${esc(P.name)}</h2><p>${esc(P.about)}</p>
+    ${here ? `<p><b>${esc(cur.nama)} is here.</b> ${esc(Y.line)}.</p>` : ""}
+    <div class="facts"><span>Right now</span><span>${n ? `${n} townsfolk` : "Quiet"}</span>${P.school ? `<span>Pupils</span><span>${P.school === "smp" ? "Every creature, day 180 to 265" : "From day 60"}</span>` : ""}</div>
+    <button class="close" data-close="1">Close</button>`);
+  sheet.querySelector("[data-close]").onclick = closeSheet;
 }
 async function enterTown() {
   if (!game || !globalThis.Town) return;
@@ -23,13 +95,14 @@ async function enterTown() {
   await TOWN.enter(townData());
   $("townBtn").disabled = false;
   TOWN.resize(app.clientWidth, app.clientHeight);
-  app.classList.add("in-town"); $("townUI").hidden = false;
+  if (GLOBE) GLOBE.exit(); outMode("town");
 }
-function exitTown() { if (TOWN) TOWN.exit(); app.classList.remove("in-town"); $("townUI").hidden = true; closeSheet(); }
+function exitTown() { if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
 const daysLeft = n => n > 0 ? `${n} day${n > 1 ? "s" : ""} left` : "Moving in today";
 const liveLeft = b => Math.max(0, b.done - today());
 const buildFrac = b => Math.max(0.04, Math.min(1, (dayFloat() - b.start) / Math.max(0.01, b.done - b.start)));
 function showLot(l) {
+  if (l.place) return showPlace(l);
   if (l.square || l.civic) return showCivic(l);
   const H = l.hood, w = l.who, house = Status.ITEMS.find(i => i.id === H.id) || Status.RENTED;
   const carOf = id => (Status.ITEMS.find(i => i.id === id) || {}).label || "No car";
@@ -116,12 +189,24 @@ function pickLot(l, house) {
   };
   TOWN.focusLot(l); draw();
 }
-$("townBtn").onclick = () => { if (TOWN && TOWN.on) exitTown(); else enterTown(); };
+$("townBtn").onclick = () => { if ((TOWN && TOWN.on) || (GLOBE && GLOBE.on)) exitTown(); else enterWorld(); };
 $("homeBtn").onclick = exitTown;
+$("zoomIn").onclick = () => { if (GLOBE && GLOBE.on) GLOBE.zoomBy(0.78); else if (TOWN && TOWN.on) TOWN.zoomBy(-0.14); };
+$("zoomOut").onclick = () => { if (GLOBE && GLOBE.on) GLOBE.zoomBy(1.28); else if (TOWN && TOWN.on) TOWN.zoomBy(0.14); };
+$("toGlobe").onclick = () => { if (GLOBE && GLOBE.on) GLOBE.goHome(); else toGlobe(); };
+$("findYou").onclick = () => { if (TOWN && TOWN.on && !TOWN.findYou() && TOWN.you) say(TOWN.you.line); };
+// baris "makhluk lagi di mana" di bawah, diperbarui pelan (bukan tiap frame)
+let findLine = "";
+function townChips() {
+  const fy = $("findYou"), inTown = TOWN && TOWN.on, Y = inTown && TOWN.you;
+  fy.hidden = !Y; if (Y) { const t = `${cur ? cur.nama : ""} · ${Y.line}`; if (t !== findLine) { findLine = t; fy.querySelector("span").textContent = t; } }
+  $("toGlobe").setAttribute("aria-label", GLOBE && GLOBE.on ? "Go to Old Town" : "Zoom out to the globe");
+  $("toGlobe").classList.toggle("on", !!(GLOBE && GLOBE.on));
+}
 
 function resize() {
   const w = app.clientWidth, h = app.clientHeight;
-  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h);
+  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h);
   // face the creature straight on; fit about 5 units of width at the creature
   camera.fov = 44;
   const half = 2.75, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
@@ -135,10 +220,17 @@ function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
   if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
+  if (GLOBE && GLOBE.on) {
+    GLOBE.frame(t, dt); renderer.render(GLOBE.scene, GLOBE.camera);
+    const hn = GLOBE.where(); if ($("hoodName").textContent !== hn) $("hoodName").textContent = hn;
+    if (Math.floor(ts * 2) !== Math.floor((ts - dt) * 2)) townChips();
+    return;
+  }
   if (TOWN && TOWN.on) {
     if (Math.floor(ts / 30) !== Math.floor((ts - dt) / 30)) applyLight();
     TOWN.frame(t, dt); renderer.render(TOWN.scene, TOWN.camera);
     const hn = TOWN.hoodAt(); if ($("hoodName").textContent !== hn) $("hoodName").textContent = hn;
+    if (Math.floor(ts * 2) !== Math.floor((ts - dt) * 2)) townChips();
     return;
   }
   if (!K) { renderer.render(scene, camera); return; }

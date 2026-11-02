@@ -1,9 +1,11 @@
 // ================================================================ input
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let down = null;
-canvas.addEventListener("pointerdown", e => { if (TOWN && TOWN.on) { canvas.setPointerCapture(e.pointerId); return TOWN.down(e); } down = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+// v73: di luar (globe atau kota) semua sentuhan ke tampilan yang lagi aktif; dua jari = cubit zoom
+const outView = () => (GLOBE && GLOBE.on) ? GLOBE : (TOWN && TOWN.on) ? TOWN : null;
+canvas.addEventListener("pointerdown", e => { const ov = outView(); if (ov) { canvas.setPointerCapture(e.pointerId); return ov.down(e); } down = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
 canvas.addEventListener("pointermove", e => {
-  if (TOWN && TOWN.on) return TOWN.move(e);
+  const ov = outView(); if (ov) return ov.move(e);
   const r = canvas.getBoundingClientRect();
   lookX = ((e.clientX - r.left) / r.width - 0.5) * 2; lookY = ((e.clientY - r.top) / r.height - 0.5) * 2;
   if (down && roomIx === 1 && canCare() && hitCreature(e)) {
@@ -12,7 +14,7 @@ canvas.addEventListener("pointermove", e => {
   }
 });
 canvas.addEventListener("pointerup", e => {
-  if (TOWN && TOWN.on) return TOWN.up(e);
+  { const ov = outView(); if (ov) return ov.up(e); }
   if (!down) return; const dx = e.clientX - down.x, dy = e.clientY - down.y; down = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { hideHint(); setRoom(roomIx + (dx < 0 ? 1 : -1)); coachEvent("room"); return; }
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && hitCreature(e)) { poke(); coachEvent("poke"); }
@@ -38,6 +40,7 @@ function hideHint() { $("hint").style.opacity = 0; }
 $("prev").onclick = () => { hideHint(); setRoom(roomIx - 1); };
 $("next").onclick = () => { hideHint(); setRoom(roomIx + 1); coachEvent("room"); };
 $("actBtn").onclick = doAction;
-canvas.addEventListener("wheel", e => { if (TOWN && TOWN.on) { e.preventDefault(); TOWN.wheel(e); } }, { passive: false });
-addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || (TOWN && TOWN.on)) return; if (e.key === "ArrowLeft") setRoom(roomIx - 1); if (e.key === "ArrowRight") setRoom(roomIx + 1); });
+canvas.addEventListener("pointercancel", e => { const ov = outView(); if (ov && ov.cancel) ov.cancel(e); });
+canvas.addEventListener("wheel", e => { const ov = outView(); if (ov) { e.preventDefault(); ov.wheel(e); } }, { passive: false });
+addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || outView()) return; if (e.key === "ArrowLeft") setRoom(roomIx - 1); if (e.key === "ArrowRight") setRoom(roomIx + 1); });
 
