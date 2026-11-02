@@ -10,7 +10,7 @@ function konserHtml() {
   const S = konserStatus(); if (!S) return "";
   const d = new Date(S.start), open = S.phase !== "soon", who = cur ? esc(cur.nama) : "your creature";
   const when = S.phase === "live" ? `on now, ${Konser.clock(S.sec)} in` : S.phase === "doors" ? `doors are open, starts in ${S.wait}` : `${DAYS[d.getDay()]} ${d.getHours()}:00, in ${S.wait}`;
-  return `<p><b>🎤 ${esc(S.name)}</b> · ${when}. A live show on the stage by the pond, and everyone in town sees it at the same second.</p>
+  return `<p><b>🎤 ${esc(S.name)}</b> · ${when}. A stadium show at Riverside Arena next to the park, and everyone in town sees it at the same second.</p>
     ${open ? `<button class="big" id="goKonser">Go to the concert with ${who}</button>` : ""}
     <button class="big" id="tryKonser">Try a rehearsal now</button>`;
 }
@@ -57,7 +57,7 @@ function konserEnd() {
   sheet.classList.add("clear");
   openSheet("lot", `<span class="ribbon">${live ? "Live concert" : "Rehearsal"}</span><h2>That was ${esc(Konser.BAND)}!</h2>
     <p>${who} is still humming the last song.</p>
-    <p class="muted">${live ? "The next show is next Saturday at 20:00." : "The real show is every Saturday at 20:00 at Riverside Park."} Memories and keepsakes from concerts come later.</p>
+    <p class="muted">${live ? "The next show is next Saturday at 20:00." : "The real show is every Saturday at 20:00 at Riverside Arena."} Memories and keepsakes from concerts come later.</p>
     <button class="big" id="kAgain">Watch the rehearsal again</button><button class="big" id="kHome">Back to Old Town</button>`);
   $("kAgain").onclick = () => { closeSheet(); KONSER.enter({ start: Date.now() + 10000, live: false, name: Konser.BAND }); if (SND) SND.band(() => KONSER.sec(), Konser.step, Konser.STEP); $("kLive").textContent = "Rehearsal"; $("kLive").classList.remove("on"); };
   $("kHome").onclick = konserLeave;

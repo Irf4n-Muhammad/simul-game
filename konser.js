@@ -14,24 +14,24 @@
   const ACTS = [
     { t: 0, id: "intro", name: "Lights out" },
     { t: 30, id: "song1", name: "Song 1 · Neon River" },
-    { t: 120, id: "rise", name: "The stage opens" },
+    { t: 120, id: "rise", name: "The sky comes down" },
     { t: 180, id: "song2", name: "Song 2 · Weightless" },
     { t: 270, id: "peak", name: "Finale · Fireworks" },
     { t: 330, id: "outro", name: "Goodnight, Old Town" },
   ];
   // momen besar: tiap 30-60 detik ada yang bikin orang bilang "eh liat itu". cam = kamera ditarik ke panggung sebentar.
   const MOMENTS = [
-    { t: 0, d: 8, id: "blackout", say: "" },
-    { t: 8, d: 3, id: "drop", say: "Here we go!", cam: true },
-    { t: 30, d: 4, id: "lights", say: "Lights on!" },
+    { t: 0, d: 8, id: "blackout", say: "One light. Forty thousand people." },
+    { t: 8, d: 3, id: "drop", say: "FIRE!", cam: true },
+    { t: 30, d: 4, id: "lights", say: "The whole stadium lights up" },
     { t: 62, d: 20, id: "lasers", say: "Lasers!" },
     { t: 104, d: 8, id: "confetti", say: "Confetti!" },
-    { t: 120, d: 6, id: "open", say: "The stage is opening...", cam: true },
+    { t: 120, d: 6, id: "open", say: "The light rig is coming down...", cam: true },
     { t: 128, d: 50, id: "stairs", say: "Look up!" },
-    { t: 152, d: 26, id: "sky", say: "The sky is changing" },
+    { t: 152, d: 26, id: "sky", say: "Every wristband in the stands is glowing" },
     { t: 180, d: 90, id: "float", say: "You're floating! Try jumping" },
     { t: 226, d: 14, id: "rings", say: "Rings of light!" },
-    { t: 270, d: 56, id: "fireworks", say: "Fireworks over the river!", cam: true },
+    { t: 270, d: 56, id: "fireworks", say: "Fireworks over the stadium!", cam: true },
     { t: 300, d: 10, id: "confetti2", say: "" },
     { t: 330, d: 30, id: "bow", say: "Thank you, Old Town!" },
   ];
