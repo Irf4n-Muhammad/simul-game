@@ -2,7 +2,7 @@
 const SAVE_KEY = "makhluk-kecil-3d-v2", CHAT_KEY = SAVE_KEY + "-chat";
 // ---- build: versi dan flag Dev. Tombol uji (mode test, bintang terbuka, kecepatan waktu, lembar Dev) cuma tampil kalau Dev nyala:
 // buka dengan ?dev=1 (nempel di browser ini sampai ?dev=0), atau ketuk nomor versi di lembar Family 7 kali. Build rilis: buang semua blok DEV.
-const APP_VER = "v70";
+const APP_VER = "v71";
 const DEV = (() => { try { const u = new URLSearchParams(location.search); if (u.has("dev")) localStorage.setItem("mk-dev", u.get("dev") === "0" ? "0" : "1"); return localStorage.getItem("mk-dev") === "1"; } catch (e) { return false; } })();
 const SPEEDS = [["Real time", 86400000], ["1 day = 1 min", 60000], ["1 day = 10 sec", 10000], ["1 day = 2 sec", 2000]];
 const PHASE_EN = { bayi: "Baby", anak: "Child", remaja: "Teen", dewasa: "Adult", tua: "Elder", meninggal: "Passed away", merantau: "Moved away" };
