@@ -9,7 +9,8 @@
   const PAL = { intro: [0xff1a14, 0x3a0000], song1: [0xff1e18, 0xffffff], rise: [0xffffff, 0xfff0d8], song2: [0xffffff, 0xff2a20], peak: [0xff3a10, 0xffb040], outro: [0xffffff, 0x8a1a14] };
   // warga di bawah lampu konser: warna kalem gelap, biar jadi lautan siluet (Kiko tetap terang)
   const FOLK = [0x5a4f48, 0x4a4c52, 0x6a5040, 0x46525c, 0x5e4a4a, 0x625238, 0x46564a, 0x54485e, 0x38343e, 0x5a4a40];
-  const ST = 18, FIELD_R = 80, SPAWN = { x: 0, z: 46 };
+  const ST = 24, FIELD_R = 80, SPAWN = { x: 0, z: 50 };   // ST = jari-jari cincin dasar kubah
+  const DOME_R = 22, DOME_Y = 1.2, DOME_TOP = DOME_Y + DOME_R * 0.55;
   const STAND0 = 92, TIERS = 30, TD = 3.3, TH = 2.6, ROOF_R = STAND0 + TIERS * TD + 2, ROOF_Y = 1.4 + TIERS * TH + 4;
   const RIG = 54, RN = 9;   // rig: kotak 108 x 108 di atas lapangan, 9 x 9 lampu
   const FIELD = { r: FIELD_R, stage: ST };
@@ -84,7 +85,7 @@
         sPos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3); sMeta.push({ a, k, r, base: 0.03 + R() * 0.05, ph: R() * 6.28, phone: R() < 0.35 });
       }
       for (let i = SN; i < NP; i++) {
-        let x, z, r; do { x = (R() * 2 - 1) * FIELD_R; z = (R() * 2 - 1) * FIELD_R; r = Math.hypot(x, z); } while (r > FIELD_R - 1 || Math.max(Math.abs(x), Math.abs(z)) < ST + 2.5);
+        let x, z, r; do { x = (R() * 2 - 1) * FIELD_R; z = (R() * 2 - 1) * FIELD_R; r = Math.hypot(x, z); } while (r > FIELD_R - 1 || r < ST + 4);
         sPos.set([x, 1.05 + R() * 0.25, z], i * 3); sMeta.push({ a: Math.atan2(z, x), k: -1, r, base: 0.004 + R() * 0.01, ph: R() * 6.28, phone: R() < 0.15 });
       }
     }
@@ -106,14 +107,41 @@
       scene.add(bld);
     }
 
-    // ---------------------------------------------------------------- panggung kosong raksasa di tengah
+    // ---------------------------------------------------------------- panggung: kubah raksasa bergambar planet
+    // Kubah lebar dan pendek di tengah stadion, gambarnya planet yang muter pelan (diproyeksikan, jadi nyala sendiri),
+    // cincin cahaya di dasarnya, kabut yang tumpah ke lantai, dan penyanyi berdiri sendirian di puncaknya.
     const stage = new THREE.Group(); scene.add(stage);
-    add(new THREE.BoxGeometry(ST * 2, 2.6, ST * 2), M(0x0c0a0d, { roughness: 0.5 }), 0, 1.3, 0, stage);
-    const edge = [];
-    for (const [w, d, x, z] of [[ST * 2, 0.2, 0, ST], [ST * 2, 0.2, 0, -ST], [0.2, ST * 2, ST, 0], [0.2, ST * 2, -ST, 0]]) edge.push(add(new THREE.BoxGeometry(w + 0.1, 0.22, d + 0.1), neon(0xffffff), x, 2.62, z, stage));
-    // lantai panggung yang bisa menyala: putih terang di momen besar, jadi penyanyi kelihatan sebagai siluet
-    const deck = add(new THREE.PlaneGeometry(ST * 2 - 0.4, ST * 2 - 0.4), neon(0x220606), 0, 2.61, 0, stage); deck.rotation.x = -Math.PI / 2;
-    const pool = add(new THREE.CircleGeometry(1, 48), glow(0xffffff, 0.5, { fog: false }), 0, 2.63, 0, stage); pool.rotation.x = -Math.PI / 2;
+    const planetTex = canvasTex((c, w, h) => {
+      const r = rng("planet");
+      c.fillStyle = "#071a33"; c.fillRect(0, 0, w, h);
+      const blob = (x, y, rad, col, a) => { for (const dx of [-w, 0, w]) { const g = c.createRadialGradient(x + dx, y, 0, x + dx, y, rad); g.addColorStop(0, col.replace("A", a)); g.addColorStop(1, col.replace("A", 0)); c.fillStyle = g; c.fillRect(x + dx - rad, y - rad, rad * 2, rad * 2); } };
+      for (let i = 0; i < 90; i++) blob(r() * w, r() * h, 20 + r() * 60, "rgba(20,60,110,A)", 0.5);                 // laut dalam
+      for (let k = 0; k < 7; k++) { const cx = r() * w, cy = h * (0.2 + r() * 0.6); for (let i = 0; i < 26; i++) blob(cx + (r() - 0.5) * 220, cy + (r() - 0.5) * 120, 10 + r() * 34, r() < 0.6 ? "rgba(54,96,52,A)" : "rgba(120,104,60,A)", 0.85); }   // benua
+      for (let i = 0; i < 26; i++) {   // awan berpusar: gumpalan lembut di sepanjang lengkung spiral
+        const x = r() * w, y = r() * h, len = 60 + r() * 180, a0 = r() * 6.28, op = 0.25 + r() * 0.3;
+        for (let t = 0; t <= 1; t += 0.04) { const a = a0 + t * 3.2; blob(x + Math.cos(a) * len * t, y + Math.sin(a) * len * t * 0.45, 6 + (1 - t) * 18 * r(), "rgba(240,244,255,A)", op * (1 - t * 0.6)); }
+      }
+    }, 1024, 512);
+    planetTex.wrapS = THREE.RepeatWrapping;
+    const domeMat = new THREE.MeshBasicMaterial({ map: planetTex, color: 0xffffff, toneMapped: false });
+    const dome = add(new THREE.SphereGeometry(DOME_R, 72, 24, 0, Math.PI * 2, 0, Math.PI / 2), domeMat, 0, DOME_Y, 0, stage);
+    dome.scale.y = 0.55;
+    // kulit cahaya tipis di atas kubah: tepinya berpendar
+    const shell = add(new THREE.SphereGeometry(DOME_R + 0.25, 72, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.ShaderMaterial({
+      uniforms: { col: { value: new THREE.Color(1, 1, 1) }, k: { value: 0.6 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+      vertexShader: "varying float f; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vec3 n = normalize(normalMatrix * normal); f = pow(1.0 - abs(dot(n, normalize(-mv.xyz))), 2.5); gl_Position = projectionMatrix * mv; }",
+      fragmentShader: "uniform vec3 col; uniform float k; varying float f; void main(){ gl_FragColor = vec4(col * f * k, 1.0); }",
+    }), 0, DOME_Y, 0, stage);
+    shell.scale.y = 0.56;
+    // alas dan cincin cahaya
+    add(new THREE.CylinderGeometry(ST, ST + 0.4, DOME_Y, 96), M(0x0c0a0d, { roughness: 0.5 }), 0, DOME_Y / 2, 0, stage);
+    const ringBand = add(new THREE.CylinderGeometry(ST + 0.45, ST + 0.45, 0.5, 128, 1, true), neon(0xffffff, { side: THREE.DoubleSide }), 0, DOME_Y - 0.35, 0, stage);
+    const halo = add(new THREE.RingGeometry(ST + 0.5, ST + 4.5, 128, 1), glow(0xffffff, 0.55, { fog: false }), 0, 0.05, 0, stage); halo.rotation.x = -Math.PI / 2;
+    const domeBase = add(new THREE.RingGeometry(DOME_R, ST + 0.1, 128, 1), neon(0xffffff), 0, DOME_Y + 0.02, 0, stage); domeBase.rotation.x = -Math.PI / 2;
+    const edge = [ringBand, domeBase];
+    // kabut yang tumpah dari kaki kubah ke lantai
+    const smoke = [[ST + 1.2, 7, 0.4], [ST + 4, 3.5, 0.32], [DOME_R * 0.75, 14, 0.12]].map(([r, h, op]) => { const g = new THREE.CylinderGeometry(r, r + 1.5, h, 96, 1, true); g.translate(0, h / 2, 0); return add(g, glow(0xffffff, op, { map: fadeUp, fog: false }), 0, 0, 0, stage); });
+    const pool = add(new THREE.CircleGeometry(1, 48), glow(0xffffff, 0.5, { fog: false }), 0, DOME_TOP + 0.05, 0, stage); pool.rotation.x = -Math.PI / 2;
     // rig: grid lampu seluas lapangan yang turun ke atas penonton waktu "langit turun"
     const rig = new THREE.Group(); scene.add(rig);
     const truss = M(0x1c1a20, { metalness: 0.7, roughness: 0.4 }), rigMat = [neon(0xffffff), neon(0xffffff)];
@@ -132,17 +160,17 @@
     // meriam api di pinggir panggung
     const flames = [];
     for (let i = 0; i < 20; i++) {
-      const side = i % 4, t = Math.floor(i / 4) - 2, x = side < 2 ? t * 7.6 : (side === 2 ? 1 : -1) * (ST + 0.6), z = side < 2 ? (side === 0 ? 1 : -1) * (ST + 0.6) : t * 7.6;
-      add(new THREE.BoxGeometry(1.6, 1, 1.6), M(0x222026, { metalness: 0.6 }), x, 3.1, z, stage);
+      const a = i / 20 * Math.PI * 2, x = Math.cos(a) * (ST + 2.2), z = Math.sin(a) * (ST + 2.2);
+      add(new THREE.BoxGeometry(1.6, 1, 1.6), M(0x222026, { metalness: 0.6 }), x, 0.5, z, stage);
       const geo = new THREE.CylinderGeometry(0.2, 1.7, 16, 14, 1, true); geo.translate(0, 8, 0);
-      const outer = add(geo, glow(0xff5a10, 0.7, { map: fadeUp }), x, 3.6, z, stage), inner = add(geo, glow(0xffd070, 0.8, { map: fadeUp }), x, 3.6, z, stage);
+      const outer = add(geo, glow(0xff5a10, 0.7, { map: fadeUp }), x, 1, z, stage), inner = add(geo, glow(0xffd070, 0.8, { map: fadeUp }), x, 1, z, stage);
       inner.scale.set(0.45, 0.8, 0.45); outer.visible = inner.visible = false; flames.push({ outer, inner, ph: i * 0.37 });
     }
     // laser dari pojok panggung ke tribun
     const lasers = [];
     for (let i = 0; i < 16; i++) {
       const geo = new THREE.BoxGeometry(0.14, 0.14, 300); geo.translate(0, 0, 150);
-      const cx = i % 4 < 2 ? -ST : ST, cz = i % 2 ? -ST : ST, piv = new THREE.Group(); piv.position.set(cx, 3.2, cz); scene.add(piv);
+      const cx = (i % 4 < 2 ? -1 : 1) * ST * 0.72, cz = (i % 2 ? -1 : 1) * ST * 0.72, piv = new THREE.Group(); piv.position.set(cx, 1.4, cz); scene.add(piv);
       const m = glow(i % 3 ? 0xff2a2a : 0xffffff, 0.9, { fog: false }); add(geo, m, 0, 0, 0, piv); piv.visible = false; lasers.push({ piv, m, ph: i * 0.55, a0: Math.atan2(cx, cz) });
     }
     // cincin cahaya yang melebar dari panggung sampai tribun
@@ -171,17 +199,17 @@
       const R = rng("penonton"), NMAX = 3200, near = [], far = [];
       for (let x = -FIELD_R; x <= FIELD_R; x += 1.15) for (let z = -FIELD_R; z <= FIELD_R; z += 1.15) {
         const px = x + (R() - 0.5) * 0.6, pz = z + (R() - 0.5) * 0.6, r = Math.hypot(px, pz), ds = Math.hypot(px - SPAWN.x, pz - SPAWN.z);
-        if (r > FIELD_R - 1 || Math.max(Math.abs(px), Math.abs(pz)) < ST + 2.4) continue;
+        if (r > FIELD_R - 1 || r < ST + 3.5) continue;
         if (ds < 2.8) continue;
         if (R() > 0.95 - r / FIELD_R * 0.45) continue;
         const f = { x: px, z: pz, dir: Math.atan2(-px, -pz), ph: R() * 6.28, hop: 0.6 + R() * 0.8, c: FOLK[Math.floor(R() * FOLK.length)], s: 1.2 + R() * 0.3, stick: R() < 0.4, copy: 0 };
-        (ds < 16 || Math.max(Math.abs(px), Math.abs(pz)) < ST + 9 ? near : far).push(f);
+        (ds < 16 || r < ST + 10 ? near : far).push(f);
       }
       folk.push(...near.slice(0, NMAX));
       const keep = Math.max(0, NMAX - folk.length) / Math.max(1, far.length); let acc = 0;
       for (const f of far) { acc += keep; if (acc >= 1) { acc -= 1; folk.push(f); } }
     }
-    folk.push({ x: 0, z: 0, base: 2.6, dir: 0, ph: 0, hop: 1, c: 0x141214, s: 3.4, stick: false, band: "voice", copy: 0 });
+    folk.push({ x: 0, z: 0, base: DOME_TOP, dir: 0, ph: 0, hop: 1, c: 0x141214, s: 2.4, stick: false, band: "voice", copy: 0 });
     const NF = folk.length;
     const bodyI = new THREE.InstancedMesh(SPH(0.32, 14, 10), M(0xffffff, { roughness: 0.95, envMapIntensity: 0.15 }), NF);
     const earI = new THREE.InstancedMesh(SPH(0.1, 6, 5), M(0xffffff, { roughness: 0.95, envMapIntensity: 0.15 }), NF * 2);
@@ -193,7 +221,7 @@
       ear: [-1, 1].map(sx => new THREE.Matrix4().makeTranslation(sx * 0.2, 0.62, 0)),
       stick: new THREE.Matrix4().makeTranslation(0.32, 0.95, 0.12),
     };
-    const mic = add(CYL(0.03, 0.03, 2.4, 6), M(0xd8d8e0, { metalness: 0.8, roughness: 0.25 }), 0, 3.8, 1.6, stage);
+    const mic = add(CYL(0.03, 0.03, 2.4, 6), M(0xd8d8e0, { metalness: 0.8, roughness: 0.25 }), 0, DOME_TOP + 1.2, 1.6, stage);
 
     // ---------------------------------------------------------------- Kiko (model asli dari rumah)
     const kiko = new THREE.Group(); scene.add(kiko);
@@ -211,7 +239,7 @@
     // ---------------------------------------------------------------- kamera orang ketiga
     let yaw = 0, pitch = 0.22, dist = 7, drag = null, pinch = null;
     const ptr = new Map(), look = new THREE.Vector3(), base3 = new THREE.Vector3(), camPos = new THREE.Vector3(), tmp = new THREE.Vector3();
-    const STAGE_LOOK = new THREE.Vector3(0, 24, 0), SKY_LOOK = new THREE.Vector3(0, 95, -140);
+    const STAGE_LOOK = new THREE.Vector3(0, 14, 0), SKY_LOOK = new THREE.Vector3(0, 95, -140);
     T.down = e => { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), dist }; drag = null; } else drag = { x: e.clientX, y: e.clientY, yaw, pitch }; };
     T.move = e => {
       if (!ptr.has(e.pointerId)) return; ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -249,7 +277,7 @@
 
     // ---------------------------------------------------------------- tiap frame
     const m4 = new THREE.Matrix4(), mm = new THREE.Matrix4(), rot = new THREE.Matrix4(), q = new THREE.Quaternion(), e3 = new THREE.Euler(), v3 = new THREE.Vector3(), sc = new THREE.Vector3();
-    const blocked = (x, z) => Math.hypot(x, z) > FIELD_R || (Math.abs(x) < ST + 0.6 && Math.abs(z) < ST + 0.6);
+    const blocked = (x, z) => { const r = Math.hypot(x, z); return r > FIELD_R || r < ST + 3; };
     T.frame = (t, dt) => {
       const s = T.sec(), A = K.at(s), act = A.act || (A.phase === "before" ? "intro" : "outro"), pal = PAL[act];
       const mom = id => { const m = A.moments.find(x => x.id === id); return m ? m.k : -1; };
@@ -265,10 +293,15 @@
       scene.fog.color.copy(skyU.bot.value).multiplyScalar(0.7);
       haze.forEach((h, i) => { h.rotation.z = t / (9000 + i * 3000) * (i % 2 ? -1 : 1); h.material.color.copy(cA).multiplyScalar(lightsOn ? 0.06 + 0.04 * beatP : 0.03); });
       barrier.material.color.copy(cA).multiplyScalar(lightsOn ? 0.5 + 0.5 * beatP : 0.12);
-      edge.forEach(e => e.material.color.copy(cA).multiplyScalar(lightsOn ? 0.6 + beatP : 0.1));
+      edge.forEach(e => e.material.color.copy(act === "song1" || act === "peak" ? cA : WHITE).multiplyScalar(lightsOn ? 0.7 + 0.6 * beatP : 0.35));
       // lantai panggung: gelap biasanya, putih menyala di momen besar biar penyanyi jadi siluet
-      const deckK = !lightsOn ? 0.015 : act === "rise" || act === "outro" ? 0.55 : mom("drop") >= 0 ? 0.8 : act === "peak" ? 0.12 + 0.3 * beatP : 0.04 + 0.08 * beatP;
-      deck.material.color.copy(act === "rise" || act === "outro" ? WHITE : cA).multiplyScalar(deckK);
+      // kubah: planet yang muter pelan. Gelap pas lampu padam, merah di lagu 1, putih terang waktu rig turun, planet penuh di lagu 2
+      dome.rotation.y = s * 0.012; shell.rotation.y = dome.rotation.y;
+      const domeK = A.phase === "before" ? 0.35 : !lightsOn ? Math.min(1, s / 8) * 0.5 : mom("drop") >= 0 ? 1.2 : act === "song1" ? 0.55 + 0.25 * beatP : act === "rise" ? 0.95 : act === "peak" ? 0.6 + 0.3 * beatP : act === "outro" ? 0.6 : 0.85;
+      if (act === "song1" || act === "peak") domeMat.color.copy(cA).lerp(WHITE, 0.25).multiplyScalar(domeK); else domeMat.color.setScalar(domeK);
+      shell.material.uniforms.col.value.copy(act === "song2" || act === "intro" || A.phase !== "show" ? lin(0x9fd0ff) : cA); shell.material.uniforms.k.value = lightsOn ? 0.7 + 0.4 * beatP : 0.35;
+      halo.material.color.copy(cB).multiplyScalar(lightsOn ? 0.35 + 0.35 * beatP : 0.12);
+      smoke.forEach((m, i) => m.material.color.copy(i === 2 ? WHITE : cB).multiplyScalar(lightsOn ? 0.5 + 0.2 * beatP : 0.3));
 
       // rig: melayang tinggi, turun ke atas penonton waktu "langit turun", naik lagi di lagu 2
       const down = s < 120 ? 0 : s < 130 ? (s - 120) / 10 : s < 176 ? 1 : s < 186 ? 1 - (s - 176) / 10 : 0;
@@ -293,9 +326,9 @@
       }
       heads.instanceColor.needsUpdate = rigBeams.instanceColor.needsUpdate = rigBeams.instanceMatrix.needsUpdate = true;
       // satu lampu putih ke penyanyi: paling terasa waktu gelap total di awal
-      spot.visible = A.phase === "show" && (s < 30 || act === "outro" || act === "rise");
-      spot.position.set(0, rig.position.y - 0.8, 0); spot.scale.set(1, rig.position.y - 3.4, 1); spot.rotation.y = 0;
-      pool.visible = spot.visible; pool.scale.setScalar(4.4);
+      spot.visible = A.phase === "before" || (A.phase === "show" && (s < 30 || act === "outro" || act === "rise" || act === "song2"));
+      spot.position.set(0, rig.position.y - 0.8, 0); spot.scale.set(1, rig.position.y - 0.8 - DOME_TOP, 1); spot.rotation.y = 0;
+      pool.visible = spot.visible; pool.scale.setScalar(3.6);
 
       // lampu sorot dari atap: semua ngarah ke panggung, lalu nyapu ke penonton
       beams.forEach((B, i) => {
@@ -425,7 +458,7 @@
       });
       for (const im of [bodyI, earI, stickI]) im.instanceMatrix.needsUpdate = true;
       stickI.instanceColor.needsUpdate = true;
-      mic.position.set(Math.sin(s * 0.35) * 1.6, 3.8, Math.cos(s * 0.35) * 1.6);
+      mic.position.set(Math.sin(s * 0.35) * 1.6, DOME_TOP + 1.2, Math.cos(s * 0.35) * 1.6);
 
       // ---------------------------------------------------------------- kamera: di belakang Kiko, sesekali ditarik ke panggung
       const camM = A.moments.find(m => m.cam && m.k < 0.6);
