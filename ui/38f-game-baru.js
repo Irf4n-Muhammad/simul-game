@@ -209,11 +209,13 @@ function hopRevive() {
 
 // ========== Memory match (30 detik): balik dua kartu, kalau sama +2, berantai nambah bonus. Papan habis = papan baru, +5.
 const MEM_FACES = ["🍎", "🍌", "🍇", "🍓", "🥝", "🍍", "🍉", "🍊", "🍐", "🥥", "🍒", "🫐"];
-function memInit() { Object.assign(FC, { cards: [], open: [], lock: 0, streak: 0, boards: 0 }); memDeal(); }
+// v72 (biar nggak cepat mentok): papan makin besar (12, 16, 20, lalu 24 kartu), papan tanpa salah +10,
+// dan salah dua kali berturut-turut bikin dua kartu tertutup tukeran tempat (ditandai kilat), jadi ingatannya harus diperbarui.
+function memInit() { Object.assign(FC, { cards: [], open: [], lock: 0, streak: 0, boards: 0, miss: 0, boardMiss: 0 }); memDeal(); }
 function memDeal() {
-  const n = FC.boards === 0 ? 6 : 8, faces = MEM_FACES.slice().sort(() => FC.rnd() - 0.5).slice(0, n);
+  const n = Math.min(12, 6 + 2 * FC.boards), faces = MEM_FACES.slice().sort(() => FC.rnd() - 0.5).slice(0, n);
   const deck = faces.concat(faces).map(e => ({ e, up: 0, flip: 0, done: false })).sort(() => FC.rnd() - 0.5);
-  FC.cards = deck; FC.open = []; FC.cols = 4; FC.rows = deck.length / 4;
+  FC.cards = deck; FC.open = []; FC.boardMiss = 0; FC.miss = 0; FC.cols = 4; FC.rows = deck.length / 4;
   const D = FC.drop; if (D && !D.done && D.armed) { D.done = true; const e = deck[0].e; deck.forEach(c => { if (c.e === e) c.find = D.kind; }); }
 }
 function memRect(i) {
@@ -231,17 +233,17 @@ function memTap(px, py) {
   if (FC.open.length < 2) return;
   const [a, b] = FC.open.map(k => FC.cards[k]);
   if (a.e === b.e) {
-    FC.streak += 1; a.done = b.done = true; FC.open = []; FC.caught += 1;
+    FC.streak += 1; FC.miss = 0; a.done = b.done = true; FC.open = []; FC.caught += 1;
     mgAdd(2 + Math.min(FC.streak - 1, 3)); Sfx.play("pas", FC.streak);
     if (a.find) { mgPick(a.find); a.find = b.find = null; }
-    if (FC.cards.every(c => c.done)) { mgAdd(5); FC.boards += 1; Sfx.play("kombo", 5); FC.lock = 0.6; setTimeout(() => { if (FC && FC.k === "ingat" && FC.run) memDeal(); }, 550); }
-  } else { FC.streak = 0; FC.lock = 0.75; Sfx.play("ulat"); }
+    if (FC.cards.every(c => c.done)) { const perfect = !FC.boardMiss; mgAdd(perfect ? 10 : 5); if (perfect) mgNote("Perfect board! +10"); FC.boards += 1; Sfx.play("kombo", 5); FC.lock = 0.6; setTimeout(() => { if (FC && FC.k === "ingat" && FC.run) memDeal(); }, 550); }
+  } else { FC.streak = 0; FC.miss += 1; FC.boardMiss += 1; FC.lock = 0.75; Sfx.play("ulat"); if (FC.miss >= 2) { FC.miss = 0; FC.swapDue = true; } }
 }
 function memStep(dt, el) {
   const { ctx, dpr } = FC;
   const D = FC.drop; if (D && !D.done && el >= D.at) D.armed = true;   // temuan nempel di papan berikutnya
   if (D && D.armed && !D.done) { const rest = FC.cards.filter(c => !c.done && !c.up); if (rest.length >= 2) { D.done = true; const e = rest[0].e; FC.cards.forEach(c => { if (c.e === e && !c.done) c.find = D.kind; }); } }
-  if (FC.lock > 0) { FC.lock -= dt; if (FC.lock <= 0 && FC.open.length === 2) { FC.open.forEach(k => { FC.cards[k].up = 0; }); FC.open = []; } }
+  if (FC.lock > 0) { FC.lock -= dt; if (FC.lock <= 0 && FC.open.length === 2) { FC.open.forEach(k => { FC.cards[k].up = 0; }); FC.open = []; if (FC.swapDue) memSwap(); } }
   FC.cards.forEach((c, i) => {
     c.flip += ((c.up || c.done ? 1 : 0) - c.flip) * Math.min(1, dt * 14);
     if (c.done && c.flip > 0.98) c.fade = Math.min(1, (c.fade || 0) + dt * 2);
@@ -250,6 +252,7 @@ function memStep(dt, el) {
     ctx.globalAlpha = 1 - (c.fade || 0) * 0.55;
     ctx.fillStyle = face ? "#FFF8EC" : "#6B4BD6"; ctx.strokeStyle = OUTL; ctx.lineWidth = 3 * dpr;
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-r.w / 2, -r.h / 2, r.w, r.h, 12 * dpr) : ctx.rect(-r.w / 2, -r.h / 2, r.w, r.h); ctx.fill(); ctx.stroke();
+    if (c.swap > 0) { c.swap -= dt; ctx.shadowColor = "#FFE36B"; ctx.shadowBlur = 18 * dpr; ctx.lineWidth = 4 * dpr; ctx.strokeStyle = "#FFE36B"; ctx.stroke(); ctx.shadowBlur = 0; }
     if (face) stamp(ctx, c.e, 0, 0, r.w * 0.55);
     else {
       ctx.fillStyle = "rgba(255,255,255,.18)"; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.arc(k * r.w * 0.2, 0, r.w * 0.06, 0, 7); ctx.fill(); }
@@ -258,6 +261,28 @@ function memStep(dt, el) {
     ctx.restore();
   });
   ctx.globalAlpha = 1;
+  mgNoteDraw(ctx);
+}
+function memSwap() {
+  // dua kartu tertutup yang belum ketemu pasangannya tukeran tempat
+  FC.swapDue = false;
+  const idx = FC.cards.map((c, i) => i).filter(i => !FC.cards[i].done && !FC.cards[i].up);
+  if (idx.length < 4) return;
+  const a = idx[Math.floor(FC.rnd() * idx.length)], rest = idx.filter(i => i !== a && FC.cards[i].e !== FC.cards[a].e), b = rest[Math.floor(FC.rnd() * rest.length)];
+  [FC.cards[a], FC.cards[b]] = [FC.cards[b], FC.cards[a]];
+  FC.cards[a].swap = FC.cards[b].swap = 0.9;
+  mgNote("Two cards swapped!"); Sfx.play("goyang");
+}
+// tulisan singkat di tengah atas (combo, kartu tukeran, papan sempurna): muncul mental lalu pudar
+function mgNote(s) { FC.note = { s, t: 0 }; }
+function mgNoteDraw(ctx) {
+  const N = FC.note; if (!N) return;
+  N.t += 1 / 60; if (N.t > 1.3) { FC.note = null; return; }
+  const { cv, dpr } = FC, k = Math.min(1, N.t / 0.15), a = N.t > 1 ? 1 - (N.t - 1) / 0.3 : 1;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(cv.width / 2, cv.height * 0.22); ctx.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k);
+  ctx.font = `900 ${24 * dpr}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineWidth = 6 * dpr; ctx.strokeStyle = OUTL; ctx.lineJoin = "round"; ctx.strokeText(N.s, 0, 0); ctx.fillStyle = "#FFE36B"; ctx.fillText(N.s, 0, 0);
+  ctx.restore();
 }
 
 // ========== Town run: lari di jalan kota, tap = lompat (bisa dua kali di udara). Nabrak = selesai.

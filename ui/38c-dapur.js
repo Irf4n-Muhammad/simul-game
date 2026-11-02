@@ -50,9 +50,9 @@ const MG_GAMES = {
   potong: { name: "Fruit slash", icon: "🍉", color: "#E8506A", timed: true, how: "Swipe across the fruit. Three in one swipe is a combo. Bombs cost five." },
   stack: { name: "Stack", icon: "🧱", color: "#5B7BD5", timed: false, how: "Tap to drop the block. Whatever hangs over falls off. Land it exactly for a bonus." },
   pisau: { name: "Knife throw", icon: "🔪", color: "#5E8F3E", timed: false, how: "Tap to throw a knife into the log. Don't hit another knife." },
-  buah: { name: "Fruit catch", icon: "🧺", color: "#E59A2E", timed: true, how: "Move the basket with your finger. Fruit +1, star +3, bug −3." },
+  buah: { name: "Fruit catch", icon: "🧺", color: "#E59A2E", timed: true, how: "Move the basket with your finger. Catch fruit in a row for a combo; letting one drop breaks it. Golden 🌟 +6, star +3, bug −3." },
   hop: { name: "Frog hop", icon: "🐸", color: "#3FA34D", timed: false, how: "The frog bounces by itself. Slide your finger left and right to land on clouds. Cracked clouds break." },
-  ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear the board for +5." },
+  ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear a board for +5, or +10 with no mistakes. Boards get bigger, and two misses in a row shuffle two cards." },
   kuis: { name: "Quiz rush", icon: "🧠", color: "#2F8FD8", timed: false, how: "Race Kiko, Bolt and Mimi through 10 quick questions. Right is +2, the fastest right answer +1, winning +3." },
   lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
@@ -209,7 +209,7 @@ function ppConfetti(card) {
   }
 }
 function mgRun() {
-  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
+  Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, chain: 0, note: null, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
   const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit }[FC.k];
@@ -357,31 +357,59 @@ function mgJuice(dt) {
 }
 
 // ---- Fruit catch (v49): keranjang ikut jari
+// v72 (biar nggak cepat mentok): combo beruntun, buah lolos = combo putus. Buah emas 🌟 (+6) jatuh lebih cepat
+// dan selalu ditemenin ulat di sebelahnya, jadi harus pas. Ulat −3 dan combo putus.
 function catchStep(dt, el) {
   const { cv, ctx, dpr } = FC, W = cv.width, H = cv.height, S = 44 * dpr, by = H - 70 * dpr, bw = 96 * dpr;
   FC.spawn -= dt;
   if (FC.spawn <= 0) {
     FC.spawn = Math.max(0.28, 0.75 - el * 0.015);
-    const r = FC.rnd(), kind = r < 0.05 ? "star" : r < 0.23 ? "bug" : "fruit";
-    FC.items.push({ x: S / 2 + FC.rnd() * (W - S), y: -S, vy: (170 + FC.rnd() * 110 + el * 6) * dpr, kind, e: kind === "star" ? "⭐" : kind === "bug" ? "🐛" : MG_GOOD[Math.floor(FC.rnd() * MG_GOOD.length)] });
+    const r = FC.rnd(), kind = el > 5 && r < 0.045 ? "gold" : r < 0.09 ? "star" : r < 0.27 ? "bug" : "fruit";
+    const x = S * 1.6 + FC.rnd() * (W - S * 3.2), vy = (170 + FC.rnd() * 110 + el * 6) * dpr;
+    if (kind === "gold") {
+      const side = FC.rnd() < 0.5 ? -1 : 1;
+      FC.items.push({ x, y: -S, vy: vy * 1.3, kind: "gold", e: "🌟" }, { x: x + side * S * 1.15, y: -S, vy: vy * 1.3, kind: "bug", e: "🐛" });
+    } else FC.items.push({ x, y: -S, vy, kind, e: kind === "star" ? "⭐" : kind === "bug" ? "🐛" : MG_GOOD[Math.floor(FC.rnd() * MG_GOOD.length)] });
   }
   const D = FC.drop;
   if (D && !D.done && el >= D.at) { D.done = true; FC.items.push({ x: S + Math.random() * (W - 2 * S), y: -S, vy: 190 * dpr, kind: D.kind, find: true }); }
   ctx.font = mgFont(S);
+  FC.chain = FC.chain || 0;
+  const bonus = () => Math.min(3, Math.floor(FC.chain / 6));
   for (const it of FC.items) {
     it.y += it.vy * dt;
     if (!it.done && it.y > by - S * 0.6 && it.y < by + S * 0.3 && Math.abs(it.x - FC.bx) < bw / 2 + S * 0.2) {
       it.done = true;
       if (it.find) mgPick(it.kind);
-      else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; Sfx.play("ulat"); } else { mgAdd(it.kind === "star" ? 3 : 1); FC.caught += 1; Sfx.play(it.kind === "star" ? "bintang" : "tangkap"); }
+      else if (it.kind === "bug") { mgAdd(-3); FC.shake = 0.3; Sfx.play("ulat"); if (FC.chain >= 6) mgNote("Combo broken"); FC.chain = 0; }
+      else {
+        const was = bonus(); FC.chain += 1; FC.caught += 1;
+        mgAdd((it.kind === "gold" ? 6 : it.kind === "star" ? 3 : 1) + was);
+        if (bonus() > was) { mgNote(`Combo ×${bonus() + 1}`); Sfx.play("kombo", bonus() + 1); }
+        else Sfx.play(it.kind === "fruit" ? "tangkap" : "bintang");
+      }
     }
-    if (!it.done) { if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); } else stamp(ctx, it.e, it.x, it.y, S); }
+    // buah (bukan ulat) yang lolos ke bawah mutusin combo
+    if (!it.done && !it.missed && it.kind !== "bug" && !it.find && it.y > by + S * 0.6) { it.missed = true; if (FC.chain >= 6) mgNote("Combo broken"); FC.chain = 0; }
+    if (!it.done) {
+      if (it.find) { findDraw(ctx, it.kind, it.x, it.y, S * 1.1); ctx.font = mgFont(S); }
+      else { if (it.kind === "gold") wGlow(ctx, it.x, it.y, S * 1.2, "rgba(255,220,90,.75)"); stamp(ctx, it.e, it.x, it.y, it.kind === "gold" ? S * 1.15 : S); }
+    }
   }
   FC.items = FC.items.filter(it => !it.done && it.y < H + S);
   FC.shake = Math.max(0, FC.shake - dt);
   const sx = FC.shake ? (Math.random() - 0.5) * 16 * dpr : 0;
   ctx.font = mgFont(S * 1.7);
   stamp(ctx, CATCH_SKIN[FC.skin] || "🧺", FC.bx + sx, by, S * 1.7);
+  // pengali combo di atas keranjang + titik progres ke pengali berikutnya
+  const b = bonus();
+  if (FC.chain > 0) {
+    ctx.save(); ctx.font = `900 ${15 * dpr}px system-ui, sans-serif`; ctx.lineWidth = 4 * dpr; ctx.strokeStyle = OUTL; ctx.fillStyle = b ? "#FFE36B" : "#FFF";
+    const tx = b ? `×${b + 1}` : `${FC.chain}`; ctx.strokeText(tx, FC.bx + sx, by - S * 1.25); ctx.fillText(tx, FC.bx + sx, by - S * 1.25);
+    if (b < 3) for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(FC.bx + sx + (i - 2.5) * 9 * dpr, by + S * 0.95, 3 * dpr, 0, 7); ctx.fillStyle = i < FC.chain % 6 ? "#FFE36B" : "rgba(255,255,255,.35)"; ctx.fill(); }
+    ctx.restore();
+  }
+  mgNoteDraw(ctx);
 }
 
 // ---- Fruit slash (v50): buah dilempar dari bawah, digores jari. Santai: bom cuma −5, nggak ada game over, buah lolos nggak dihukum.
