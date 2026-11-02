@@ -23,7 +23,7 @@ function youData() {
 }
 function townInit() {
   if (!TOWN) TOWN = Town.create({ THREE, renderer, canvas, M, F, RB, SPH, CYL, canvasTex, environment: scene.environment,
-    getLit: () => LIT, getPeriod: () => litName, bgColor: () => townSky()[1], getWeather: () => (typeof WX === "string" ? WX : "clear"), getFair: () => fairInfo(), reduce, showLot,
+    getLit: () => LIT, getPeriod: () => litName, bgColor: () => townSky()[1], getWeather: () => (typeof WX === "string" ? WX : "clear"), getFair: () => fairInfo(), onBolt: () => SND && SND.thunder(), reduce, showLot,
     now: () => dayFloat(), PAINTS: Status.PAINTS, toGlobe: () => toRegion() });
   return TOWN;
 }
@@ -46,6 +46,7 @@ function outMode(m) {
 }
 // tombol kota: mulai dari globe
 async function enterWorld() {
+  sndInit();
   if (!game || !globalThis.Globe) return enterTown();
   hideHint(); closeSheet(); if (tour) tourEnd("lanjut"); Tele.layar("app", "globe");
   globeInit(); if (TOWN) TOWN.exit();
@@ -115,6 +116,60 @@ function showCity(C) {
   sheet.querySelector("[data-close]").onclick = closeSheet;
   GLOBE.flyTo(C.lat, C.lon, 1.7);
 }
+// v77: suara kota (suara.js). Mulai waktu tombol kota dipencet (butuh sentuhan dulu buat bunyi), diam di luar kota.
+let SND = null, bellMin = -1;
+function sndInit() { if (!SND && globalThis.Suara) SND = Suara.create(); if (SND) { SND.start(); sndBtn(); } return SND; }
+function sndBtn() { const b = $("soundBtn"); if (!b || !SND) return; b.classList.toggle("off", !SND.on); b.setAttribute("aria-pressed", String(SND.on)); b.setAttribute("aria-label", SND.on ? "Town sounds on" : "Town sounds off"); }
+function sndTick() {
+  if (!SND || !SND.started) return;
+  const wx = typeof WX === "string" ? WX : "clear";
+  if (GLOBE && GLOBE.on) return SND.set({ rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: 0 });
+  if (CONT && CONT.on) return SND.set(Object.assign(Suara.mixOf({ wx, period: litName, zoom: 1, fair: 0 }), { traffic: 0 }));
+  if (!(TOWN && TOWN.on)) return SND.silence();
+  const F = fairInfo(), P = Kota.PLACE[Kota.FAIR.place], f = TOWN.focus();
+  const fair = F && F.on ? Math.max(0, 1 - Math.hypot(f.x - P.x, f.z - (P.z - 10)) / 30) : 0;
+  SND.set(Suara.mixOf({ wx, period: litName, zoom: TOWN.zoomLevel(), fair }));
+  const d = new Date(), m = d.getHours() * 60 + d.getMinutes();
+  if (m !== bellMin) { bellMin = m; if (Suara.bellDue(d) && TOWN.zoomLevel() < 0.6) SND.bell(); }
+}
+setInterval(sndTick, 1000);
+$("soundBtn").onclick = () => { sndInit(); SND.mute(SND.on); sndBtn(); };
+// v77: naik kereta ke kota kecil di Meridia (akhir pekan atau hari libur). Tiga kota terdekat lewat jalan dari Old Town.
+function tripTowns() {
+  if (!globalThis.Region) return [];
+  const R = Region.region(Bumi.CITIES.find(c => c.live).cont), home = R.towns.find(t => t.live);
+  return R.towns.filter(t => !t.main).map(t => ({ t, d: Math.hypot(t.x - home.x, t.z - home.z) })).sort((a, b) => a.d - b.d).slice(0, 3).map(o => Object.assign({ d: o.d }, o.t));
+}
+function tripState() {
+  const W = walkState(); if (!W.ok) return W;
+  const c = game.home.get(cur.id), dow = new Date().getDay();
+  if (!(dow === 0 || dow === 6 || (c && c.has && c.has("libur", today())))) return { ok: false, why: `Day trips are for weekends and school holidays.` };
+  return { ok: true };
+}
+function tripHtml() {
+  const T = tripTowns(); if (!T.length) return "";
+  const S = tripState(), mins = t => Math.round(10 + t.d / 3);
+  return `<p><b>Day trips by train</b></p>${S.ok ? T.map(t => `<button class="big" data-trip="${esc(t.id)}">Train to ${esc(t.name)} with ${esc(cur.nama)} · ${mins(t)} min</button>`).join("") : S.why ? `<p class="muted">${esc(S.why)}</p>` : ""}`;
+}
+function bindTrips() {
+  sheet.querySelectorAll("[data-trip]").forEach(b => b.onclick = async () => {
+    const t = tripTowns().find(x => x.id === b.dataset.trip); if (!t) return;
+    const wx = typeof WX === "string" && GameLayer.WALK_WX[WX] ? ":" + WX : "";
+    if (!game.act(cur.id, "trip:" + t.name + wx)) return say("Not today.");
+    drainNoon(); save(); refresh(); closeSheet(); Tele.ev("kota", { a: "trip", p: t.name });
+    const line = (feed.slice().reverse().find(l => l.events.includes("trip")) || { lines: [] }).lines.slice(-1)[0] || "";
+    await veil(true); contInit(); if (TOWN) TOWN.exit();
+    CONT.enter(Bumi.CITIES.find(c => c.live).cont, "city"); CONT.resize(app.clientWidth, app.clientHeight); outMode("region"); veil(false);
+    CONT.trip(t.id, () => {
+      sheet.classList.add("clear");
+      openSheet("lot", `<span class="ribbon">Day trip</span><h2>${esc(cur.nama)} in ${esc(t.name)}</h2><p>${esc(line)}</p>
+        <p class="muted">Small towns get their own streets later. For now you can look around the map, or head home.</p>
+        <button class="big" id="tripHome">Train back to Old Town</button><button class="close" data-close="1">Stay on the map</button>`);
+      sheet.querySelector("[data-close]").onclick = closeSheet;
+      $("tripHome").onclick = () => { closeSheet(); cityFromRegion(); };
+    });
+  });
+}
 // v76: pasar akhir pekan / festival di Riverside Park (kota.js), dihitung ulang paling sering tiap 20 detik
 let fairC = { t: 0, v: null };
 function fairInfo() {
@@ -132,6 +187,7 @@ function walkState() {
   if (TOWN.walking()) return { ok: false, why: `${cur.nama} is already out with you.` };
   if (c && c.info.jalan === day) return { ok: false, why: `You already went out with ${cur.nama} today.` };
   if (Y.away) return { ok: false, why: `${cur.nama} is away.` };
+  if (WX === "storm") return { ok: false, why: `It's stormy out there. Better stay in with ${cur.nama} for now.` };
   if (/Asleep|Napping/i.test(Y.line)) return { ok: false, why: `${cur.nama} is asleep. Maybe later.` };
   if (!["home", "park", "square"].includes(Y.at)) return { ok: false, why: `${cur.nama} is busy right now (${Y.line.toLowerCase()}).` };
   return { ok: true };
@@ -141,7 +197,8 @@ function bindWalk() {
   const b = $("goWalk"); if (!b) return;
   b.onclick = () => {
     const dest = b.dataset.dest;
-    if (!game.act(cur.id, "jalan:" + dest)) return say("Not today.");
+    const wx = typeof WX === "string" && GameLayer.WALK_WX[WX] ? ":" + WX : "";
+    if (!game.act(cur.id, "jalan:" + dest + wx)) return say("Not today.");
     drainNoon(); save(); refresh(); closeSheet();
     TOWN.walkWith(dest, (game.home.get(cur.id).info.sekolah_pilihan || {}).id || "dekat");
     Tele.ev("kota", { a: "jalan", p: dest });
@@ -158,13 +215,15 @@ function showPlace(l) {
     <div class="facts"><span>Right now</span><span>${n ? `${n} townsfolk` : "Quiet"}</span>${P.school ? `<span>Pupils</span><span>${P.school === "smp" ? "Every creature, day 180 to 265" : "From day 60"}</span>` : ""}</div>
     ${P.id === "park" && fairInfo() ? `<p><b>${esc(fairInfo().ikon)} ${esc(fairInfo().name)}</b> · ${fairInfo().on ? `on now, until ${fairInfo().to}:00` : fairInfo().soon ? `opens at ${fairInfo().from}:00 today` : "finished for today"}. Stalls, music and half the town by the pond.</p>` : ""}
     ${P.id === "park" && fairInfo() && fairInfo().on ? walkBtn("fair") : P.id === "park" || P.id === "bazaar" ? walkBtn(P.id) : P.school && P.id === Kota.SCHOOL_OF[(game.home.get(cur.id).info.sekolah_pilihan || {}).id || "dekat"] ? walkBtn("school") : ""}
+    ${P.id === "station" ? tripHtml() : ""}
     ${TOWN.canEnter(l) ? `<button class="big" id="goIn">${here ? `Look in on ${esc(cur.nama)}` : "Go inside"}</button>` : ""}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
-  bindWalk();
+  bindWalk(); bindTrips();
   const gi = $("goIn"); if (gi) gi.onclick = () => { closeSheet(); TOWN.enterPlace(l); Tele.ev("kota", { a: "masuk", p: P.id }); };
 }
 async function enterTown() {
+  sndInit();
   if (!game || !globalThis.Town) return;
   hideHint(); closeSheet(); if (tour) tourEnd("lanjut"); Tele.layar("app", "town");
   townInit();
@@ -174,7 +233,7 @@ async function enterTown() {
   TOWN.resize(app.clientWidth, app.clientHeight);
   if (GLOBE) GLOBE.exit(); outMode("town"); fairHint();
 }
-function exitTown() { if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
+function exitTown() { if (SND) SND.silence(); if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
 const daysLeft = n => n > 0 ? `${n} day${n > 1 ? "s" : ""} left` : "Moving in today";
 const liveLeft = b => Math.max(0, b.done - today());
 const buildFrac = b => Math.max(0.04, Math.min(1, (dayFloat() - b.start) / Math.max(0.01, b.done - b.start)));

@@ -150,3 +150,13 @@ test("v76 pasar dan festival: jadwal buka, lapak nggak di kolam, pengunjung di l
   for (const sec of [100, 5000, 40000]) for (const p of K.fairFolk(sec)) { assert.ok(p.x - P.x >= A.x0 - 1e-9 && p.x - P.x <= A.x1 + 1e-9 && p.z - P.z >= A.z0 - 1e-9 && p.z - P.z <= A.z1 + 1e-9); }
   assert.equal(JSON.stringify(K.fairFolk(777)), JSON.stringify(K.fairFolk(777)));
 });
+
+test("v77 cuaca: hujan bikin taman dan alun-alun sepi, Jumat malam alun-alun ramai, rencana dasar nggak geser", () => {
+  const P = K.people(), out = (dow, sec, wx) => P.filter(p => { const L = K.locate(K.timeline(K.plan(p, 20100, dow, wx), p.home, p.side), sec, 0.3); return L.show && (L.at === "park" || L.at === "square"); }).length;
+  const dry = out(6, H(16), "clear"), wet = out(6, H(16), "rain"), storm = out(6, H(16), "storm");
+  assert.ok(wet < dry * 0.6, `hujan ${wet} vs cerah ${dry}`); assert.ok(storm <= wet);
+  const fri = out(5, H(20.5), "clear"), wed = out(3, H(20.5), "clear");
+  assert.ok(fri > wed, `Jumat ${fri} vs Rabu ${wed}`);
+  // kantor tetap jalan walau hujan
+  const c = K.crowd(20100, 2, H(11), undefined, "rain"); assert.ok((c.tower1 || 0) + (c.tower2 || 0) + (c.tower3 || 0) >= 20);
+});

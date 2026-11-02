@@ -98,7 +98,7 @@
     }
     function setZoom(z) {
       zoom = Math.max(0, Math.min(Z_OUT + 0.02, z));
-      if (entering) return;
+      if (entering || (trip && !trip.done)) return;
       if (zoom >= Z_OUT) { entering = true; env.toGlobe(); return; }
       const live = R && R.towns.find(t => t.live);
       if (live && zoom <= Z_IN && Math.hypot(focusX - live.x, focusZ - live.z) < 14) { entering = true; env.enterCity(); }
@@ -139,6 +139,7 @@
     // from: "globe" (fly down from high up) or "city" (start right above the live city and rise a bit)
     T.enter = (id, from) => {
       if (T.id !== id || !root) build(id);
+      if (trip) { if (trip.g.parent) trip.g.parent.remove(trip.g); trip = null; }
       entering = false; ptr.clear(); drag = pinch = null;
       const live = R.towns.find(t => t.live) || R.towns[0];
       if (from === "city") { focusX = live.x; focusZ = live.z; zoom = 0.06; tgt = { x: live.x + 6, z: live.z + 10, zoom: 0.42 }; }
@@ -154,10 +155,44 @@
         if (tgt.then) setZoom(zm); else zoom = zm;
         if (done || entering) tgt = null;
       }
+      tripStep();
       if (ring) { const s = 1 + ((t / 1400) % 1) * 0.8; ring.scale.setScalar(s); ring.material.opacity = 0.8 * (1 - (t / 1400) % 1); }
       place();
     };
     T.state = () => ({ x: focusX, z: focusZ, zoom });
+    // v77: naik kereta ke kota kecil. Jalurnya ngikutin jalan di peta (pohon rentang region.js), kereta kecil jalan di atasnya,
+    // kamera ngikut, sampai di sana zoom ke kotanya. then() dipanggil waktu sampai.
+    let trip = null;
+    function pathBetween(a, b) {
+      const adj = {}; for (const r of R.roads) { (adj[r.a] ||= []).push({ to: r.b, pts: r.pts }); (adj[r.b] ||= []).push({ to: r.a, pts: r.pts.slice().reverse() }); }
+      const prev = { [a]: null }, q = [a];
+      while (q.length) { const u = q.shift(); if (u === b) break; for (const e of adj[u] || []) if (!(e.to in prev)) { prev[e.to] = { u, pts: e.pts }; q.push(e.to); } }
+      if (!(b in prev)) return null;
+      const segs = []; for (let v = b; prev[v]; v = prev[v].u) segs.unshift(prev[v].pts);
+      return segs.flat();
+    }
+    T.trip = (toId, then) => {
+      const live = R.towns.find(t => t.live), dest = R.towns.find(t => t.id === toId); if (!live || !dest) return false;
+      const pts = pathBetween(live.id, dest.id) || [{ x: live.x, z: live.z }, { x: dest.x, z: dest.z }];
+      const segs = []; let len = 0; for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z); segs.push(l); len += l; }
+      if (!trip || !trip.g.parent) {
+        const g = new THREE.Group(), car = (x, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 2.2), new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 })); m.material.color.convertSRGBToLinear(); m.position.set(0, 0.55, x); g.add(m); };
+        car(0, 0xc2704f); car(-2.4, 0xf2e6d4); car(-4.8, 0xf2e6d4); root.add(g); trip = { g };
+      }
+      Object.assign(trip, { pts, segs, len, t0: performance.now(), dur: Math.min(14000, Math.max(6000, len * 90)), dest, then, done: false });
+      tgt = null; focusX = live.x; focusZ = live.z + 6;
+      return true;
+    };
+    function tripStep() {
+      if (!trip || trip.done || !trip.pts) return;
+      const k = Math.min(1, (performance.now() - trip.t0) / trip.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      let d = e * trip.len, i = 0; while (i < trip.segs.length - 1 && d > trip.segs[i]) { d -= trip.segs[i]; i++; }
+      const a = trip.pts[i], b = trip.pts[i + 1] || a, f = trip.segs[i] ? d / trip.segs[i] : 0;
+      trip.g.position.set(a.x + (b.x - a.x) * f, 0.2, a.z + (b.z - a.z) * f); trip.g.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
+      focusX += (trip.g.position.x - focusX) * 0.08; focusZ += (trip.g.position.z + 6 - focusZ) * 0.08; zoom += (0.3 - zoom) * 0.05;
+      if (k >= 1) { trip.done = true; tgt = { x: trip.dest.x, z: trip.dest.z + 4, zoom: 0.12 }; const th = trip.then; trip.then = null; if (th) setTimeout(th, 1400); }
+    }
+    T.tripping = () => !!(trip && !trip.done);
     return T;
   }
   globalThis.Continent = { create };

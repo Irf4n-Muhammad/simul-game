@@ -190,7 +190,17 @@
     return _people;
   }
   // jadwal sehari satu warga: daftar singgah { at, from, to, mode } (mode: in = di dalam, out = nongkrong di luar, stroll = mondar-mandir)
-  function plan(p, day, dow) {
+  // v77: cuaca. Hujan/badai/salju bikin sebagian orang batal nongkrong di luar (taman, alun-alun, peron); yang tetap pergi bawa payung.
+  // Pakai rng sendiri, jadi rencana dasar nggak geser. Jumat dan Sabtu malam alun-alun lebih ramai.
+  const STAY_HOME = { rain: 0.65, storm: 0.9, snow: 0.45, fog: 0.15 };
+  const OUTSIDE = new Set(["park", "square", "station"]);
+  const WET = new Set(["rain", "storm"]);
+  function plan(p, day, dow, wx = "clear") {
+    const S = plan0(p, day, dow), r = rng(`cuaca${day}:${p.id}`), q = STAY_HOME[wx] || 0;
+    if ((dow === 5 || dow === 6) && !S.some(s => s.from >= H(18.5)) && r() < 0.3) S.push({ at: "square", from: H(19.2 + r()), to: H(21.5 + r() * 1.2), mode: "out" });
+    return q ? S.filter(s => !(s.mode === "out" && OUTSIDE.has(s.at)) || r() >= q) : S;
+  }
+  function plan0(p, day, dow) {
     const r = rng(`hari${day}:${p.id}`), weekend = dow === 0 || dow === 6, S = [];
     const stay = (at, from, to, mode = "in") => { if (to > from) S.push({ at, from: H(from), to: H(to), mode }); };
     const j = s => (r() - 0.5) * s;       // geser sedikit biar nggak semua berangkat di menit yang sama
@@ -411,9 +421,9 @@
   }
 
   // berapa warga ada di tiap tempat sekarang (buat lembar info tempat)
-  function crowd(day, dow, sec, n) {
+  function crowd(day, dow, sec, n, wx) {
     const c = {};
-    for (const p of people(n)) { const s = seg(timeline(plan(p, day, dow), p.home, p.side), sec); if (s.mode !== "walk" && s.at !== "home") c[s.at] = (c[s.at] || 0) + 1; }
+    for (const p of people(n)) { const s = seg(timeline(plan(p, day, dow, wx), p.home, p.side), sec); if (s.mode !== "walk" && s.at !== "home") c[s.at] = (c[s.at] || 0) + 1; }
     return c;
   }
 
@@ -450,7 +460,7 @@
   }
 
   const API = { HOODS, BANDS, ZMIN, PLAZA, ROAD_W, WALK, GAP, STRIP, STREETS, VX, HZ, RIVER, RAIL, REACH, BOUNDS, PLACES, PLACE, SCHOOL_OF, TOWERS,
-    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt, FAIR, fairNow, fairFolk };
+    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt, FAIR, fairNow, fairFolk, WET, STAY_HOME };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Kota = API;
 })();

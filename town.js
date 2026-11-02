@@ -382,12 +382,20 @@
     }
 
     // ---------------------------------------------------------------- little creatures walking around
+    const UMB = [0xc2704f, 0x5f8a6e, 0xd4a853, 0x6d7790, 0xb86f8a, 0x2e2a26];
+    let wetNow = false;   // v77: umbrellas up
+    const umbrella = (g, on) => { const u = g.userData.umbrella; if (u && u.visible !== on) u.visible = on; };
     function walker(color, you) {
       const g = new THREE.Group(), fur = M(color, { roughness: 0.95 });
       const b = mesh(SPH(0.32, 20, 14), fur, 0, 0.36, 0, g); b.scale.set(1, 0.95, 0.88);
       for (const sx of [-1, 1]) { mesh(SPH(0.1, 12, 8), fur, sx * 0.2, 0.62, 0, g); mesh(SPH(0.035, 8, 6), M(0x231c1a, { roughness: 0.2 }), sx * 0.1, 0.42, 0.27, g); }
       for (const sx of [-1, 1]) mesh(SPH(0.08, 10, 8), M(new THREE.Color(color).multiplyScalar(0.85).getHex()), sx * 0.13, 0.05, 0.08, g).scale.y = 0.5;
       if (you) { const mk = mesh(new THREE.ConeGeometry(0.1, 0.2, 4), F(0xc2704f), 0, 1.0, 0, g); mk.rotation.x = Math.PI; g.userData.marker = mk; }
+      // v77: umbrella, shown in the rain
+      const um = new THREE.Group(); um.visible = false; g.add(um); g.userData.umbrella = um;
+      const uc = UMB[Math.abs(Math.round(color)) % UMB.length];
+      mesh(new THREE.ConeGeometry(0.42, 0.18, 8, 1, true), M(uc, { roughness: 0.6, side: THREE.DoubleSide }), 0.08, 1.02, 0, um);
+      mesh(CYL(0.012, 0.012, 0.6, 5), M(0x3a332d), 0.08, 0.72, 0, um);
       scene.add(g); return g;
     }
 
@@ -670,7 +678,7 @@
       fair.folkG.forEach((f, k) => {
         f.visible = near; if (!near) return;
         const p = L[k], bob = p.walk ? Math.abs(Math.sin(t / 160 + k)) : Math.abs(Math.sin(t / 900 + k)) * 0.3;
-        f.position.set(p.x - fair.P.x, bob * 0.06, p.z - fair.P.z); f.rotation.y = p.dir;
+        f.position.set(p.x - fair.P.x, bob * 0.06, p.z - fair.P.z); f.rotation.y = p.dir; umbrella(f, wetNow);
       });
     }
     // ---------------------------------------------------------------- v75: going inside a building
@@ -739,7 +747,7 @@
     T.leavePlace = leavePlace;
     function fillRoom() {
       const { e, I } = inside, c = clock(), P = e.place;
-      let n = (Kota.crowd(c.day, c.dow, c.sec)[P.id] || 0);
+      let n = (Kota.crowd(c.day, c.dow, c.sec, undefined, wxNow())[P.id] || 0);
       if (P.kind === "school") { const h = c.sec / 3600, open = c.dow > 0 && c.dow < 6 && h >= 7.5 && h < 15; n = open ? Math.round(I.seats.length * 0.75) : 0; }
       const youHere = T.you && T.you.at === P.id;
       I.youSeat = youHere ? (P.kind === "school" ? 1 + ((P.id.length * 3) % Math.max(1, I.seats.length - 1)) : 0) : -1;
@@ -782,8 +790,8 @@
       return { sec, dow: d.getDay(), day: Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5) };
     }
     function plans(c) {
-      const k = c.day + ":" + c.dow; if (k === tlKey && TL) return TL;
-      tlKey = k; TL = folk.map(p => Kota.timeline(Kota.plan(p, c.day, c.dow), p.home, p.side)); return TL;
+      const wx = wxNow(), k = c.day + ":" + c.dow + ":" + wx; if (k === tlKey && TL) return TL;
+      tlKey = k; TL = folk.map(p => Kota.timeline(Kota.plan(p, c.day, c.dow, wx), p.home, p.side)); return TL;
     }
     function buildLife(data) {
       pool = []; for (let i = 0; i < 26; i++) { const g = walker(FOLK[i % FOLK.length]); g.visible = false; g.userData.who = -1; pool.push(g); }
@@ -806,7 +814,8 @@
     }
     const smooth = k => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
     function updateLife(t, dt) {
-      const c = clock(), T0 = plans(c), near = zoom < 0.56, d = distNow();
+      const c = clock(), T0 = plans(c), near = zoom < 0.56, d = distNow(); wetNow = Kota.WET.has(wxNow());
+      if (youG) umbrella(youG, wetNow && !youSeatWorld(T.you && T.you.at));
       // townsfolk
       const vis = [];
       for (let i = 0; i < folk.length; i++) { const L = Kota.locate(T0[i], c.sec, (i * 0.618) % 1); if (L.show) { L.i = i; L.d = Math.hypot(L.x - focusX, L.z - focusZ); vis.push(L); } }
@@ -819,7 +828,7 @@
           g.visible = true;
           if (g.userData.who !== L.i) { g.userData.who = L.i; g.children[0].material.color.setHex(FOLK[folk[L.i].tint]).convertSRGBToLinear(); }
           const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 160 * 1.1 + L.i)) : Math.abs(Math.sin(t / 900 + L.i)) * 0.3;
-          g.position.set(L.x, bob * 0.06, L.z); g.rotation.y = L.dir; g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1);
+          g.position.set(L.x, bob * 0.06, L.z); g.rotation.y = L.dir; g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1); umbrella(g, wetNow);
         });
         dots.count = 0;
       } else {
@@ -1074,7 +1083,7 @@
       // lightning: a quick double flash every 6–16 s (not with reduced motion)
       if (K.bolt && !env.reduce) {
         if (!nextBolt) nextBolt = t + 6000 + Math.random() * 10000;
-        if (t > nextBolt) { flash = 1; nextBolt = t + 6000 + Math.random() * 10000; }
+        if (t > nextBolt) { flash = 1; nextBolt = t + 6000 + Math.random() * 10000; if (env.onBolt) env.onBolt(); }
       }
       if (flash > 0) {
         const f = flash > 0.6 || (flash < 0.4 && flash > 0.25) ? 1 : 0.2;
@@ -1171,6 +1180,7 @@
     T.mapView = () => { tgt = zoom > Z_MAP ? { x: T.homeX ?? 0, z: (T.homeZ ?? -4) + 3.6, zoom: Z_STREET } : { x: 6, z: -24, zoom: 0.97 }; };
     T.findYou = () => { if (T.youX === undefined) return false; tgt = { x: T.youX, z: T.youZ + 2, zoom: 0.22 }; return true; };
     T.zoomLevel = () => zoom;
+    T.focus = () => ({ x: focusX, z: focusZ });
     T.resize = (w, h) => { camera.aspect = w / h; camera.updateProjectionMatrix(); };
     const DISTRICT = x => x < Kota.RAIL.x ? "Westfield" : x < -22 ? "Station Quarter" : x < 0 ? "Office Row" : x < 22 ? "Eastside" : x < Kota.RIVER.x0 ? "Riverside" : x < Kota.RIVER.x1 ? "The river" : "Far Bank";
     T.hoodAt = () => {

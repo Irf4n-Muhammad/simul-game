@@ -38,3 +38,23 @@ test("jalan ke pasar: kalau ada festival dunia, ceritanya pakai nama festivalnya
   const L = (g.noon_logs || []).find(l => l.events.includes("jalan:fair"));
   assert.match(L.lines.join(" "), /Lantern Night/);
 });
+
+test("jalan pas hujan/salju: cuaca dicatat di kunci aksi, ada baris cuacanya, cuaca asing ditolak", () => {
+  const g = new G.Game(fresh()); g.advance(80, null); g.half_now = 0;
+  const c = g.home.members[0];
+  assert.equal(g.act(c.id, "jalan:park:tornado"), false);
+  assert.equal(g.act(c.id, "jalan:park:snow"), true);
+  const L = (g.noon_logs || []).find(l => l.events.includes("jalan:park"));
+  assert.match(L.lines.join(" "), /snow/i);
+});
+
+test("naik kereta ke kota kecil: nama kota dari kunci aksi, dihitung jalan hari itu, nama aneh ditolak", () => {
+  const g = new G.Game(fresh()); g.advance(80, null); g.half_now = 0;
+  const c = g.home.members[0];
+  assert.equal(g.act(c.id, "trip:<script>"), false);
+  assert.equal(g.act(c.id, "trip:Millbrook:rain"), true);
+  assert.equal(g.act(c.id, "jalan:park"), false, "udah jalan-jalan hari ini");
+  const L = (g.noon_logs || []).find(l => l.events.includes("trip"));
+  assert.match(L.lines.join(" "), /Millbrook/);
+  assert.ok(c.info.trip_ke.includes("Millbrook"));
+});
