@@ -1,7 +1,7 @@
 // ================================================================ the town
 // v73: tampilan luar bertingkat. Tombol kota buka globe (5 benua); zoom ke Old Town = masuk peta kota; zoom terus = jalan.
 // Dari peta kota zoom keluar = balik ke globe. Pindah lapisan pakai tirai awan (#veil) biar kerasa satu gerakan.
-let TOWN = null, GLOBE = null, CONT = null;   // v75: CONT = peta benua di antara globe dan kota
+let TOWN = null, GLOBE = null, CONT = null, KONSER = null;   // v78: KONSER = arena konser orang ketiga (ui/29b-konser.js)   // v75: CONT = peta benua di antara globe dan kota
 function townData() {
   const day = today(), fv = famStatus();
   const members = game.home.members.filter(m => m.st && m.alive(day) && !("keluar" in m.info));
@@ -39,7 +39,8 @@ function contInit() {
 }
 const veil = (on) => new Promise(res => { const v = $("veil"); v.classList.toggle("on", on); setTimeout(res, on ? 380 : 0); });
 function outMode(m) {
-  app.classList.toggle("in-town", !!m); app.classList.toggle("in-globe", m === "globe"); $("townUI").hidden = !m;
+  app.classList.toggle("in-town", !!m); app.classList.toggle("in-globe", m === "globe"); $("townUI").hidden = !m || m === "konser";
+  app.classList.toggle("in-konser", m === "konser"); $("konserUI").hidden = m !== "konser";
   app.classList.toggle("in-region", m === "region");
   $("townHint").textContent = m === "globe" ? "Drag to spin · pinch to zoom in · tap a continent" : m === "region" ? "Drag to move · zoom in on Old Town · tap a town" : "Drag to move · pinch to zoom · tap a place";
   paintBg();
@@ -123,6 +124,7 @@ function sndBtn() { const b = $("soundBtn"); if (!b || !SND) return; b.classList
 function sndTick() {
   if (!SND || !SND.started) return;
   const wx = typeof WX === "string" ? WX : "clear";
+  if (KONSER && KONSER.on) return SND.set({ rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: KONSER.crowd() });
   if (GLOBE && GLOBE.on) return SND.set({ rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: 0 });
   if (CONT && CONT.on) return SND.set(Object.assign(Suara.mixOf({ wx, period: litName, zoom: 1, fair: 0 }), { traffic: 0 }));
   if (!(TOWN && TOWN.on)) return SND.silence();
@@ -215,11 +217,12 @@ function showPlace(l) {
     <div class="facts"><span>Right now</span><span>${n ? `${n} townsfolk` : "Quiet"}</span>${P.school ? `<span>Pupils</span><span>${P.school === "smp" ? "Every creature, day 180 to 265" : "From day 60"}</span>` : ""}</div>
     ${P.id === "park" && fairInfo() ? `<p><b>${esc(fairInfo().ikon)} ${esc(fairInfo().name)}</b> · ${fairInfo().on ? `on now, until ${fairInfo().to}:00` : fairInfo().soon ? `opens at ${fairInfo().from}:00 today` : "finished for today"}. Stalls, music and half the town by the pond.</p>` : ""}
     ${P.id === "park" && fairInfo() && fairInfo().on ? walkBtn("fair") : P.id === "park" || P.id === "bazaar" ? walkBtn(P.id) : P.school && P.id === Kota.SCHOOL_OF[(game.home.get(cur.id).info.sekolah_pilihan || {}).id || "dekat"] ? walkBtn("school") : ""}
+    ${P.id === "park" ? konserHtml() : ""}
     ${P.id === "station" ? tripHtml() : ""}
     ${TOWN.canEnter(l) ? `<button class="big" id="goIn">${here ? `Look in on ${esc(cur.nama)}` : "Go inside"}</button>` : ""}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
-  bindWalk(); bindTrips();
+  bindWalk(); bindTrips(); bindKonser();
   const gi = $("goIn"); if (gi) gi.onclick = () => { closeSheet(); TOWN.enterPlace(l); Tele.ev("kota", { a: "masuk", p: P.id }); };
 }
 async function enterTown() {
@@ -233,7 +236,7 @@ async function enterTown() {
   TOWN.resize(app.clientWidth, app.clientHeight);
   if (GLOBE) GLOBE.exit(); outMode("town"); fairHint();
 }
-function exitTown() { if (SND) SND.silence(); if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
+function exitTown() { if (KONSER && KONSER.on) konserLeave(); if (SND) SND.silence(); if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
 const daysLeft = n => n > 0 ? `${n} day${n > 1 ? "s" : ""} left` : "Moving in today";
 const liveLeft = b => Math.max(0, b.done - today());
 const buildFrac = b => Math.max(0.04, Math.min(1, (dayFloat() - b.start) / Math.max(0.01, b.done - b.start)));
@@ -344,7 +347,7 @@ function townChips() {
 
 function resize() {
   const w = app.clientWidth, h = app.clientHeight;
-  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h);
+  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h); if (KONSER) KONSER.resize(w, h);
   // face the creature straight on; fit about 5 units of width at the creature
   camera.fov = 44;
   const half = 2.75, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
@@ -358,6 +361,7 @@ function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
   if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
+  if (KONSER && KONSER.on) { KONSER.frame(t, dt); renderer.render(KONSER.scene, KONSER.camera); if (Math.floor(ts * 4) !== Math.floor((ts - dt) * 4)) konserHud(); return; }
   if (GLOBE && GLOBE.on) {
     GLOBE.frame(t, dt); renderer.render(GLOBE.scene, GLOBE.camera);
     const hn = GLOBE.where(); if ($("hoodName").textContent !== hn) $("hoodName").textContent = hn;

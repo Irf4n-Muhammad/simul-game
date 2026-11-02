@@ -840,6 +840,31 @@ svg { stroke: currentColor; }
 .find-you span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .38s ease; z-index: 30; background: radial-gradient(ellipse at 50% 45%, #ffffff 0%, #f3f1ee 45%, #dfe8ef 100%); }
 .veil.on { opacity: 1; }
+/* v78: konser orang ketiga */
+#app.in-konser #floats, #app.in-konser .hud-top { display: none !important; }
+.konser-ui { position: absolute; inset: 0; pointer-events: none; z-index: 12; color: #fff; font-family: inherit; touch-action: none; }
+.konser-ui button { pointer-events: auto; font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.k-top { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; }
+.k-live { flex: none; padding: 6px 10px; border-radius: 999px; background: rgba(20,16,36,.7); font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.k-live.on { background: #d6334f; }
+.k-info { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 6px 12px; border-radius: 14px; background: rgba(20,16,36,.62); backdrop-filter: blur(6px); }
+.k-info b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-info span { font-size: 12px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-round { flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(20,16,36,.62); color: #fff; display: grid; place-items: center; }
+#kSnd .x { display: none; } #kSnd.off .x { display: inline; } #kSnd.off .wave { display: none; }
+.k-bar { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 62px); left: 12px; right: 12px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
+.k-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4fd1ff, #ff4fa3); }
+.k-say, .k-help { position: absolute; left: 50%; transform: translate(-50%, 8px); max-width: calc(100% - 32px); text-align: center; opacity: 0; transition: opacity .35s, transform .35s; border-radius: 999px; padding: 8px 16px; background: rgba(20,16,36,.66); }
+.k-say { top: 22%; font-size: 18px; font-weight: 800; }
+.k-help { bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); font-size: 13px; }
+.k-say.on, .k-help.on { opacity: 1; transform: translate(-50%, 0); }
+.k-joy { position: absolute; left: 22px; bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); width: 124px; height: 124px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.28); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+.k-joy i { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.k-btns { position: absolute; right: 18px; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); width: 168px; height: 150px; }
+.k-btns [data-emote] { position: absolute; width: 46px; height: 46px; border-radius: 50%; background: rgba(20,16,36,.62); font-size: 21px; display: grid; place-items: center; }
+.k-btns [data-emote="1"] { left: 0; bottom: 4px; } .k-btns [data-emote="2"] { left: 10px; bottom: 58px; } .k-btns [data-emote="3"] { left: 52px; bottom: 102px; } .k-btns [data-emote="4"] { left: 106px; bottom: 104px; }
+#kJump { position: absolute; right: 0; bottom: 0; width: 86px; height: 86px; border-radius: 50%; background: rgba(255,255,255,.88); color: #2e2a26; font-weight: 800; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.konser-ui button:active { transform: scale(.94); }
 #app.in-globe .hood-chip { color: #fff; background: rgba(20,30,48,.42); border-color: rgba(255,255,255,.25); }
 #app.in-globe .town-hint { color: #E8ECF2; background: rgba(20,30,48,.42); }
 .town-q { position: absolute; top: 76px; right: 16px; pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--ink-soft); font-weight: 800; font-size: 15px; display: grid; place-items: center; padding: 0; box-shadow: var(--shadow); }
@@ -1233,6 +1258,22 @@ svg { stroke: currentColor; }
   <div class="hint" id="hint">Tap to poke · swipe to change room</div>
   <div id="floats"></div>
   <div class="veil" id="veil"></div>
+  <div class="konser-ui" id="konserUI" hidden>
+    <div class="k-top">
+      <span class="k-live" id="kLive">Rehearsal</span>
+      <div class="k-info"><b id="kTitle">The Riverside Lights</b><span id="kAct"></span></div>
+      <button class="k-round" id="kSnd" aria-label="Concert sound" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="x" d="M16 9l5 6M21 9l-5 6"/></svg></button>
+      <button class="k-round" id="kExit" aria-label="Leave the concert"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="k-bar"><i id="kProg"></i></div>
+    <div class="k-say" id="kSay" aria-live="polite"></div>
+    <div class="k-help" id="kHelp"></div>
+    <div class="k-joy" id="kJoy" aria-label="Walk joystick"><i id="kKnob"></i></div>
+    <div class="k-btns">
+      <button data-emote="1" aria-label="Wave">👋</button><button data-emote="2" aria-label="Clap">👏</button><button data-emote="3" aria-label="Dance">💃</button><button data-emote="4" aria-label="Light stick">✨</button>
+      <button id="kJump">Jump</button>
+    </div>
+  </div>
   <div class="town-ui" id="townUI" hidden>
     <div class="hood-chip" id="hoodName">Old Town</div>
     <button class="town-q" id="townQ" aria-label="How the town works">?</button>
@@ -1293,6 +1334,8 @@ svg { stroke: currentColor; }
 <script src="region.js"></script>
 <script src="continent.js"></script>
 <script src="suara.js"></script>
+<script src="konser.js"></script>
+<script src="konser3d.js"></script>
 <script src="engine.js"></script>
 <script src="storylets.js"></script>
 <script src="agenda.js"></script>

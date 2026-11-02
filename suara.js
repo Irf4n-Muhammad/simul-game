@@ -93,6 +93,43 @@
       });
     };
     S.stop = () => { S.silence(); };
+    // v78: band konser. Not dari Konser.step(n) dijadwalkan sedikit di depan jam audio, ikut detik show (sama di semua HP).
+    let band = null, wn = null;
+    const env = (g, t, a, peak, dec) => { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); };
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    function voice(type, f, t, dur, vol, cut, out) {
+      const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+      o.type = type; o.frequency.value = f; lp.type = "lowpass"; lp.frequency.value = cut;
+      env(g, t, 0.006, vol, dur); o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function noise(t, dur, vol, type, f, out) {
+      const src = ac.createBufferSource(); src.buffer = wn; const fl = ac.createBiquadFilter(), g = ac.createGain();
+      fl.type = type; fl.frequency.value = f; env(g, t, 0.002, vol, dur); src.connect(fl); fl.connect(g); g.connect(out);
+      src.start(t, Math.random()); src.stop(t + dur + 0.05);
+    }
+    function play(e, t, out, len) {
+      if (e.kick || e.boom) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(e.boom ? 120 : 150, t); o.frequency.exponentialRampToValueAtTime(40, t + (e.boom ? 0.6 : 0.12)); env(g, t, 0.003, e.boom ? 1.4 : 0.9, e.boom ? 1.4 : 0.28); o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.6); }
+      if (e.boom) noise(t, 1.6, 0.5, "lowpass", 300, out);
+      if (e.snare) { noise(t, 0.16, 0.32, "highpass", 1500, out); voice("triangle", 190, t, 0.08, 0.25, 2000, out); }
+      if (e.clap) for (const d of [0, 0.012, 0.026]) noise(t + d, 0.09, 0.22, "bandpass", 1200, out);
+      if (e.hat) noise(t, 0.035, 0.09 * e.hat, "highpass", 7500, out);
+      if (e.bass) voice("sawtooth", hz(e.bass), t, 0.2, 0.28, 420, out);
+      if (e.lead) { voice("square", hz(e.lead), t, 0.2, 0.07, 2600, out); voice("triangle", hz(e.lead) * 1.004, t, 0.24, 0.08, 4000, out); }
+      if (e.pad) for (const m of e.pad) for (const dt of [-4, 4]) { const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter(); o.type = "sawtooth"; o.frequency.value = hz(m); o.detune.value = dt; lp.type = "lowpass"; lp.frequency.value = 900; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.025, t + 0.35); g.gain.setValueAtTime(0.025, t + len * 16 - 0.4); g.gain.linearRampToValueAtTime(0.0001, t + len * 16); o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + len * 16 + 0.05); }
+    }
+    // secNow(): detik show sekarang; stepAt(n): not langkah ke-n (atau null); len: panjang satu langkah (detik)
+    S.band = (secNow, stepAt, len) => {
+      S.bandStop(); if (!S.started) return;
+      if (!wn) wn = noiseBuf("white");
+      const bus = ac.createGain(); bus.gain.value = 0.6; bus.connect(master);
+      let last = -1;
+      const pump = () => {
+        const s = secNow(), from = Math.max(last + 1, Math.ceil(s / len));
+        for (let n = from; n * len < s + 0.3; n++) { last = n; const e = stepAt(n); if (e) play(e, ac.currentTime + Math.max(0, n * len - s), bus, len); }
+      };
+      band = { bus, iv: setInterval(pump, 80) }; pump();
+    };
+    S.bandStop = () => { if (!band) return; clearInterval(band.iv); const b = band.bus; b.gain.setTargetAtTime(0, ac.currentTime, 0.3); setTimeout(() => b.disconnect(), 1500); band = null; };
     return S;
   }
 

@@ -1203,6 +1203,7 @@
       for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05);
     };
     T.exit = () => { T.on = false; };
+    T.resume = () => { T.on = true; };   // v78: balik dari konser tanpa bangun ulang kota
     T.frame = (t, dt) => {
       if (tgt) {
         const k = 1 - Math.pow(0.025, dt);
