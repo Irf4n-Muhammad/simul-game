@@ -105,3 +105,28 @@ test("peti misteri dan puzzle (v61)", () => {
   // skin puzzle tercatat di daftar skin, satu per game
   for (const p of D.PUZZLES) assert.equal(D.SKINS[p.game].filter(s => s.puzzle === p.id).length, 1);
 });
+
+test("riwayat bareng makhluk: naik peringkat, rekor per hari, favorit, piala warisan", () => {
+  const W = D.fresh(); W.best = {};
+  const ayah = { id: "a1", nama: "Mochi", gen: 1 }, anak = { id: "b2", nama: "Tutu", gen: 2 };
+  // ronde pertama di Frog hop (batas Bronze 10): skor 4 belum naik, belum ada rekor sebelumnya → nggak dicatat
+  assert.equal(D.catat(W, "hop", 4, 0, 10, ayah), null);
+  // skor 12 dari rekor 4: naik ke Bronze → piala atas nama Mochi
+  const e = D.catat(W, "hop", 12, 4, 11, ayah);
+  assert.equal(e.j, "naik"); assert.equal(e.t, 1); assert.equal(W.piala.hop.nama, "Mochi");
+  // rekor baru tanpa naik peringkat, dua kali di hari yang sama → satu catatan dengan skor tertinggi
+  D.catat(W, "hop", 14, 12, 12, ayah); D.catat(W, "hop", 16, 14, 12, ayah);
+  assert.equal(W.riwayat.filter(x => x.j === "rekor").length, 1); assert.equal(W.riwayat.at(-1).s, 16);
+  // favorit butuh minimal 3 ronde
+  assert.equal(D.favorit(W, "a1"), "hop");
+  D.catat(W, "stack", 1, 0, 13, ayah); D.catat(W, "stack", 1, 0, 13, ayah);
+  assert.equal(D.favorit(W, "a1"), "hop");
+  assert.equal(D.favorit(W, "b2"), null);
+  // generasi berikut: piala Frog hop tetap punya Mochi sampai Tutu naikin peringkatnya lagi
+  D.catat(W, "hop", 18, 16, 200, anak); assert.equal(W.piala.hop.nama, "Mochi");
+  D.catat(W, "hop", 26, 18, 201, anak); assert.equal(W.piala.hop.nama, "Tutu"); assert.equal(W.piala.hop.gen, 2);
+  // tanpa makhluk nggak dicatat; riwayat dibatasi
+  assert.equal(D.catat(W, "hop", 99, 26, 202, null), null);
+  for (let i = 0; i < D.RIWAYAT_MAX + 20; i++) D.catat(W, "stack", 100 + i, 99 + i, 300 + i, anak);
+  assert.equal(W.riwayat.length, D.RIWAYAT_MAX);
+});
