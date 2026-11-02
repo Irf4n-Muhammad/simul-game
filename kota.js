@@ -322,6 +322,80 @@
     return L;
   }
 
+  // ---------------------------------------------------------------- v74: barang kecil biar kota nggak kayak maket
+  // Mobil parkir, lampu jalan, tong sampah, kotak pos, zebra cross, semak, bunga, cerobong, barang di atap. Semua dari benih
+  // tetap (sama buat semua pemain) dan cuma sampai DETAIL_R dari pusat: lebih jauh dari itu cuma kelihatan dari peta.
+  const DETAIL_R = 115;
+  const onStrip = (x, z) => Math.abs(x) < STRIP && z < PLAZA + 1 && z > ZMIN - 1;
+  const nearCross = (v, pos) => (v ? HZ : VX).some(c => Math.abs(c - pos) < 3.4);
+  const overWater = x => x > RIVER.x0 - 1.2 && x < RIVER.x1 + 1.2;
+  const overRail = x => Math.abs(x - RAIL.x) < 2.6;
+  let _det = null;
+  function details() {
+    if (_det) return _det;
+    const r = rng("kota-detail"), parked = [], lamps = [], bins = [], crossings = [], dashes = [];
+    for (const S of STREETS) {
+      const blocked = u => nearCross(S.v, u) || (!S.v && (overWater(u) || overRail(u))) || (S.v ? onStrip(S.at, u) : false);
+      for (const side of [-1, 1]) {
+        for (let u = -DETAIL_R + r() * 4; u < DETAIL_R; u += 2.3 + r() * 2.6) {
+          if (blocked(u) || r() > 0.5) continue;
+          const o = side * (ROAD_W / 2 - 0.32);
+          parked.push({ x: S.v ? S.at + o : u, z: S.v ? u : S.at + o, ry: S.v ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2), c: Math.floor(r() * 8) });
+        }
+        for (let u = -DETAIL_R + (side > 0 ? 4 : 0); u < DETAIL_R; u += 8) {
+          if (blocked(u)) continue;
+          const o = side * (ROAD_W / 2 + WALK - 0.14), x = S.v ? S.at + o : u, z = S.v ? u : S.at + o;
+          if (onStrip(x, z)) continue;
+          lamps.push({ x: r1(x), z: r1(z) });
+          if (r() < 0.32) bins.push({ x: r1(S.v ? x : x + 1.3), z: r1(S.v ? z + 1.3 : z), kind: r() < 0.6 ? "bin" : "post" });
+        }
+      }
+      // garis putus-putus di tengah jalan (Main Street di deretan kavling sudah punya sendiri)
+      for (let u = -DETAIL_R; u < DETAIL_R; u += 1.4) if (!nearCross(S.v, u) && !(S.v && onStrip(S.at, u))) dashes.push({ x: S.v ? S.at : u, z: S.v ? u : S.at, v: S.v });
+    }
+    // zebra cross di keempat sisi tiap persimpangan dekat kota
+    for (const x of VX) for (const z of HZ) {
+      if (Math.hypot(x, z + 20) > DETAIL_R) continue;
+      const d = ROAD_W / 2 + WALK + 0.55;
+      crossings.push({ x, z: z + d, v: true }, { x, z: z - d, v: true });
+      if (!overWater(x + d)) crossings.push({ x: x + d, z, v: false });
+      if (!overWater(x - d)) crossings.push({ x: x - d, z, v: false });
+    }
+    // semak dan bunga di depan rumah, cerobong di atap rumah, AC dan tandon di atap gedung
+    const bushes = [], flowers = [], chimneys = [], roofbits = [];
+    for (const b of fillers().buildings) {
+      if (Math.hypot(b.x, b.z + 20) > DETAIL_R) continue;
+      if (b.kind === "home" || b.kind === "shop") {
+        for (const sx of [-1, 1]) if (r() < 0.55) bushes.push({ x: r1(b.x + sx * (b.w / 2 + 0.25)), z: r1(b.z + (r() - 0.5) * b.d), s: r1(0.5 + r() * 0.5) });
+        if (b.kind === "home" && r() < 0.45) for (let k = 0; k < 4; k++) flowers.push({ x: r1(b.x + (r() - 0.5) * (b.w + 0.8)), z: r1(b.z + (r() < 0.5 ? -1 : 1) * (b.d / 2 + 0.3)), c: Math.floor(r() * 5) });
+        if (b.kind === "home" && r() < 0.6) chimneys.push({ x: r1(b.x + (r() - 0.5) * b.w * 0.4), z: r1(b.z + (r() - 0.5) * b.d * 0.3), y: r1(b.h + 0.2), h: r1(0.6 + r() * 0.5) });
+      } else {
+        const n = 1 + Math.floor(r() * 3);
+        for (let k = 0; k < n; k++) roofbits.push({ x: r1(b.x + (r() - 0.5) * (b.w - 1)), z: r1(b.z + (r() - 0.5) * (b.d - 1)), y: b.h, kind: b.kind === "tower" && k === 0 ? "tank" : "ac", s: r1(0.5 + r() * 0.4) });
+      }
+    }
+    const P = PLACE.park;
+    for (let k = 0; k < 70; k++) flowers.push({ x: r1(P.x - P.w / 2 + 1 + r() * (P.w - 2)), z: r1(P.z - P.d / 2 + 1 + r() * (P.d - 2)), c: Math.floor(r() * 5) });
+    for (let k = 0; k < 24; k++) bushes.push({ x: r1(P.x + (r() < 0.5 ? -1 : 1) * (P.w / 2 - 0.6)), z: r1(P.z + (r() - 0.5) * (P.d - 2)), s: r1(0.6 + r() * 0.5) });
+    _det = { parked, lamps, bins, crossings, dashes, bushes, flowers, chimneys, roofbits };
+    return _det;
+  }
+  // mobil yang jalan: tiap mobil punya jalan dan arah sendiri, posisinya dari jam (sama di semua HP). Malam lebih sepi.
+  const CARS = 26;
+  function carsAt(sec) {
+    const hour = sec / 3600, busy = hour >= 6.5 && hour < 22 ? 1 : 0.35, out = [];
+    for (let i = 0; i < CARS; i++) {
+      if (i / CARS >= busy) break;
+      const S = STREETS[(i * 7) % STREETS.length], dir = i % 2 ? 1 : -1, speed = 3.5 + (i * 37 % 5) * 0.7, L = 2 * DETAIL_R;
+      const t = ((i * 53.7 + sec * speed) % L + L) % L - DETAIL_R, u = dir * t, lane = dir * 0.48;
+      out.push({ x: S.v ? S.at - lane : u, z: S.v ? u : S.at + lane, ry: S.v ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? Math.PI / 2 : -Math.PI / 2), c: i % 8 });
+    }
+    return out;
+  }
+  // perahu di sungai dan burung di atas taman
+  function boatsAt(sec) { return [0, 1, 2].map(k => { const L = 2 * DETAIL_R, dir = k % 2 ? 1 : -1, t = ((sec * (0.9 + k * 0.3) + k * 77) % L) - DETAIL_R; return { x: (RIVER.x0 + RIVER.x1) / 2 + dir * 1.6, z: dir * t, ry: dir > 0 ? 0 : Math.PI }; }); }
+  function birdsAt(sec) { const P = PLACE.park; return Array.from({ length: 7 }, (_, k) => { const a = sec / (9 + k) + k * 0.9; return { x: P.x + Math.cos(a) * (6 + k), y: 7 + (k % 3) * 1.4 + Math.sin(sec / 3 + k) * 0.4, z: P.z + Math.sin(a) * (9 + k * 0.7), ry: -a, flap: Math.sin(sec * 9 + k * 2) }; }); }
+
   // ---------------------------------------------------------------- kereta: tiap 4 menit nyata, berhenti 12 detik di stasiun
   const TRAIN = { every: 240, run: 36, stop: 12 };
   function trainAt(sec) {
@@ -344,7 +418,7 @@
   }
 
   const API = { HOODS, BANDS, ZMIN, PLAZA, ROAD_W, WALK, GAP, STRIP, STREETS, VX, HZ, RIVER, RAIL, REACH, BOUNDS, PLACES, PLACE, SCHOOL_OF, TOWERS,
-    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H };
+    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Kota = API;
 })();
