@@ -53,6 +53,7 @@ const MG_GAMES = {
   buah: { name: "Fruit catch", icon: "🧺", color: "#E59A2E", timed: true, how: "Move the basket with your finger. Fruit +1, star +3, bug −3." },
   hop: { name: "Frog hop", icon: "🐸", color: "#3FA34D", timed: false, how: "The frog bounces by itself. Slide your finger left and right to land on clouds. Cracked clouds break." },
   ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear the board for +5." },
+  kuis: { name: "Quiz rush", icon: "🧠", color: "#2F8FD8", timed: false, how: "Race Kiko, Bolt and Mimi through 10 quick questions. Right is +2, the fastest right answer +1, winning +3." },
   lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
 const MG_ORDER = Object.keys(MG_GAMES);
@@ -149,6 +150,11 @@ function mgStart(k = "potong", daily = false) {
     window.addEventListener("keydown", FC.key);
   } else if (k === "ingat") {
     cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) memTap(...pos(e)); });
+  } else if (k === "kuis") {
+    // Quiz rush: ketuk tombol jawaban, atau tombol 1–4 di keyboard
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) quizTap(...pos(e)); });
+    FC.key = e => { const n = "1234".indexOf(e.key); if (n >= 0 && FC.run && FC.phase === "ask") qzAnswer(FC.ppl[0], n); };
+    window.addEventListener("keydown", FC.key);
   } else if (!g.timed) {
     // Stack, Knife throw, Town run: satu tap = satu aksi
     const tap = { stack: stackTap, pisau: knifeTap, lari: runTap }[k];
@@ -206,7 +212,7 @@ function mgRun() {
   Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
-  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit }[FC.k];
+  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit }[FC.k];
   FC.got = []; FC.drop = dropPlan();
   if (init) init();
   if (ARC) ARC.played.add(FC.k);
@@ -219,7 +225,7 @@ function mgFrame() {
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
-  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep }[FC.k];
+  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep, kuis: quizStep }[FC.k];
   worldDraw(dt);
   step(dt, el);
   mgJuice(dt);
@@ -730,7 +736,7 @@ function mgDone() {
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
   const W = wallet(), k = FC.k, { r, fresh, dly, hist, who } = FC.res;
-  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped` }[k];
+  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped`, kuis: `${["1st", "2nd", "3rd", "4th"][FC.place] || ""} place · ${FC.caught}/${QZ_N} right` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
   const sub = r.best && FC.score ? `${what}` : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `${gap} short of your record (${W.best[k]})` : `${what} · record ${W.best[k] || 0}`;
