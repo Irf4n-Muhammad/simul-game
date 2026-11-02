@@ -136,3 +136,17 @@ test("v75 peta benua: sama tiap kali, kota di daratan benuanya, semua kota nyamb
   const p = R.toMap(B.CONT.meridia, 30, 0), q = R.toLatLon(B.CONT.meridia, p.x, p.z);
   assert.ok(Math.abs(q.lat - 30) < 1e-9 && Math.abs(q.lon) < 1e-9);
 });
+
+test("v76 pasar dan festival: jadwal buka, lapak nggak di kolam, pengunjung di lorong pasar", () => {
+  const at = (dow, h) => { const d = new Date(2026, 10, 1 + ((dow - 0 + 7) % 7), h, 0); assert.equal(d.getDay(), dow); return d; };   // 1 Nov 2026 = Minggu
+  assert.equal(K.fairNow(at(2, 10), null), null, "Selasa tanpa festival: nggak ada pasar");
+  assert.equal(K.fairNow(at(6, 9), null).on, true); assert.equal(K.fairNow(at(6, 9), null).kind, "market");
+  assert.equal(K.fairNow(at(0, 15), null).on, false);
+  const f = K.fairNow(at(2, 20), { nama: "Lantern Night", ikon: "🏮" });
+  assert.equal(f.on, true); assert.equal(f.name, "Lantern Night"); assert.equal(f.lights, true);
+  for (const s of K.FAIR.stalls) assert.ok(s.z < -6.5 && s.z > -13 && Math.abs(s.x) < 6, `lapak ${s.x},${s.z}`);   // kolam di z 0..7 lokal, jalan pasar motong ujung utara, taman lebar 12
+  for (const z of K.HZ) assert.ok(Math.abs(K.PLACE.park.z - 10 - z) > 4, "lapangan pasar kena jalan");
+  const P = K.PLACE.park, A = K.FAIR.aisle;
+  for (const sec of [100, 5000, 40000]) for (const p of K.fairFolk(sec)) { assert.ok(p.x - P.x >= A.x0 - 1e-9 && p.x - P.x <= A.x1 + 1e-9 && p.z - P.z >= A.z0 - 1e-9 && p.z - P.z <= A.z1 + 1e-9); }
+  assert.equal(JSON.stringify(K.fairFolk(777)), JSON.stringify(K.fairFolk(777)));
+});

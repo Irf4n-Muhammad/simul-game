@@ -35,6 +35,9 @@
     park: { name: "Riverside Park", mood: 6, health: 0.2, lines: ["{n} walks to Riverside Park with you and spends a long time watching the ducks on the pond.", "At Riverside Park {n} runs the whole loop around the pond, then flops onto the grass, very pleased."] },
     bazaar: { name: "the Bazaar", mood: 5, bond: 0.3, lines: ["{n} tags along to the Bazaar and stops at every stall. The fruit seller gives them a free plum.", "At the Bazaar {n} holds on tight and points at everything with bright colours."] },
     school: { name: "school", mood: 3, skill: "logic", lines: ["{n} walks past the school with you and peeks through the gate at the big classroom.", "{n} stands at the school gate for a while, reading the notices out loud."] },
+    // v76: pasar akhir pekan / festival di Riverside Park. Kalau ada festival dunia yang lagi jalan, barisnya pakai nama festivalnya.
+    fair: { name: "the market", mood: 7, bond: 0.4, lines: ["{n} goes round the Weekend Market with you and comes home with a paper bag of warm pastries.", "At the Weekend Market {n} tries every free sample and makes friends with the honey seller."],
+      fest: ["{n} spends the evening at {f} with you, eyes wide at every lantern.", "{n} dances in front of the little stage at {f} until the band stops.", "At {f} {n} wins a tiny prize at a stall and won't put it down."] },
     square: { name: "Town Square", mood: 4, bond: 0.4, lines: ["{n} sits with you by the fountain in Town Square, counting the pigeons.", "In Town Square {n} waves at the clock tower every time it chimes."] },
   };
   // nilai tiap rawat untuk kondisi: [dikerjakan, telat, terlewat]
@@ -431,9 +434,11 @@
         if (J.bond) c.bond = Math.min(100, c.bond + J.bond * (1 - c.bond / 100));
         if (J.health) x.stat("kesehatan", J.health);
         if (J.skill && c.st) c.st.skills[J.skill] = Math.min(100, c.st.skills[J.skill] + 0.2);
-        x.say(x.rng.choice(J.lines).replace(/\{n\}/g, x.n));
+        const fest = J.fest ? E.world_active(this.home.world, day).find(e => e.jenis === "festival") : null;
+        x.say(x.rng.choice(fest ? J.fest : J.lines).replace(/\{n\}/g, x.n).replace(/\{f\}/g, fest ? fest.nama : ""));
         const seen = (c.info.jalan_ke ||= []);
-        if (!seen.includes(kind.slice(6))) { seen.push(kind.slice(6)); x.remember(`First walk to ${J.name} with you.`); }
+        if (fest) x.remember(`Went to ${fest.nama} with you.`);
+        else if (!seen.includes(kind.slice(6))) { seen.push(kind.slice(6)); x.remember(`First walk to ${J.name} with you.`); }
         (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["jalan:" + kind.slice(6)]));
         return true;
       }

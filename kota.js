@@ -129,7 +129,7 @@
     }
     // taman: pohon di pinggir, kolam di tengah (kolamnya digambar town.js)
     const P = PLACE.park, rp = rng("taman");
-    for (let k = 0; k < 26; k++) { const a = k / 26 * Math.PI * 2; trees.push({ x: r1(P.x + Math.cos(a) * (P.w / 2 - 0.9) * (0.8 + rp() * 0.2)), z: r1(P.z + Math.sin(a) * (P.d / 2 - 1) * (0.85 + rp() * 0.15)), s: r1(1 + rp() * 0.6) }); }
+    for (let k = 0; k < 26; k++) { const a = k / 26 * Math.PI * 2, t = { x: r1(P.x + Math.cos(a) * (P.w / 2 - 0.9) * (0.8 + rp() * 0.2)), z: r1(P.z + Math.sin(a) * (P.d / 2 - 1) * (0.85 + rp() * 0.15)), s: r1(1 + rp() * 0.6) }; if (t.z - P.z > -6.4 || Math.abs(t.x - P.x) > 5.2) trees.push(t); }   // v76: selatan taman dikosongin buat lapangan pasar
     // tepi sungai dan hutan di luar kota
     for (let z = 46; z > -100; z -= 3.2) for (const x of [RIVER.x0 - 0.9, RIVER.x1 + 0.9]) if (rp() < 0.55 && !HZ.some(h => Math.abs(h - z) < 2.2)) trees.push({ x: r1(x), z: r1(z), s: r1(0.9 + rp() * 0.5) });
     for (let k = 0; k < 340; k++) {
@@ -375,7 +375,7 @@
       }
     }
     const P = PLACE.park;
-    for (let k = 0; k < 70; k++) flowers.push({ x: r1(P.x - P.w / 2 + 1 + r() * (P.w - 2)), z: r1(P.z - P.d / 2 + 1 + r() * (P.d - 2)), c: Math.floor(r() * 5) });
+    for (let k = 0; k < 70; k++) { const f = { x: r1(P.x - P.w / 2 + 1 + r() * (P.w - 2)), z: r1(P.z - P.d / 2 + 1 + r() * (P.d - 2)), c: Math.floor(r() * 5) }; if (f.z - P.z > -6.4) flowers.push(f); }
     for (let k = 0; k < 24; k++) bushes.push({ x: r1(P.x + (r() < 0.5 ? -1 : 1) * (P.w / 2 - 0.6)), z: r1(P.z + (r() - 0.5) * (P.d - 2)), s: r1(0.6 + r() * 0.5) });
     _det = { parked, lamps, bins, crossings, dashes, bushes, flowers, chimneys, roofbits };
     return _det;
@@ -417,8 +417,40 @@
     return c;
   }
 
+  // ---------------------------------------------------------------- v76: pasar dan festival di Riverside Park
+  // Bagian selatan taman (jalan pasar motong ujung utaranya, kolam di tengah) jadi lapangan pasar: dua baris lapak saling hadap, panggung kecil, tali lampu.
+  // Kapan buka: festival dunia dari server (jenis "festival", sama buat semua pemain) jam 10 sampai 23,
+  // atau Pasar Akhir Pekan tiap Sabtu dan Minggu jam 8 sampai 14. Koordinat lokal taman (x timur, z utara = +z dunia).
+  const FAIR = {
+    place: "park",
+    stalls: [-4.6, -2.8, -1, 0.8, 2.6].flatMap((x, i) => [{ x, z: -11.8, ry: 0, c: i }, { x: x + 0.4, z: -8.2, ry: Math.PI, c: i + 5 }]),
+    stage: { x: 4.6, z: -10, w: 2, d: 3 },
+    aisle: { x0: -5.2, x1: 3.2, z0: -10.8, z1: -9.2 },
+    poles: [[-5.6, -12.6], [-5.6, -7.4], [3.4, -12.6], [3.4, -7.4], [-1.1, -12.6], [-1.1, -7.4]],
+  };
+  // d = Date (jam lokal pemain); fest = festival dunia yang lagi jalan hari ini ({ nama, ikon } atau null)
+  function fairNow(d, fest) {
+    const h = d.getHours() + d.getMinutes() / 60, dow = d.getDay();
+    const F = fest ? { kind: "festival", name: fest.nama, ikon: fest.ikon || "🎉", from: 10, to: 23, lights: true }
+      : dow === 0 || dow === 6 ? { kind: "market", name: "Weekend Market", ikon: "🧺", from: 8, to: 14, lights: false } : null;
+    if (!F) return null;
+    return Object.assign(F, { on: h >= F.from && h < F.to, soon: h < F.from, place: FAIR.place });
+  }
+  // pengunjung pasar: tiap orang muter dari lapak ke lapak (ganti tiap 40-70 detik), sama di semua HP buat detik yang sama
+  function fairFolk(sec, n = 24) {
+    const P = PLACE[FAIR.place], A = FAIR.aisle, out = [];
+    for (let i = 0; i < n; i++) {
+      const r = rng("fair:" + i), per = 40 + Math.floor(r() * 30), off = r() * per, k = Math.floor((sec + off) / per), ph = ((sec + off) % per) / per;
+      const at = j => { const q = rng("fair:" + i + ":" + j); return { x: A.x0 + q() * (A.x1 - A.x0), z: A.z0 + q() * (A.z1 - A.z0) }; };
+      const a = at(k), b = at(k + 1), walk = ph > 0.8, t = walk ? (ph - 0.8) / 0.2 : 0;
+      const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      out.push({ x: P.x + x, z: P.z + z, dir: walk ? Math.atan2(b.x - a.x, b.z - a.z) : (a.z < (A.z0 + A.z1) / 2 ? Math.PI : 0), walk, tint: i % 8 });
+    }
+    return out;
+  }
+
   const API = { HOODS, BANDS, ZMIN, PLAZA, ROAD_W, WALK, GAP, STRIP, STREETS, VX, HZ, RIVER, RAIL, REACH, BOUNDS, PLACES, PLACE, SCHOOL_OF, TOWERS,
-    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt };
+    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt, FAIR, fairNow, fairFolk };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Kota = API;
 })();

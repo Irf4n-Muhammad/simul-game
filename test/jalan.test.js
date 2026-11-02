@@ -18,7 +18,7 @@ test("jalan: sekali sehari, mood naik, masuk cerita hari itu, tempat asing ditol
   const L = (g.noon_logs || []).find(l => l.events.includes("jalan:park"));
   assert.ok(L && /Riverside Park/.test(L.lines.join(" ")), "masuk cerita");
   // tiap tempat jalan ada di peta kota
-  for (const id of Object.keys(G.WALKS)) assert.ok(id === "school" || id === "square" || K.PLACE[id], id);
+  for (const id of Object.keys(G.WALKS)) assert.ok(id === "school" || id === "square" || id === "fair" || K.PLACE[id], id);
 });
 
 test("jalan: diputar ulang dari catatan aksi hasilnya sama", () => {
@@ -28,4 +28,13 @@ test("jalan: diputar ulang dari catatan aksi hasilnya sama", () => {
   const g2 = new G.Game(JSON.parse(JSON.stringify(st))); g2.advance(90, null);
   const a = g.home.members[0], b = g2.home.members[0];
   assert.equal(a.bond, b.bond); assert.deepEqual(a.needs, b.needs); assert.deepEqual(a.info.jalan_ke, b.info.jalan_ke);
+});
+
+test("jalan ke pasar: kalau ada festival dunia, ceritanya pakai nama festivalnya", () => {
+  const g = new G.Game(fresh()); g.advance(80, null); g.half_now = 0;
+  const c = g.home.members[0], day = g.home.last_day;
+  g.home.world.events = [{ id: "uji", jenis: "festival", nama: "Lantern Night", mulai: day, selesai: day + 2, efek: { mood: 0 }, baris: [] }];
+  assert.equal(g.act(c.id, "jalan:fair"), true);
+  const L = (g.noon_logs || []).find(l => l.events.includes("jalan:fair"));
+  assert.match(L.lines.join(" "), /Lantern Night/);
 });

@@ -23,7 +23,7 @@ function youData() {
 }
 function townInit() {
   if (!TOWN) TOWN = Town.create({ THREE, renderer, canvas, M, F, RB, SPH, CYL, canvasTex, environment: scene.environment,
-    getLit: () => LIT, getPeriod: () => litName, bgColor: () => townSky()[1], getWeather: () => (typeof WX === "string" ? WX : "clear"), reduce, showLot,
+    getLit: () => LIT, getPeriod: () => litName, bgColor: () => townSky()[1], getWeather: () => (typeof WX === "string" ? WX : "clear"), getFair: () => fairInfo(), reduce, showLot,
     now: () => dayFloat(), PAINTS: Status.PAINTS, toGlobe: () => toRegion() });
   return TOWN;
 }
@@ -55,7 +55,7 @@ async function cityFromGlobe() {
   closeSheet(); await veil(true);
   townInit(); Tele.layar("app", "town");   // globe tetap "on" sampai kota siap, biar tur dan pengingat nggak nongol di tengah tirai
   await TOWN.enter(townData(), false, { map: true }); TOWN.resize(app.clientWidth, app.clientHeight);
-  GLOBE.exit(); outMode("town"); veil(false);
+  GLOBE.exit(); outMode("town"); veil(false); fairHint();
 }
 async function toGlobe(cont) {
   closeSheet(); await veil(true);
@@ -81,7 +81,7 @@ async function cityFromRegion() {
   closeSheet(); await veil(true);
   townInit(); Tele.layar("app", "town");
   await TOWN.enter(townData(), false, { map: true }); TOWN.resize(app.clientWidth, app.clientHeight);
-  CONT.exit(); outMode("town"); veil(false);
+  CONT.exit(); outMode("town"); veil(false); fairHint();
 }
 function showTown(t, C) {
   sheet.classList.add("clear");
@@ -115,6 +115,16 @@ function showCity(C) {
   sheet.querySelector("[data-close]").onclick = closeSheet;
   GLOBE.flyTo(C.lat, C.lon, 1.7);
 }
+// v76: pasar akhir pekan / festival di Riverside Park (kota.js), dihitung ulang paling sering tiap 20 detik
+let fairC = { t: 0, v: null };
+function fairInfo() {
+  const t = Date.now(); if (t - fairC.t < 20000) return fairC.v;
+  const fest = game ? (Engine.world_active(game.home.world, today()) || []).find(e => e.jenis === "festival") : null;
+  fairC = { t, v: Kota.fairNow(new Date(), fest ? { nama: fest.nama, ikon: fest.ikon } : null) };
+  return fairC.v;
+}
+let fairSaid = "";
+function fairHint() { const F = fairInfo(), k = F && F.on ? today() + F.name : ""; if (k && k !== fairSaid) { fairSaid = k; setTimeout(() => say(`${F.ikon} ${F.name} is on at Riverside Park until ${F.to}:00.`, 4000), 1200); } }
 // v75: ajak jalan. Bisa kalau makhluknya lagi senggang (di rumah atau nongkrong, bukan tidur/sekolah/kerja/pergi) dan belum jalan hari ini.
 function walkState() {
   if (!cur || !TOWN || !TOWN.you) return { ok: false, why: "" };
@@ -126,7 +136,7 @@ function walkState() {
   if (!["home", "park", "square"].includes(Y.at)) return { ok: false, why: `${cur.nama} is busy right now (${Y.line.toLowerCase()}).` };
   return { ok: true };
 }
-const walkBtn = (dest) => { const W = walkState(); return W.ok ? `<button class="big" id="goWalk" data-dest="${dest}">Walk here with ${esc(cur.nama)}</button>` : W.why ? `<p class="muted">${esc(W.why)}</p>` : ""; };
+const walkBtn = (dest) => { const W = walkState(), F = dest === "fair" ? fairInfo() : null; return W.ok ? `<button class="big" id="goWalk" data-dest="${dest}">${F ? `Go to ${F.kind === "festival" ? esc(F.name) : "the market"} with ${esc(cur.nama)}` : `Walk here with ${esc(cur.nama)}`}</button>` : W.why ? `<p class="muted">${esc(W.why)}</p>` : ""; };
 function bindWalk() {
   const b = $("goWalk"); if (!b) return;
   b.onclick = () => {
@@ -146,7 +156,8 @@ function showPlace(l) {
   openSheet("lot", `<span class="ribbon">Old Town</span><h2>${esc(P.name)}</h2><p>${esc(P.about)}</p>
     ${here ? `<p><b>${esc(cur.nama)} is here.</b> ${esc(Y.line)}.</p>` : ""}
     <div class="facts"><span>Right now</span><span>${n ? `${n} townsfolk` : "Quiet"}</span>${P.school ? `<span>Pupils</span><span>${P.school === "smp" ? "Every creature, day 180 to 265" : "From day 60"}</span>` : ""}</div>
-    ${P.id === "park" || P.id === "bazaar" ? walkBtn(P.id) : P.school && P.id === Kota.SCHOOL_OF[(game.home.get(cur.id).info.sekolah_pilihan || {}).id || "dekat"] ? walkBtn("school") : ""}
+    ${P.id === "park" && fairInfo() ? `<p><b>${esc(fairInfo().ikon)} ${esc(fairInfo().name)}</b> · ${fairInfo().on ? `on now, until ${fairInfo().to}:00` : fairInfo().soon ? `opens at ${fairInfo().from}:00 today` : "finished for today"}. Stalls, music and half the town by the pond.</p>` : ""}
+    ${P.id === "park" && fairInfo() && fairInfo().on ? walkBtn("fair") : P.id === "park" || P.id === "bazaar" ? walkBtn(P.id) : P.school && P.id === Kota.SCHOOL_OF[(game.home.get(cur.id).info.sekolah_pilihan || {}).id || "dekat"] ? walkBtn("school") : ""}
     ${TOWN.canEnter(l) ? `<button class="big" id="goIn">${here ? `Look in on ${esc(cur.nama)}` : "Go inside"}</button>` : ""}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
@@ -161,7 +172,7 @@ async function enterTown() {
   await TOWN.enter(townData());
   $("townBtn").disabled = false;
   TOWN.resize(app.clientWidth, app.clientHeight);
-  if (GLOBE) GLOBE.exit(); outMode("town");
+  if (GLOBE) GLOBE.exit(); outMode("town"); fairHint();
 }
 function exitTown() { if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
 const daysLeft = n => n > 0 ? `${n} day${n > 1 ? "s" : ""} left` : "Moving in today";

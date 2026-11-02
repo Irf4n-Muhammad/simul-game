@@ -594,7 +594,7 @@
         const pond = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), M(0x6fa9c4, { roughness: 0.2 })); pond.rotation.x = -Math.PI / 2; pond.scale.set(1, 1.6, 1); pond.position.set(0.6, 0.06, 3); g.add(pond);
         mesh(new THREE.BoxGeometry(0.8, 0.055, P.d - 1), walkM2(), -2.6, 0.04, 0, g).castShadow = false;
         mesh(new THREE.BoxGeometry(P.w - 1, 0.055, 0.8), walkM2(), 0, 0.04, -5, g).castShadow = false;
-        for (const [x, z, ry] of [[-1.8, -2, Math.PI / 2], [-1.8, 2, Math.PI / 2], [1, -6, 0], [3, -6, 0], [-3.4, -8, Math.PI / 2]]) bench(x, z, ry, g);
+        for (const [x, z, ry] of [[-1.8, -2, Math.PI / 2], [-1.8, 2, Math.PI / 2], [1, -6, 0], [3, -6, 0], [-3.4, -3.2, Math.PI / 2]]) bench(x, z, ry, g);
       } else if (P.kind === "market") {
         mesh(new THREE.BoxGeometry(W, P.h, D * 0.62), M(0xe3d4bd), 0, P.h / 2, -D * 0.19, front);
         roofOn(W + 0.6, 1.4, D * 0.62 + 0.6, P.h, 0x7a6a5a, -D * 0.19);
@@ -612,6 +612,66 @@
       const hit = new THREE.Mesh(new THREE.BoxGeometry(P.w, Math.max(1.5, P.h), P.d), new THREE.MeshBasicMaterial({ visible: false })); hit.position.set(P.x, Math.max(0.75, P.h / 2), P.z); scene.add(hit);
       const entry = { hit, place: P, g, face, W, D }; lots.push(entry);
       entry.tag = mapLabel(P.name, PLACE_SUB[P.kind] || "", P.x, (P.h || 0.5) + (P.kind === "office" ? 1.2 : 1.8), P.z);
+    }
+    // ---------------------------------------------------------------- v76: the market and festivals at Riverside Park
+    // kota.js says when it's on (Weekend Market on Sat/Sun mornings, or a world festival from the server). Built once,
+    // hidden until it opens: two rows of stalls with awnings and goods, a little stage with bunting, poles with strings of
+    // lanterns that glow in the evening, paper lanterns floating on the pond at festival nights, and a crowd browsing.
+    let fair = null;
+    function buildFair() {
+      const P = Kota.PLACE[Kota.FAIR.place], g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.visible = false; scene.add(g);
+      const F = Kota.FAIR, wood = M(0xa9825e, { roughness: 0.8 }), awn = [0xc2704f, 0x5f8a6e, 0xd4a853, 0x6d7790, 0xb86f8a, 0xe9e2d6, 0x8fb06a, 0xc98b6a, 0x7d9ab8, 0xd9b48f];
+      const goods = [0xd9534f, 0xf0ad4e, 0x8fb06a, 0xe8d8be, 0xb86f8a, 0x6d7790];
+      for (const st of F.stalls) {
+        const s0 = new THREE.Group(); s0.position.set(st.x, 0, st.z); s0.rotation.y = st.ry; g.add(s0);
+        mesh(RB(1.3, 0.55, 0.6, 0.03), wood, 0, 0.28, 0, s0);
+        for (let k = 0; k < 4; k++) mesh(RB(0.24, 0.12, 0.24, 0.03), M(goods[(st.c + k) % goods.length], { roughness: 0.8 }), -0.42 + k * 0.28, 0.62, 0.05, s0);
+        for (const sx of [-0.6, 0.6]) for (const sz of [-0.25, 0.3]) mesh(CYL(0.025, 0.025, 1.3, 6), M(0x3a332d), sx, 0.65, sz, s0);
+        const a = mesh(RB(1.45, 0.06, 0.85, 0.02), M(awn[st.c % awn.length], { roughness: 0.7 }), 0, 1.32, 0.05, s0); a.rotation.x = -0.2;
+        for (let k = 0; k < 5; k++) mesh(new THREE.ConeGeometry(0.08, 0.14, 4), M(k % 2 ? 0xf7f2ea : awn[st.c % awn.length]), -0.58 + k * 0.29, 1.2, 0.48, s0).rotation.x = Math.PI;
+      }
+      // stage with bunting
+      const S = F.stage; mesh(RB(S.w, 0.35, S.d, 0.04), M(0x8a6a5a), S.x, 0.18, S.z, g);
+      for (const sz of [-1, 1]) mesh(CYL(0.04, 0.04, 2, 6), M(0x3a332d), S.x - S.w / 2 + 0.1, 1.2, S.z + sz * (S.d / 2 - 0.1), g);
+      for (let k = 0; k < 7; k++) { const f = mesh(new THREE.ConeGeometry(0.12, 0.22, 3), M(awn[k]), S.x - S.w / 2 + 0.1, 2.0 - Math.sin(k / 6 * Math.PI) * 0.25, S.z - S.d / 2 + 0.2 + k * (S.d - 0.4) / 6, g); f.rotation.x = Math.PI; }
+      // poles and lantern strings (the bulbs glow at dusk and on festival nights)
+      const bulbM = M(0xfff1d6, { emissive: 0xffc070, emissiveIntensity: 0 }), bulbs = [];
+      for (const [x, z] of F.poles) mesh(CYL(0.04, 0.05, 2.4, 6), M(0x3a332d), x, 1.2, z, g);
+      const pairs = [[0, 2], [1, 3], [0, 4], [4, 2], [1, 5], [5, 3], [4, 5]];
+      for (const [a, b] of pairs) {
+        const A = F.poles[a], B = F.poles[b], n = Math.max(4, Math.round(Math.hypot(B[0] - A[0], B[1] - A[1]) / 0.6));
+        for (let k = 1; k < n; k++) { const t = k / n; bulbs.push({ x: A[0] + (B[0] - A[0]) * t, y: 2.35 - Math.sin(t * Math.PI) * 0.35, z: A[1] + (B[1] - A[1]) * t, c: [0xffc070, 0xff8f70, 0xfff1d6, 0x9fd0ff][k % 4] }); }
+      }
+      const bim = new THREE.InstancedMesh(SPH(0.07, 8, 6), bulbM, bulbs.length), m4 = new THREE.Matrix4(), col = new THREE.Color();
+      bulbs.forEach((b, i) => { m4.makeTranslation(b.x, b.y, b.z); bim.setMatrixAt(i, m4); col.setHex(b.c).convertSRGBToLinear(); bim.setColorAt(i, col); }); g.add(bim);
+      // paper lanterns floating on the pond (festival nights only)
+      const lanM = M(0xffd9a0, { emissive: 0xff9a40, emissiveIntensity: 1.4 }), lan = new THREE.Group(); lan.visible = false; g.add(lan);
+      for (let k = 0; k < 9; k++) { const l = mesh(RB(0.22, 0.2, 0.22, 0.05), lanM, 0, 0.16, 0, lan); l.userData.k = k; }
+      // the crowd: their own little pool (only drawn near the camera)
+      const folkG = []; for (let k = 0; k < 24; k++) { const f = walker(FOLK[k % FOLK.length]); scene.remove(f); g.add(f); f.visible = false; folkG.push(f); }
+      const tag = label("Weekend Market", "On now", P.x - 0.6, 4.2, P.z - 10, true, 0.8); tag.userData.map = true; tag.userData.base = tag.scale.clone(); tag.userData.y0 = 4.2; tag.visible = false;
+      fair = { g, bulbM, lan, folkG, tag, P, key: "" };
+    }
+    function updateFair(t) {
+      if (!fair) return;
+      const F = env.getFair ? env.getFair() : null, on = !!(F && F.on);
+      fair.g.visible = on; fair.tag.userData.hide = !on; T.fair = F;
+      if (!on) return;
+      const key = F.name + "|" + env.getPeriod();
+      if (key !== fair.key) {
+        fair.key = key; const p = env.getPeriod();
+        fair.bulbM.emissiveIntensity = p === "night" ? 2.2 : p === "evening" ? 1.4 : F.lights ? 0.5 : 0.15;
+        scene.remove(fair.tag); const i = signs.indexOf(fair.tag); if (i >= 0) signs.splice(i, 1);
+        fair.tag = label(`${F.ikon} ${F.name}`, `On now · until ${F.to}:00`, fair.P.x - 0.6, 4.2, fair.P.z - 10, true, 0.8); fair.tag.userData.map = true; fair.tag.userData.base = fair.tag.scale.clone(); fair.tag.userData.y0 = 4.2;
+        fair.lan.visible = F.kind === "festival" && (p === "night" || p === "evening");
+      }
+      if (fair.lan.visible) fair.lan.children.forEach(l => { const k = l.userData.k, a = t / 9000 + k * 0.7; l.position.set(0.6 + Math.cos(a) * 1.6, 0.16 + Math.sin(t / 700 + k) * 0.03, 3 + Math.sin(a) * 3.2); });
+      const near = zoom < 0.56, sec = clock().sec, L = near ? Kota.fairFolk(sec, fair.folkG.length) : null;
+      fair.folkG.forEach((f, k) => {
+        f.visible = near; if (!near) return;
+        const p = L[k], bob = p.walk ? Math.abs(Math.sin(t / 160 + k)) : Math.abs(Math.sin(t / 900 + k)) * 0.3;
+        f.position.set(p.x - fair.P.x, bob * 0.06, p.z - fair.P.z); f.rotation.y = p.dir;
+      });
     }
     // ---------------------------------------------------------------- v75: going inside a building
     // The walls sink away (a doll's-house cutaway) and the room appears: desks in a school, desk clusters in an office,
@@ -812,10 +872,11 @@
     const WALK_STAY = 6 * 60 * 1000, WALK_V = 3.4;
     T.walkWith = (dest, school) => {
       if (!you) return false;
-      const P = Kota.PLACE[dest === "school" ? Kota.SCHOOL_OF[school] || "primary" : dest]; if (!P) return false;
+      const P = Kota.PLACE[dest === "school" ? Kota.SCHOOL_OF[school] || "primary" : dest === "fair" ? Kota.FAIR.place : dest]; if (!P) return false;
       const a = T.homeDoor || Kota.PLACE.square.spot, door = Kota.doorOf(P), r = Kota.route(a, door, 1);
       if (P.spot) r.push({ x: P.spot.x, z: P.spot.z });
-      walk = { r, len: Kota.pathLen(r), t0: performance.now(), P, line: `Out with you · ${P.name}` };
+      if (dest === "fair") r.push({ x: P.x - 2.6, z: P.z - 10 });   // into the market aisle
+      walk = { r, len: Kota.pathLen(r), t0: performance.now(), P, line: `Out with you · ${dest === "fair" && T.fair ? T.fair.name : P.name}` };
       youTagDraw(walk.line); tgt = { x: a.x, z: a.z + 2, zoom: 0.2 };
       return true;
     };
@@ -838,7 +899,7 @@
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; sky = null; inside = null; T.inside = null; walk = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; sky = null; inside = null; T.inside = null; walk = null; fair = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
@@ -935,7 +996,7 @@
         z = z1;
       });
       // v73: the city around the street, then the people in it
-      buildCity(); buildSky();
+      buildCity(); buildSky(); buildFair();
       const mine = lots.find(l => l.who && l.who.you && !l.build) || lots.find(l => l.who && l.who.you);
       if (mine) { const hx = mine.hit.position.x, hz = mine.hit.position.z; T.homeX = hx; T.homeZ = T.homeZ ?? hz; T.homeDoor = { x: Math.sign(hx) * (ROAD_W / 2 + WALK / 2), z: hz }; T.homeTall = mine.hood && (mine.hood.kind === "mansion" ? 4.6 : 3.4); }
       buildLife(data);
@@ -1138,7 +1199,7 @@
         focusX += (tgt.x - focusX) * k; focusZ += (tgt.z - focusZ) * k; zoom += (tgt.zoom - zoom) * k;
         if (Math.abs(tgt.x - focusX) + Math.abs(tgt.z - focusZ) < 0.03 && Math.abs(tgt.zoom - zoom) < 0.002) tgt = null;
       }
-      applyPeriod(false); updateLife(t, dt); updateInside(t, dt); place(); updateSky(t, dt);
+      applyPeriod(false); updateLife(t, dt); updateInside(t, dt); updateFair(t); place(); updateSky(t, dt);
       if (T.homeMarker) T.homeMarker.rotation.y = t / 700;
       drawClock();
       if (t - lastSite > 1000) { lastSite = t; for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05); }
