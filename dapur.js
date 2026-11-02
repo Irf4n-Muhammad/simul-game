@@ -120,7 +120,38 @@
     }
     return { first, streak: W.streak.n, bonus, best: W.harian.best };
   }
-  const api = { START, CAP, PRICE, TIERS, SKINS, fresh, price, can, spend, earn, left, coinsFor, tier, track, unlocked, skinOf, wear, harian, rng, daily, streakNow, BOX_DAY, PUZZLES, canDrop, found, puzzleNow, addPiece, openBox };
+  // ---- riwayat bareng makhluk (v70): Games nyambung ke hidup makhluk tanpa makhluknya ikut main.
+  // who = makhluk yang lagi dirawat waktu ronde dimainkan ({ id, nama, gen }). before = rekor sebelum ronde ini.
+  // - main_oleh[id][game] = berapa ronde dimainkan selama makhluk itu hidup → game favoritnya
+  // - piala[game] = siapa yang lagi dirawat waktu peringkat game itu naik → piala keluarga diwarisin ke generasi berikut
+  // - riwayat = naik peringkat dan rekor baru (rekor digabung satu per hari per game per makhluk), masuk kronik keluarga
+  const RIWAYAT_MAX = 300;
+  function catat(W, game, skor, before, day, who) {
+    if (!who || !who.id) return null;
+    W.main_oleh = W.main_oleh || {}; const m = W.main_oleh[who.id] = W.main_oleh[who.id] || {};
+    m[game] = (m[game] || 0) + 1;
+    W.riwayat = W.riwayat || [];
+    const t0 = tier(game, before).ix, t1 = tier(game, Math.max(before || 0, skor)).ix;
+    let e = null;
+    if (t1 > t0) {
+      W.piala = W.piala || {};
+      W.piala[game] = { id: who.id, nama: who.nama, gen: who.gen || 1, t: t1, d: day };
+      e = { d: day, id: who.id, k: game, s: skor, t: t1, j: "naik" };
+      W.riwayat.push(e);
+    } else if (skor > (before || 0) && before > 0) {
+      const last = W.riwayat.find(x => x.j === "rekor" && x.d === day && x.k === game && x.id === who.id);
+      if (last) { last.s = Math.max(last.s, skor); e = last; } else { e = { d: day, id: who.id, k: game, s: skor, j: "rekor" }; W.riwayat.push(e); }
+    }
+    if (W.riwayat.length > RIWAYAT_MAX) W.riwayat.splice(0, W.riwayat.length - RIWAYAT_MAX);
+    return e;
+  }
+  // game favorit = paling sering dimainkan selama makhluk itu hidup, minimal 3 ronde (seri: yang duluan di urutan game)
+  function favorit(W, id) {
+    const m = W.main_oleh && W.main_oleh[id]; if (!m) return null;
+    let best = null; for (const g of Object.keys(m)) if (m[g] >= 3 && (!best || m[g] > m[best])) best = g;
+    return best;
+  }
+  const api = { START, CAP, PRICE, TIERS, SKINS, fresh, price, can, spend, earn, left, coinsFor, tier, track, unlocked, skinOf, wear, harian, rng, daily, streakNow, BOX_DAY, PUZZLES, canDrop, found, puzzleNow, addPiece, openBox, catat, favorit, RIWAYAT_MAX };
   if (typeof module !== "undefined") module.exports = api;
   else globalThis.Dapur = api;
 })();

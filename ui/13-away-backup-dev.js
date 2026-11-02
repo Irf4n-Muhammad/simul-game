@@ -197,8 +197,18 @@ function chronicleText(list) {
   const fam = (game.home.members[0] || {}).name || "Our";
   return [`The ${fam} family chronicle`, ""].concat(list.map(e => `${fmtDate(e.d)}  ${e.t.startsWith(e.name) ? "" : e.name + ": "}${e.t}`)).join("\n");
 }
+// v70: naik peringkat dan rekor mini game ikut masuk kronik, atas nama makhluk yang lagi dirawat waktu itu
+function gamesChronicle() {
+  const W = state && state.dapur, by = {}; if (!W || !W.riwayat || typeof MG_GAMES === "undefined") return [];
+  for (const c of game.home.members) by[c.id] = c;
+  return W.riwayat.filter(e => by[e.id] && MG_GAMES[e.k]).map(e => {
+    const g = MG_GAMES[e.k].name, c = by[e.id];
+    return { d: e.d, id: e.id, name: c.name, gen: c.gen, b: e.j === "naik" ? 1 : 0, k: "games",
+      t: e.j === "naik" ? `cheered you to ${Dapur.TIERS[e.t]} in ${g} (${e.s}).` : `watched you set a new ${g} record: ${e.s}.` };
+  });
+}
 function showChronicle(bigOnly = true) {
-  const all = game.chronicle(), list = bigOnly ? all.filter(e => e.b) : all, mm = {};
+  const all = game.chronicle().concat(gamesChronicle()).sort((a, b) => a.d - b.d || b.b - a.b), list = bigOnly ? all.filter(e => e.b) : all, mm = {};
   for (const m of vm().anggota) mm[m.id] = m;
   let yr = null;
   const rows = list.map(e => {
