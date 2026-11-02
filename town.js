@@ -36,6 +36,7 @@
     Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 70 }); sun.shadow.radius = 4;
     scene.add(sun, sun.target);
     const lit = [];        // window and lamp materials that glow in the evening
+    const roads = [];      // v75: road materials that go dark and shiny in the rain
     const lots = [];       // tap targets
     const sites = [];      // houses being built: their clip plane rises with the real clock
     const walkers = [];
@@ -459,6 +460,8 @@
       return (facadeCache[kind] = [side, side, top, top, side, side]);
     }
     let movers = null;   // instanced moving cars, boats and birds, updated from the clock
+    let poolM = null, glowT = null;
+    const glowTex = () => glowT || (glowT = canvasTex((c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.45, "rgba(255,255,255,0.45)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, 64, 64));
     function instAt(geo, mat, n) { const im = new THREE.InstancedMesh(geo, mat, n); im.count = 0; im.castShadow = true; im.frustumCulled = false; scene.add(im); return im; }
     function buildDetails() {
       const D = Kota.details(), box = (w, h, d, y = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2 + y, 0); return g; };
@@ -468,6 +471,10 @@
       const lampM = M(0x3a332d, { roughness: 0.5 }), headM = M(0xfff1d6, { emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(headM);
       inst(new THREE.CylinderGeometry(0.035, 0.05, 1.6, 6).translate(0, 0.8, 0), lampM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
       inst(new THREE.SphereGeometry(0.1, 10, 8).translate(0, 1.62, 0), headM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      // v75: warm pools of light on the pavement after dark
+      poolM = new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xffc98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+      const pools = inst(new THREE.PlaneGeometry(3.2, 3.2).rotateX(-Math.PI / 2).translate(0, 0.09, 0), poolM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      if (pools) { pools.castShadow = false; pools.receiveShadow = false; pools.renderOrder = 2; }
       inst(new THREE.CylinderGeometry(0.13, 0.11, 0.4, 10).translate(0, 0.2, 0), M(0xffffff, { roughness: 0.6 }), D.bins, b => ({ x: b.x, z: b.z, sx: b.kind === "bin" ? 1 : 0.7, sy: b.kind === "bin" ? 1 : 1.6, sz: b.kind === "bin" ? 1 : 0.7, c: b.kind === "bin" ? 0x4f6b55 : 0xc2503f }));
       // road paint
       const paint = M(0xf2ede4, { roughness: 0.9 });
@@ -511,7 +518,7 @@
     }, 512, 512, 60, 60));
     const unitBox = () => { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return g; };
     function buildCity() {
-      const roadM = M(0x6a6460, { roughness: 0.95 }), walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
+      const roadM = M(0x6a6460, { roughness: 0.95 }); roads.push(roadM); const walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
       // ground everywhere, a touch under the Main Street blocks
       const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xffffff, { roughness: 1, map: groundMap() })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
       const strip = (x, z, w, d, mat, y, h) => { const m = mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z); m.castShadow = false; return m; };
@@ -603,8 +610,103 @@
         for (const z of [-4, 0, 4]) mesh(CYL(0.05, 0.05, 2.1, 6), M(0x3a332d), Kota.RAIL.x + 2.9 - P.x, 1.25, z, g);
       }
       const hit = new THREE.Mesh(new THREE.BoxGeometry(P.w, Math.max(1.5, P.h), P.d), new THREE.MeshBasicMaterial({ visible: false })); hit.position.set(P.x, Math.max(0.75, P.h / 2), P.z); scene.add(hit);
-      const entry = { hit, place: P }; lots.push(entry);
+      const entry = { hit, place: P, g, face, W, D }; lots.push(entry);
       entry.tag = mapLabel(P.name, PLACE_SUB[P.kind] || "", P.x, (P.h || 0.5) + (P.kind === "office" ? 1.2 : 1.8), P.z);
+    }
+    // ---------------------------------------------------------------- v75: going inside a building
+    // The walls sink away (a doll's-house cutaway) and the room appears: desks in a school, desk clusters in an office,
+    // stalls in the Bazaar, benches at the station. The townsfolk who are there right now sit in it (kota.js crowd), and
+    // your creature takes a seat if its day plan has it there. Zoom out or pan away and you step back outside.
+    const ROOM = { school: { zc: -0.2, dd: 0.6 }, market: { zc: -0.19, dd: 0.62 }, office: { zc: 0, dd: 1 }, station: { zc: 0, dd: 1 } };
+    let inside = null;
+    function interior(e) {
+      const P = e.place, R = ROOM[P.kind]; if (!R) return null;
+      const g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.rotation.y = e.face; scene.add(g);
+      const W = e.W - 0.3, D = e.D * R.dd - 0.3, z0 = e.D * R.zc, seats = [];
+      const floorC = { school: 0xd9b98f, office: 0xb9bfc4, market: 0xcdb497, station: 0xd8d0c2 }[P.kind], wallC = { school: 0xf1e6d2, office: 0xe4e8ea, market: 0xe8d9c0, station: 0xe9e1d3 }[P.kind];
+      const fl = mesh(new THREE.BoxGeometry(W, 0.06, D), M(floorC, { roughness: 0.8 }), 0, 0.05, z0, g); fl.castShadow = false;
+      const wm = M(wallC, { roughness: 0.95 }), wh = 0.9, th = 0.14, cap = M(0x8a7a6a);
+      const wall = (x, z, w, d) => { mesh(new THREE.BoxGeometry(w, wh, d), wm, x, wh / 2, z, g); mesh(new THREE.BoxGeometry(w + 0.02, 0.05, d + 0.02), cap, x, wh + 0.02, z, g); };
+      wall(0, z0 - D / 2, W, th); wall(-W / 2, z0, th, D); wall(W / 2, z0, th, D);
+      const gap = 1.2; for (const sx of [-1, 1]) { mesh(new THREE.BoxGeometry(W / 2 - gap / 2, 0.3, th), wm, sx * (W / 2 + gap / 2) / 2, 0.15, z0 + D / 2, g); mesh(new THREE.BoxGeometry(W / 2 - gap / 2, 0.05, th + 0.02), cap, sx * (W / 2 + gap / 2) / 2, 0.32, z0 + D / 2, g); }   // low front wall with the door, so you can see in
+      const wood = M(0xa9825e, { roughness: 0.7 }), dark = M(0x3a332d, { roughness: 0.5 });
+      const desk = (x, z, w = 0.62, d = 0.42) => { mesh(new THREE.BoxGeometry(w, 0.05, d), wood, x, 0.46, z, g); for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.04, 0.44, d * 0.9), wood, x + sx * (w / 2 - 0.04), 0.23, z, g); };
+      if (P.kind === "school") {
+        const board = mesh(new THREE.BoxGeometry(Math.min(3.2, W * 0.5), 0.75, 0.04), M(0x35574a, { roughness: 0.9 }), 0, 1.05, z0 - D / 2 + 0.1, g);
+        mesh(new THREE.BoxGeometry(board.geometry.parameters.width + 0.1, 0.06, 0.08), wood, 0, 0.66, z0 - D / 2 + 0.12, g);
+        desk(0, z0 - D / 2 + 0.75, 1.0, 0.5); seats.push({ x: 0, z: z0 - D / 2 + 1.25, ry: Math.PI, teacher: true });
+        for (let r = 0; r < 4; r++) for (let c = -2; c <= 2; c++) {
+          const x = c * Math.min(1.0, (W - 1) / 5), z = z0 - D / 2 + 1.9 + r * Math.min(0.95, (D - 2.4) / 4); if (z > z0 + D / 2 - 0.5) continue;
+          desk(x, z); seats.push({ x, z: z + 0.38, ry: Math.PI });
+        }
+      } else if (P.kind === "office") {
+        const scr = M(0x26303a, { roughness: 0.3, emissive: 0x6fa0c8, emissiveIntensity: 0.35 });
+        for (let cz = z0 - D / 2 + 1.1; cz < z0 + D / 2 - 0.9; cz += 1.6) for (let cx = -W / 2 + 1.1; cx < W / 2 - 0.7; cx += 1.9) {
+          mesh(new THREE.BoxGeometry(1.3, 0.05, 0.9), M(0xeeeae4), cx, 0.46, cz, g); mesh(new THREE.BoxGeometry(0.05, 0.42, 0.85), dark, cx, 0.24, cz, g);
+          for (const sz of [-1, 1]) { mesh(new THREE.BoxGeometry(0.42, 0.28, 0.03), scr, cx, 0.66, cz + sz * 0.12, g); seats.push({ x: cx, z: cz + sz * 0.62, ry: sz > 0 ? Math.PI : 0 }); }
+        }
+        for (const sx of [-1, 1]) { mesh(CYL(0.16, 0.13, 0.32, 10), M(0xc9b8a3), sx * (W / 2 - 0.4), 0.16, z0 - D / 2 + 0.4, g); mesh(SPH(0.32, 10, 8), M(0x6f8f52, { roughness: 1 }), sx * (W / 2 - 0.4), 0.55, z0 - D / 2 + 0.4, g); }
+      } else if (P.kind === "market") {
+        const cols = [0xc2704f, 0xd4a853, 0x8fb06a, 0xb86f8a, 0x6d7790];
+        for (let k = 0; k < 6; k++) {
+          const x = (k % 3 - 1) * (W / 3.2), z = z0 + (k < 3 ? -D / 4 : D / 6);
+          mesh(RB(1.3, 0.62, 0.7, 0.03), wood, x, 0.31, z, g);
+          for (let j = 0; j < 4; j++) mesh(RB(0.26, 0.12, 0.26, 0.02), M(cols[(k + j) % 5], { roughness: 0.8 }), x - 0.45 + j * 0.3, 0.68, z, g);
+          seats.push({ x, z: z - 0.6, ry: 0, stand: true }, { x: x + 0.4, z: z + 0.65, ry: Math.PI, stand: true });
+        }
+      } else if (P.kind === "station") {
+        mesh(new THREE.BoxGeometry(2.4, 0.9, 0.6), M(0x8a6a5a), 0, 0.45, z0 - D / 2 + 0.6, g); mesh(new THREE.BoxGeometry(2.4, 0.5, 0.04), M(0x2e2a26, { emissive: 0xd4a853, emissiveIntensity: 0.5 }), 0, 1.3, z0 - D / 2 + 0.1, g);
+        for (let r = 0; r < 3; r++) for (const sx of [-1, 1]) { const x = sx * W / 4, z = z0 - D / 2 + 1.8 + r * 1.1; if (z > z0 + D / 2 - 0.6) continue; mesh(new THREE.BoxGeometry(W / 3, 0.06, 0.4), wood, x, 0.4, z, g); mesh(new THREE.BoxGeometry(W / 3, 0.36, 0.05), wood, x, 0.6, z + 0.2, g); for (const k of [-1, 0, 1]) seats.push({ x: x + k * W / 10, z: z - 0.1, ry: Math.PI }); }
+      }
+      // who's in here now: townsfolk + your creature
+      const folkG = [];
+      for (let k = 0; k < Math.min(seats.length, 24); k++) { const f = walker(FOLK[k % FOLK.length]); scene.remove(f); g.add(f); f.visible = false; folkG.push(f); }
+      g.visible = false;
+      return { g, seats, folkG, P };
+    }
+    const interiors = {};
+    T.canEnter = e => !!(e && e.place && ROOM[e.place.kind]);
+    T.enterPlace = e => {
+      if (!T.canEnter(e)) return false;
+      if (inside && inside.e !== e) leavePlace();
+      const I = interiors[e.place.id] || (interiors[e.place.id] = interior(e));
+      inside = { e, I, k: inside ? inside.k : 0 }; I.g.visible = true;
+      fillRoom();
+      tgt = { x: e.place.x + Math.sin(e.face) * 0.6, z: e.place.z + Math.cos(e.face) * 0.6 + 1.2, zoom: 0.12 };
+      return true;
+    };
+    function leavePlace() { if (!inside) return; const { e, I } = inside; e.g.visible = true; e.g.scale.y = 1; I.g.visible = false; if (e.tag) e.tag.userData.hide = false; inside = null; T.inside = null; }
+    T.leavePlace = leavePlace;
+    function fillRoom() {
+      const { e, I } = inside, c = clock(), P = e.place;
+      let n = (Kota.crowd(c.day, c.dow, c.sec)[P.id] || 0);
+      if (P.kind === "school") { const h = c.sec / 3600, open = c.dow > 0 && c.dow < 6 && h >= 7.5 && h < 15; n = open ? Math.round(I.seats.length * 0.75) : 0; }
+      const youHere = T.you && T.you.at === P.id;
+      I.youSeat = youHere ? (P.kind === "school" ? 1 + ((P.id.length * 3) % Math.max(1, I.seats.length - 1)) : 0) : -1;
+      let used = 0;
+      I.folkG.forEach((f, k) => {
+        const si = k; if (si === I.youSeat || used >= n || !I.seats[si]) { f.visible = false; return; }
+        const S = I.seats[si]; used++; f.visible = true; f.position.set(S.x, S.stand ? 0.08 : 0.12, S.z); f.rotation.y = S.ry; f.userData.seat = S;
+      });
+      T.inside = { id: P.id, name: P.name, n: used, you: youHere };
+    }
+    function updateInside(t, dt) {
+      if (!inside) return;
+      const { e, I } = inside, P = e.place;
+      inside.k = Math.min(1, inside.k + dt * 2.5);
+      e.g.scale.y = Math.max(0.001, 1 - smooth(inside.k)); e.g.visible = inside.k < 1; if (e.tag) e.tag.userData.hide = true;
+      I.g.scale.y = 0.2 + 0.8 * smooth(inside.k);
+      if (Math.floor(t / 5000) !== Math.floor((t - dt * 1000) / 5000)) fillRoom();
+      I.folkG.forEach((f, k) => { if (f.visible) f.position.y = (f.userData.seat && f.userData.seat.stand ? 0.08 : 0.12) + Math.abs(Math.sin(t / 700 + k * 1.3)) * 0.03; });
+      // stepping back out: zoomed out, or moved away from the building
+      const far = Math.hypot(focusX - P.x, focusZ - P.z) > Math.max(P.w, P.d) * 0.9 + 3;
+      if (!tgt && (zoom > 0.34 || far)) leavePlace();
+    }
+    // world spot of your creature's seat when it's inside the building you're looking into
+    function youSeatWorld(at) {
+      if (!inside || inside.e.place.id !== at || inside.I.youSeat < 0) return null;
+      const S = inside.I.seats[inside.I.youSeat]; if (!S) return null;
+      const v = new THREE.Vector3(S.x, 0.12, S.z); inside.I.g.localToWorld(v); return { x: v.x, z: v.z, ry: S.ry + inside.e.face };
     }
     let _walk2 = null; const walkM2 = () => _walk2 || (_walk2 = M(0xddd3c4, { roughness: 1 }));
     const PLACE_SUB = { office: "Offices", school: "School", park: "Park", market: "Market", station: "Trains" };
@@ -675,6 +777,7 @@
       }
       // your creature: plan refreshed every few seconds, position every frame
       if (!you) { T.you = null; return; }
+      if (walk && walkStep(t, near, d)) return;
       if (!youNow || t - youAt > 4000) { youAt = t; youNow = Kota.creatureNow(you.o, you.day, c.sec, T.homeDoor || Kota.PLACE.square.spot); }
       if (!youNow) { youG.visible = youPin.visible = false; if (youTag) youTag.visible = false; T.you = null; return; }
       const L = youNow.T ? Kota.locate(youNow.T, c.sec, 0.37) : youNow;
@@ -688,21 +791,54 @@
         const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 150)) : 0;
         youG.visible = near; youG.position.set(L.x, bob * 0.07, L.z); youG.rotation.y = L.dir;
         px = L.x; pz = L.z; py = near ? 1.5 : 0.6;
+      } else if (youSeatWorld(L.at)) {
+        const S = youSeatWorld(L.at);
+        youG.visible = true; youG.position.set(S.x, 0.14 + Math.abs(Math.sin(t / 600)) * 0.03, S.z); youG.rotation.y = S.ry;
+        px = S.x; pz = S.z; py = 1.2;
       } else {
         youG.visible = false;
         const P = L.at === "home" ? null : Kota.PLACE[L.at];
         px = P ? P.x : (T.homeX ?? Kota.PLACE.square.x); pz = P ? P.z : (T.homeZ ?? Kota.PLACE.square.z); py = P ? (P.h || 0.5) + 0.8 : (T.homeTall || 3) + 0.6;
       }
       T.youX = px; T.youZ = pz;
-      youPin.visible = !near || !L.show;
+      youPin.visible = (!near || !L.show) && !youSeatWorld(L.at);
       youPin.position.set(px, py + Math.sin(t / 320) * 0.12 * pinS, pz); youPin.scale.setScalar(pinS); youPin.rotation.y = t / 900;
       youTag.visible = true; youTag.position.set(px, py + (youPin.visible ? 1.9 * pinS : 1.0) + 0.6 * k, pz); youTag.scale.copy(youTag.userData.base).multiplyScalar(k);
+    }
+    // ---------------------------------------------------------------- v75: out for a walk with you
+    // game.js records the walk ("jalan:<place>"); here you watch it: your creature leaves home, walks the streets to the
+    // place (a bit faster than townsfolk, so it doesn't take ages), the camera follows, and it hangs around there for a while.
+    let walk = null;
+    const WALK_STAY = 6 * 60 * 1000, WALK_V = 3.4;
+    T.walkWith = (dest, school) => {
+      if (!you) return false;
+      const P = Kota.PLACE[dest === "school" ? Kota.SCHOOL_OF[school] || "primary" : dest]; if (!P) return false;
+      const a = T.homeDoor || Kota.PLACE.square.spot, door = Kota.doorOf(P), r = Kota.route(a, door, 1);
+      if (P.spot) r.push({ x: P.spot.x, z: P.spot.z });
+      walk = { r, len: Kota.pathLen(r), t0: performance.now(), P, line: `Out with you · ${P.name}` };
+      youTagDraw(walk.line); tgt = { x: a.x, z: a.z + 2, zoom: 0.2 };
+      return true;
+    };
+    T.walking = () => !!walk;
+    function walkStep(t, near, d) {
+      const s = (performance.now() - walk.t0) / 1000 * WALK_V, there = s >= walk.len;
+      if (there && performance.now() - walk.t0 - walk.len / WALK_V * 1000 > WALK_STAY) { walk = null; youNow = null; return false; }
+      const L = Kota.along(walk.r, Math.min(s, walk.len)), bob = there ? Math.abs(Math.sin(t / 500)) * 0.4 : Math.abs(Math.sin(t / 150));
+      youG.visible = near; youG.position.set(L.x, bob * 0.07, L.z); youG.rotation.y = there ? t / 2000 : L.dir;
+      youPin.visible = !near; const pinS = Math.max(1, d / 26), k = Math.max(1, d / 34);
+      youPin.position.set(L.x, 0.6 + Math.sin(t / 320) * 0.12 * pinS, L.z); youPin.scale.setScalar(pinS);
+      if (youLineDrawn !== walk.line) youTagDraw(walk.line);
+      youTag.visible = true; youTag.position.set(L.x, (near ? 1.5 : 0.6) + (youPin.visible ? 1.9 * pinS : 1.0) + 0.6 * k, L.z); youTag.scale.copy(youTag.userData.base).multiplyScalar(k);
+      T.youX = L.x; T.youZ = L.z; T.you = { line: walk.line, at: there ? walk.P.id : "walk", show: true, away: false, walking: true };
+      // camera follows unless you're dragging around
+      if (!drag && !pinch && !tgt) { const f = 0.04; focusX += (L.x - focusX) * f; focusZ += (L.z + 2 - focusZ) * f; }
+      return true;
     }
     // ---------------------------------------------------------------- layout
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; sky = null; inside = null; T.inside = null; walk = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
@@ -712,7 +848,7 @@
         T.homes = homes;
         const gw = 2 * (ROAD_W / 2 + WALK + 6.6), zc = PLAZA / 2;
         const gnd = mesh(new THREE.BoxGeometry(gw, 0.2, PLAZA), M(0xb9b596, { roughness: 1 }), 0, -0.1, zc); gnd.castShadow = false;
-        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, PLAZA), M(0x6a6460, { roughness: 0.95 }), 0, 0.03, zc); road.castShadow = false;
+        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, PLAZA), (roads[roads.length] = M(0x6a6460, { roughness: 0.95 })), 0, 0.03, zc); road.castShadow = false;
         for (let dz = PLAZA - 0.6; dz > 0.3; dz -= 1.4) mesh(new THREE.BoxGeometry(0.07, 0.01, 0.6), F(0xe9e2d6), 0, 0.065, dz);
         for (const sx of [-1, 1]) { const w = mesh(RB(WALK, 0.08, PLAZA, 0.02), M(0xddd3c4, { roughness: 1 }), sx * (ROAD_W / 2 + WALK / 2), 0.04, zc); w.castShadow = false; }
         for (let k = 0; k < 4; k++) for (const sx of [-1, 1]) lamp(sx * (ROAD_W / 2 + 0.12), 1.8 + k * 3.7 + (sx > 0 ? 1.8 : 0));
@@ -738,7 +874,7 @@
         const gw = 2 * (ROAD_W / 2 + WALK + H.lot + 1.2);
         const gnd = mesh(new THREE.BoxGeometry(gw, 0.2, len), M(H.ground, { roughness: 1 }), 0, -0.1, (z0 + z1) / 2); gnd.castShadow = false;
         // road and sidewalks
-        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, len), M(0x6a6460, { roughness: 0.95 }), 0, 0.03, (z0 + z1) / 2); road.castShadow = false;
+        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, len), (roads[roads.length] = M(0x6a6460, { roughness: 0.95 })), 0, 0.03, (z0 + z1) / 2); road.castShadow = false;
         for (let dz = z0 - 0.6; dz > z1 + 0.3; dz -= 1.4) mesh(new THREE.BoxGeometry(0.07, 0.01, 0.6), F(0xe9e2d6), 0, 0.065, dz);
         for (let k = 0; k < H.per; k++) for (const sx of [-1, 1]) lamp(sx * (ROAD_W / 2 + 0.12), z0 - GAP / 2 - k * H.lot - (sx > 0 ? H.lot / 2 : 0));
         for (const sx of [-1, 1]) { const w = mesh(RB(WALK, 0.08, len, 0.02), M(0xddd3c4, { roughness: 1 }), sx * (ROAD_W / 2 + WALK / 2), 0.04, (z0 + z1) / 2); w.castShadow = false; }
@@ -799,7 +935,7 @@
         z = z1;
       });
       // v73: the city around the street, then the people in it
-      buildCity();
+      buildCity(); buildSky();
       const mine = lots.find(l => l.who && l.who.you && !l.build) || lots.find(l => l.who && l.who.you);
       if (mine) { const hx = mine.hit.position.x, hz = mine.hit.position.z; T.homeX = hx; T.homeZ = T.homeZ ?? hz; T.homeDoor = { x: Math.sign(hx) * (ROAD_W / 2 + WALK / 2), z: hz }; T.homeTall = mine.hood && (mine.hood.kind === "mansion" ? 4.6 : 3.4); }
       buildLife(data);
@@ -811,17 +947,93 @@
       return prices[H.id];
     }
 
-    // ---------------------------------------------------------------- light that follows the real clock
-    let lastPeriod = "";
+    // ---------------------------------------------------------------- light that follows the real clock (v75: and the real weather)
+    // Weather comes from the same real forecast as the window sky (ui/33-weather.js). Rain and snow fall around the camera
+    // when you're near the street; from the map you see clouds drifting over the city instead. Storms flash now and then.
+    const WXK = {   // sun = how much direct sun gets through, fog = how far you can see, wet = shiny roads, glow = lamps on in the day
+      clear: { sun: 1, hemi: 1, fog: 1, wet: 0, glow: 0, clouds: 3, cloudC: 0xffffff, cloudO: 0.5 },
+      cloud: { sun: 0.6, hemi: 1.12, fog: 0.85, wet: 0, glow: 0, clouds: 12, cloudC: 0xf2f4f6, cloudO: 0.62 },
+      fog: { sun: 0.55, hemi: 1.1, fog: 0.42, wet: 0.3, glow: 0.25, clouds: 6, cloudC: 0xeef0f2, cloudO: 0.5 },
+      rain: { sun: 0.45, hemi: 1.0, fog: 0.7, wet: 1, glow: 0.3, clouds: 14, cloudC: 0x9aa3ae, cloudO: 0.7, rain: 1 },
+      storm: { sun: 0.3, hemi: 0.85, fog: 0.58, wet: 1, glow: 0.55, clouds: 16, cloudC: 0x6b7280, cloudO: 0.78, rain: 1.6, bolt: true },
+      snow: { sun: 0.7, hemi: 1.15, fog: 0.66, wet: 0.2, glow: 0.2, clouds: 12, cloudC: 0xf7f8fa, cloudO: 0.66, snow: 1 },
+    };
+    const wxNow = () => (env.getWeather && WXK[env.getWeather()]) ? env.getWeather() : "clear";
+    let sky = null, flash = 0, nextBolt = 0, wxFog = 1;
+    function buildSky() {
+      // rain: short streaks; snow: soft dots. Both live in a unit box that follows (and scales with) the camera.
+      const N = 1600, rp = new Float32Array(N * 6), sp = new Float32Array(N * 3), seed = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { seed[i * 3] = Math.random() * 2 - 1; seed[i * 3 + 1] = Math.random(); seed[i * 3 + 2] = Math.random() * 2 - 1; }
+      const rg = new THREE.BufferGeometry(); rg.setAttribute("position", new THREE.BufferAttribute(rp, 3));
+      const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0xc9d6e4, transparent: true, opacity: 0.55, depthWrite: false, fog: false }));
+      const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+      const snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, map: glowTex(), size: 0.12, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
+      for (const o of [rain, snow]) { o.frustumCulled = false; o.visible = false; o.renderOrder = 5; scene.add(o); }
+      // clouds over the city, seen from the map
+      const cm = new THREE.SpriteMaterial({ map: cloudTex(), transparent: true, opacity: 0, depthWrite: false, fog: false });
+      const clouds = [];
+      for (let k = 0; k < 16; k++) { const c = new THREE.Sprite(cm); c.userData = { x: -90 + ((k * 61) % 190), z: -110 + ((k * 37) % 170), s: 34 + (k % 5) * 9, v: 0.6 + (k % 3) * 0.25 }; c.visible = false; c.renderOrder = 6; scene.add(c); clouds.push(c); }
+      sky = { N, rp, sp, seed, rain, snow, clouds, cm, t: 0 };
+    }
+    let cloudT = null;
+    const cloudTex = () => cloudT || (cloudT = canvasTex((c, w, h) => {
+      for (let k = 0; k < 9; k++) { const x = w * (0.22 + 0.56 * ((k * 0.37) % 1)), y = h * (0.38 + 0.24 * ((k * 0.61) % 1)), r = w * (0.16 + 0.1 * ((k * 0.53) % 1)); const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, "rgba(255,255,255,0.75)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+    }, 128, 128));
+    function updateSky(t, dt) {
+      if (!sky) return;
+      const K = WXK[wxNow()], d = distNow(), near = 1 - smooth((zoom - 0.42) / 0.16), mapK = smooth((zoom - 0.45) / 0.2);
+      sky.t += dt;
+      // precipitation box: wide enough to fill the view, scaled with the camera distance
+      const W = Math.min(60, d * 0.75 + 6), Hh = Math.min(40, d * 0.7 + 5);
+      const fall = (o, on) => { o.visible = on && near > 0.02; if (o.visible) { o.position.set(focusX, 0, focusZ); o.scale.set(W, Hh, W); o.material.opacity = (o === sky.rain ? 0.5 : 0.95) * near; } return o.visible; };
+      if (fall(sky.rain, !!K.rain)) {
+        const v = 1.7 * K.rain, len = 0.045 * (1 + 0.4 * K.rain);
+        for (let i = 0; i < sky.N; i++) {
+          const y = 1 - ((sky.seed[i * 3 + 1] + sky.t * v * (0.85 + 0.3 * ((i * 0.37) % 1))) % 1), x = sky.seed[i * 3] - y * 0.08, z = sky.seed[i * 3 + 2], o = i * 6;
+          sky.rp[o] = x; sky.rp[o + 1] = y; sky.rp[o + 2] = z; sky.rp[o + 3] = x + 0.006; sky.rp[o + 4] = y + len; sky.rp[o + 5] = z;
+        }
+        sky.rain.geometry.attributes.position.needsUpdate = true;
+      }
+      if (fall(sky.snow, !!K.snow)) {
+        sky.snow.material.size = 0.1 * W / 12;
+        for (let i = 0; i < sky.N; i++) {
+          const ph = (i * 0.618) % 1, y = 1 - ((sky.seed[i * 3 + 1] + sky.t * 0.12 * (0.7 + 0.6 * ph)) % 1), o = i * 3;
+          sky.sp[o] = sky.seed[i * 3] + Math.sin(sky.t * 0.9 + ph * 20) * 0.025; sky.sp[o + 1] = y; sky.sp[o + 2] = sky.seed[i * 3 + 2] + Math.cos(sky.t * 0.7 + ph * 17) * 0.02;
+        }
+        sky.snow.geometry.attributes.position.needsUpdate = true;
+      }
+      // clouds drift east over the city; only from up high
+      const nC = K.clouds, cO = K.cloudO * mapK;
+      sky.cm.opacity = cO; sky.cm.color.setHex(env.getPeriod() === "night" ? 0x4a5168 : K.cloudC).convertSRGBToLinear();
+      sky.clouds.forEach((c, k) => {
+        c.visible = k < nC && cO > 0.02; if (!c.visible) return;
+        const u = c.userData, x = -100 + (((u.x + 100) + sky.t * u.v) % 200);
+        c.position.set(x, Math.max(18, d * 0.42), u.z); c.scale.set(u.s * 1.6, u.s, 1);
+      });
+      // lightning: a quick double flash every 6–16 s (not with reduced motion)
+      if (K.bolt && !env.reduce) {
+        if (!nextBolt) nextBolt = t + 6000 + Math.random() * 10000;
+        if (t > nextBolt) { flash = 1; nextBolt = t + 6000 + Math.random() * 10000; }
+      }
+      if (flash > 0) {
+        const f = flash > 0.6 || (flash < 0.4 && flash > 0.25) ? 1 : 0.2;
+        hemi.intensity = baseHemi + 1.6 * f * flash; flash = Math.max(0, flash - dt * 2.2);
+        if (!flash) hemi.intensity = baseHemi;
+      }
+    }
+    let lastPeriod = "", baseHemi = 0.5;
     function applyPeriod(force) {
-      const L = env.getLit(), p = env.getPeriod();
-      if (p === lastPeriod && !force) return; lastPeriod = p;
-      sun.color.setHex(L.sun); hemi.intensity = L.hemi; sun.intensity = L.sunI * 1.05;
-      const glow = p === "night" ? 1.0 : p === "evening" ? 0.6 : 0;
+      const L = env.getLit(), p = env.getPeriod(), wx = wxNow(), key = p + "|" + wx, K = WXK[wx];
+      if (key === lastPeriod && !force) return; lastPeriod = key;
+      const nk = p === "night" ? 0.7 : 1; sun.color.setHex(L.sun); baseHemi = hemi.intensity = L.hemi * K.hemi * nk; sun.intensity = L.sunI * 1.05 * K.sun * nk;
+      const glow = Math.max(p === "night" ? 1.0 : p === "evening" ? 0.6 : 0, K.glow);
       for (const m of lit) m.emissiveIntensity = glow;
-      scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * L.env; } });
-      scene.fog.color.set(env.bgColor());
+      if (poolM) poolM.opacity = p === "night" ? 0.32 : p === "evening" ? 0.16 : K.glow > 0.4 ? 0.1 : 0;
+      for (const m of roads) { m.roughness = 0.95 - 0.5 * K.wet; m.color.setHex(K.wet > 0.5 ? 0x4f4a47 : 0x6a6460).convertSRGBToLinear(); }
+      scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * L.env * nk * (K.wet > 0.5 ? 1.6 : 1); } });
+      scene.fog.color.set(env.bgColor()); wxFog = K.fog;
       for (const w of walkers) w.g.visible = !(w.night && p === "night");
+      T.weather = wx;
     }
 
     // ---------------------------------------------------------------- camera and input (v73: bird view over the whole city)
@@ -837,7 +1049,7 @@
       const d = distNow(), p = pitchOf(zoom), yaw = 0.085;
       camera.position.set(focusX + d * Math.cos(p) * Math.sin(yaw), d * Math.sin(p), focusZ + d * Math.cos(p) * Math.cos(yaw)); camera.lookAt(focusX, 0, focusZ);
       const nf = Math.max(0.5, d * 0.04); if (Math.abs(camera.near - nf) > 0.01) { camera.near = nf; camera.far = d * 6 + 150; camera.updateProjectionMatrix(); }
-      scene.fog.near = d * 1.05 + 8; scene.fog.far = d * 2.4 + 50;
+      scene.fog.near = (d * 1.05 + 8) * (0.35 + 0.65 * wxFog); scene.fog.far = (d * 2.4 + 50) * wxFog;
       const sh = Math.round(Math.min(110, Math.max(16, d * 0.62)));
       if (sh !== shHalf) { shHalf = sh; Object.assign(sun.shadow.camera, { left: -sh, right: sh, top: sh, bottom: -sh, far: sh * 5 + 40 }); sun.shadow.camera.updateProjectionMatrix(); }
       sun.position.set(focusX - sh * 0.5, sh * 1.05, focusZ + sh * 0.65); sun.target.position.set(focusX, 0, focusZ - 2);
@@ -845,6 +1057,7 @@
       const kM = Math.max(1, d / 42), fade = 1 - smooth((zoom - 0.4) / 0.1);
       for (const s of signs) {
         if (s === youTag) continue;
+        if (s.userData.hide) { s.visible = false; continue; }
         if (s.userData.map) {
           const hood = s.userData.hood, street = s.userData.street;
           s.scale.copy(s.userData.base).multiplyScalar(hood ? Math.max(1, d / 30) : kM);
@@ -900,6 +1113,7 @@
     T.resize = (w, h) => { camera.aspect = w / h; camera.updateProjectionMatrix(); };
     const DISTRICT = x => x < Kota.RAIL.x ? "Westfield" : x < -22 ? "Station Quarter" : x < 0 ? "Office Row" : x < 22 ? "Eastside" : x < Kota.RIVER.x0 ? "Riverside" : x < Kota.RIVER.x1 ? "The river" : "Far Bank";
     T.hoodAt = () => {
+      if (T.inside) return `Inside · ${T.inside.name}`;
       if (zoom > Z_MAP) return "Old Town · city map";
       if (Math.abs(focusX) < Kota.STRIP && focusZ < Kota.PLAZA + 1 && focusZ > Kota.ZMIN - 2)
         return focusZ > 1.5 ? "Town Square" : (HOODS.find(H => focusZ <= H.z0 + 0.5 && focusZ > H.z1) || HOODS[focusZ > 0 ? 0 : HOODS.length - 1]).name;
@@ -924,7 +1138,7 @@
         focusX += (tgt.x - focusX) * k; focusZ += (tgt.z - focusZ) * k; zoom += (tgt.zoom - zoom) * k;
         if (Math.abs(tgt.x - focusX) + Math.abs(tgt.z - focusZ) < 0.03 && Math.abs(tgt.zoom - zoom) < 0.002) tgt = null;
       }
-      applyPeriod(false); updateLife(t, dt); place();
+      applyPeriod(false); updateLife(t, dt); updateInside(t, dt); place(); updateSky(t, dt);
       if (T.homeMarker) T.homeMarker.rotation.y = t / 700;
       drawClock();
       if (t - lastSite > 1000) { lastSite = t; for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05); }

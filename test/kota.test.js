@@ -117,3 +117,22 @@ test("v74 barang kecil: mobil parkir, lampu, dan perahu nggak di tempat yang sal
   for (const b of K.boatsAt(1234)) assert.ok(b.x > K.RIVER.x0 && b.x < K.RIVER.x1);
   assert.equal(JSON.stringify(K.carsAt(5000)), JSON.stringify(K.carsAt(5000)));
 });
+
+test("v75 peta benua: sama tiap kali, kota di daratan benuanya, semua kota nyambung jalan, sungai sampai laut", () => {
+  const R = require("../region.js");
+  for (const C of B.CONTINENTS) {
+    const g = R.region(C.id);
+    assert.ok(g.towns.length >= 6, `${C.id} cuma ${g.towns.length} kota`);
+    assert.equal(g.towns.filter(t => t.main).length, 1);
+    for (const t of g.towns) { const L = R.toLatLon(C, t.x, t.z); assert.equal(B.landAt(L.lat, L.lon).cont, C, `${t.name} nggak di ${C.id}`); }
+    assert.equal(g.roads.length, g.towns.length - 1, "pohon rentang: n-1 jalan");
+    const seen = new Set([g.towns[0].id]); let grew = true;
+    while (grew) { grew = false; for (const r of g.roads) if (seen.has(r.a) !== seen.has(r.b)) { seen.add(r.a); seen.add(r.b); grew = true; } }
+    assert.equal(seen.size, g.towns.length, "ada kota yang nggak nyambung");
+    for (const r of g.rivers) { const e = r[r.length - 1]; assert.ok(g.at(e.x, e.z).h < 0.02, "sungai nggak sampai laut"); }
+  }
+  // Old Town ada di peta Meridia dan bisa dimasuki
+  assert.ok(R.region("meridia").towns.find(t => t.live && t.id === B.HOME_CITY));
+  const p = R.toMap(B.CONT.meridia, 30, 0), q = R.toLatLon(B.CONT.meridia, p.x, p.z);
+  assert.ok(Math.abs(q.lat - 30) < 1e-9 && Math.abs(q.lon) < 1e-9);
+});

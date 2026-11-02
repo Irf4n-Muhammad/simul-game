@@ -2,7 +2,7 @@
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let down = null;
 // v73: di luar (globe atau kota) semua sentuhan ke tampilan yang lagi aktif; dua jari = cubit zoom
-const outView = () => (GLOBE && GLOBE.on) ? GLOBE : (TOWN && TOWN.on) ? TOWN : null;
+const outView = () => (GLOBE && GLOBE.on) ? GLOBE : (CONT && CONT.on) ? CONT : (TOWN && TOWN.on) ? TOWN : null;
 canvas.addEventListener("pointerdown", e => { const ov = outView(); if (ov) { canvas.setPointerCapture(e.pointerId); return ov.down(e); } down = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
 canvas.addEventListener("pointermove", e => {
   const ov = outView(); if (ov) return ov.move(e);
