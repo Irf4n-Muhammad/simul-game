@@ -35,7 +35,8 @@
     sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 70 }); sun.shadow.radius = 4;
     scene.add(sun, sun.target);
-    const look = globalThis.Look ? Look.create(THREE) : null;   // v79: shading (look.js): AO dinding, cahaya tepi, grading per jam/cuaca
+    const look = globalThis.Look ? Look.create(THREE) : null;
+    const rumah = globalThis.Rumah ? Rumah.create({ THREE, M, RB, canvasTex }) : null;   // v79: rumah gaya nyata (rumah.js)   // v79: shading (look.js): AO dinding, cahaya tepi, grading per jam/cuaca
     const lit = [];        // window and lamp materials that glow in the evening
     const roads = [];      // v75: road materials that go dark and shiny in the rain
     const lots = [];       // tap targets
@@ -237,7 +238,11 @@
     }
     // one home for a lot, set back from the street the right amount for its tier
     function home(kind, model, paint, r) {
-      if (kind === "house") { const h = familyHouse(model % 3, paint, r); h.position.z = -0.35; return h; }
+      if (kind === "house") {
+        // v79: rumah keluarga = rumah pinggiran gaya Amerika (rumah.js): model 0/1/2 = Colonial/Craftsman/Cape Cod, cat = warna dinding
+        if (rumah) { const h = rumah.suburb(["colonial", "craftsman", "capecod"][model % 3], r, winMat(), false, PAINT(paint)); h.scale.setScalar(0.82); h.position.set(-0.2, 0, -0.55); return h; }
+        const h = familyHouse(model % 3, paint, r); h.position.z = -0.35; return h;
+      }
       if (kind === "villa") { const h = villa(model % 3, paint, r); h.position.z = -0.5; return h; }
       if (kind === "mansion") { const h = mansion(model % 3, paint, r); h.position.z = -0.9; return h; }
       return block(kind === "flat" ? "flat" : "apartment", r, null, -1);

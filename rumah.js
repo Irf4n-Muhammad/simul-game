@@ -190,11 +190,11 @@
       craftsman: { wall: [0x9fae8c, 0xb7a68a, 0x8f9fa6], roof: [0x7a5a48, 0x6b5a4e], shut: [0xe7d9b8], door: [0x3f5b6e, 0x7a4b36, 0x8d4f45] },
       capecod: { wall: [0xdfe6ee, 0xf2efe8, 0xe8d9cf], roof: [0x4f565e, 0x5d6670], shut: [0xc9876b, 0x2f4a5e, 0x6f8f9f], door: [0xc6584a, 0x2f4a5e, 0xd9b46a] },
     };
-    function suburb(type, r, winMat, raw) {
+    function suburb(type, r, winMat, raw, wallOver) {
       const T = SUB[type] || SUB.colonial, pick = a => a[Math.floor(r() * a.length) % a.length];
       const g = new THREE.Group(), add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
       const C = (k, c, map, o) => shared(k + c, () => mat(c, map, o));
-      const wallC = pick(T.wall), roofC = pick(T.roof);
+      const wallC = wallOver != null ? wallOver : pick(T.wall), roofC = pick(T.roof);
       const wall = C("sw", wallC, siding()), roof = C("sr", roofC, shingles(), { roughness: 0.85 }), shut = C("ss", pick(T.shut), slats()), doorM = C("sd", pick(T.door), planks());
       const trim = shared("trim", () => mat(0xfaf5ec, null, { roughness: 0.7 })), brick = shared("brick", () => mat(0xc77b5f, bricks())), stone = shared("stone", () => mat(0xc9c1b4, stones(), { roughness: 1 }));
       const leaf = shared("leaf", () => mat(0x7f9f69, null, { roughness: 1 })), leafDk = shared("leafDk", () => mat(0x5f7f52, null, { roughness: 1 })), wood = shared("wood", () => mat(0x8a5a3c, planks()));
