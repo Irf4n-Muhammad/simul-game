@@ -169,7 +169,116 @@
       add(new THREE.BoxGeometry(1.6, 0.4, 0.02), winMat, 0, 0.92, 0.86);
       return merge(g);
     }
-    return { hi, lo, merge, textures: TX };
+
+    // ================= v79: Suburb, rumah pinggiran gaya Amerika (konsep: konsep/02-suburb-perumahan.png)
+    // tiga tipe: "colonial" (2 lantai + garasi), "craftsman" (bungalow, teras dalam), "capecod" (1,5 lantai, jendela atap).
+    // Rumah menghadap +z, atap pelana sejajar jalan. Halaman ikut: rumput, jalan mobil, jalan setapak, kotak surat, pohon.
+    const siding = () => tex("siding", (g, w, h) => {
+      g.fillStyle = "#f2f0ec"; g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 16) { g.fillStyle = "rgba(0,0,0,0.13)"; g.fillRect(0, y + 13, w, 3); g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(0, y, w, 2); }
+      noise(g, w, h, 0.04, 1500);
+    });
+    const shingles = () => tex("shingles", (g, w, h) => {
+      g.fillStyle = "#c8c8c8"; g.fillRect(0, 0, w, h);
+      const rh = h / 10, cw = w / 6;
+      for (let y = 0; y < 10; y++) for (let x = -1; x < 7; x++) { const v = 170 + Math.floor(Math.random() * 60); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x * cw + (y % 2) * cw / 2 + 1, y * rh + 1, cw - 2, rh - 2); }
+      g.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 1; y < 10; y++) g.fillRect(0, y * rh - 2, w, 3);
+      noise(g, w, h, 0.07, 2000);
+    });
+    const SUB = {
+      colonial: { wall: [0xf1ece2, 0xf5efe0, 0xe9e4da], roof: [0x5d6670, 0x6b6460], shut: [0x2f4a5e, 0x3c3c3c, 0x5f7a6d], door: [0x8d3b35, 0x2f4a5e, 0x2f2f2f] },
+      craftsman: { wall: [0x9fae8c, 0xb7a68a, 0x8f9fa6], roof: [0x7a5a48, 0x6b5a4e], shut: [0xe7d9b8], door: [0x3f5b6e, 0x7a4b36, 0x8d4f45] },
+      capecod: { wall: [0xdfe6ee, 0xf2efe8, 0xe8d9cf], roof: [0x4f565e, 0x5d6670], shut: [0xc9876b, 0x2f4a5e, 0x6f8f9f], door: [0xc6584a, 0x2f4a5e, 0xd9b46a] },
+    };
+    function suburb(type, r, winMat, raw) {
+      const T = SUB[type] || SUB.colonial, pick = a => a[Math.floor(r() * a.length) % a.length];
+      const g = new THREE.Group(), add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
+      const C = (k, c, map, o) => shared(k + c, () => mat(c, map, o));
+      const wallC = pick(T.wall), roofC = pick(T.roof);
+      const wall = C("sw", wallC, siding()), roof = C("sr", roofC, shingles(), { roughness: 0.85 }), shut = C("ss", pick(T.shut), slats()), doorM = C("sd", pick(T.door), planks());
+      const trim = shared("trim", () => mat(0xfaf5ec, null, { roughness: 0.7 })), brick = shared("brick", () => mat(0xc77b5f, bricks())), stone = shared("stone", () => mat(0xc9c1b4, stones(), { roughness: 1 }));
+      const leaf = shared("leaf", () => mat(0x7f9f69, null, { roughness: 1 })), leafDk = shared("leafDk", () => mat(0x5f7f52, null, { roughness: 1 })), wood = shared("wood", () => mat(0x8a5a3c, planks()));
+      const lawn = shared("lawn", () => mat(0x8fb26c, null, { roughness: 1 })), conc = shared("conc", () => mat(0xd6d0c4, null, { roughness: 1 })), curtain = C("c", pick([0xf3e3c9, 0xe9c7c0, 0xd5e0d0]), null, { roughness: 1 });
+      // dinding + atap pelana sejajar jalan. x0 = tengah, w lebar, d dalam, h tinggi dinding, rh tinggi atap, ov emper
+      const body = (x0, w, d, h, rh, ov, wm = wall, rm = roof) => {
+        add(box(w, h, d, 0, 1.0), wm, x0, 0.12 + h / 2, 0);
+        const sh = new THREE.Shape(); sh.moveTo(-d / 2, 0); sh.lineTo(d / 2, 0); sh.lineTo(0, rh); sh.closePath();
+        const tg = new THREE.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false }); tg.translate(0, 0, -w / 2); tg.rotateY(Math.PI / 2); uvs(tg, 1, 1);
+        add(tg, wm, x0, 0.12 + h, 0);
+        const p = Math.atan2(rh, d / 2), L = Math.hypot(d / 2, rh) + ov;
+        for (const sz of [-1, 1]) { const sl = add(uvs(box(w + ov * 2, 0.08, L, 0), (w + ov * 2) / 0.6, L / 0.6), rm, x0, 0.12 + h + rh / 2 + 0.03 - ov * Math.sin(p) / 2, sz * (d / 4 + ov * Math.cos(p) / 2)); sl.rotation.x = sz * p; }
+        add(box(w + ov * 2 + 0.02, 0.05, 0.08, 0), trim, x0, 0.12 + h + rh + 0.05, 0);
+        add(box(w + 0.04, 0.05, d + 0.04, 0), trim, x0, 0.12 + h + 0.01, 0);
+        return { top: 0.12 + h, p };
+      };
+      const win = (x, y, w, h, z, shutters = true) => {
+        add(box(w + 0.08, h + 0.08, 0.04, 0), trim, x, y, z);
+        add(box(w, h, 0.02, 0), curtain, x, y, z - 0.015);
+        add(box(w, h, 0.02, 0), winMat, x, y, z + 0.012);
+        for (const k of [-1, 1]) add(box(0.015, h, 0.03, 0), trim, x + k * w / 6, y, z + 0.025);
+        add(box(w, 0.02, 0.03, 0), trim, x, y, z + 0.025);
+        if (shutters) for (const k of [-1, 1]) add(box(w * 0.45, h + 0.04, 0.025, 0), shut, x + k * (w / 2 + w * 0.27), y, z + 0.005);
+        add(box(w + 0.12, 0.035, 0.08, 0), trim, x, y - h / 2 - 0.05, z + 0.03);
+      };
+      const doorAt = (x, z, h = 0.62) => { add(box(0.4, h + 0.06, 0.04, 0), trim, x, 0.12 + h / 2, z); add(box(0.32, h, 0.04, 0), doorM, x, 0.12 + h / 2 - 0.02, z + 0.015); add(box(0.2, 0.12, 0.02, 0), winMat, x, 0.12 + h * 0.78, z + 0.04); add(SPH(0.02, 6, 5), shared("brass", () => mat(0xd9b46a, null, { metalness: 0.6, roughness: 0.3 })), x + 0.11, 0.12 + h * 0.45, z + 0.05); };
+      const chimney = (x, z, y0, hh) => { add(uvs(box(0.26, hh, 0.26, 0), 1, hh / 0.3), brick, x, y0 + hh / 2, z); add(box(0.32, 0.05, 0.32, 0), stone, x, y0 + hh + 0.02, z); };
+      const dormer = (x, y, z, p) => { add(box(0.36, 0.34, 0.5, 0, 1), wall, x, y, z); const s2 = new THREE.Shape(); s2.moveTo(-0.22, 0); s2.lineTo(0.22, 0); s2.lineTo(0, 0.2); s2.closePath(); const dg = new THREE.ExtrudeGeometry(s2, { depth: 0.56, bevelEnabled: false }); dg.translate(0, 0, -0.28); add(dg, roof, x, y + 0.17, z); win(x, y, 0.2, 0.2, z + 0.26, false); };
+      let W = 2, D = 1.4;
+      if (type === "craftsman") {
+        D = 1.6; const b = body(0, 2.0, D, 0.95, 0.72, 0.28);
+        // front gable dormer with shingles, porch across the front on tapered columns over stone piers
+        const s3 = new THREE.Shape(); s3.moveTo(-0.55, 0); s3.lineTo(0.55, 0); s3.lineTo(0, 0.42); s3.closePath();
+        const fg = new THREE.ExtrudeGeometry(s3, { depth: 0.7, bevelEnabled: false }); fg.translate(0, 0, -0.35); add(fg, C("cr", 0xe7d9b8, shingles()), 0, b.top + 0.08, D / 2 - 0.25);
+        win(0, b.top + 0.22, 0.42, 0.16, D / 2 + 0.11, false);
+        add(box(2.4, 0.06, 0.62, 0), roof, 0, b.top - 0.02, D / 2 + 0.28, 0.12);
+        add(box(2.4, 0.1, 0.04, 0), C("cr", 0xe7d9b8, null), 0, b.top - 0.08, D / 2 + 0.58);
+        for (const x of [-1.05, -0.2, 1.05]) { add(uvs(box(0.18, 0.3, 0.18, 0), 0.6, 1), stone, x, 0.27, D / 2 + 0.5); add(CYL(0.05, 0.08, b.top - 0.47, 4), C("cr", 0xe7d9b8, null), x, 0.42 + (b.top - 0.47) / 2, D / 2 + 0.5, 0, Math.PI / 4); }
+        add(box(2.36, 0.12, 0.66, 0), shared("deck", () => mat(0xb69c7c, planks())), 0, 0.12, D / 2 + 0.3);
+        win(-0.6, 0.62, 0.46, 0.36, D / 2 + 0.01, false); win(0.62, 0.62, 0.3, 0.36, D / 2 + 0.01, false);
+        doorAt(0.18, D / 2 + 0.01);
+        chimney(-0.85, -0.3, b.top - 0.2, 1.1);
+      } else if (type === "capecod") {
+        W = 1.7; const b = body(0, W, D, 0.82, 0.9, 0.08);
+        for (const x of [-0.42, 0.42]) dormer(x, b.top + 0.36, D / 4 + 0.06, b.p);
+        chimney(W / 2 + 0.05, 0, 0, b.top + 1.1);
+        for (const x of [-0.55, 0.55]) win(x, 0.55, 0.24, 0.34, D / 2 + 0.01);
+        doorAt(0, D / 2 + 0.01, 0.58);
+        add(box(0.6, 0.06, 0.25, 0), stone, 0, 0.1, D / 2 + 0.13);
+        // picket fence along the front with a gap for the path
+        const pk = shared("pick", () => mat(0xfbf8f2, null));
+        for (let k = -10; k <= 7; k++) { if (Math.abs(k) <= 1) continue; add(box(0.05, 0.28, 0.02, 0), pk, k * 0.16, 0.14, D / 2 + 1.0); add(new THREE.ConeGeometry(0.036, 0.05, 4), pk, k * 0.16, 0.3, D / 2 + 1.0, 0, Math.PI / 4); }
+        add(box(1.45, 0.03, 0.02, 0), pk, -0.88, 0.2, D / 2 + 0.985); add(box(0.95, 0.03, 0.02, 0), pk, 0.64, 0.2, D / 2 + 0.985);
+      } else {
+        const b = body(0, 2.0, D, 1.55, 0.62, 0.12);
+        for (const x of [-0.72, -0.28, 0.28, 0.72]) win(x, 1.25, 0.24, 0.34, D / 2 + 0.01);
+        for (const x of [-0.72, -0.36, 0.72]) win(x, 0.55, 0.24, 0.34, D / 2 + 0.01);
+        // portico: two columns, small pediment
+        for (const sx of [-1, 1]) add(CYL(0.035, 0.035, 0.72, 10), trim, 0.18 + sx * 0.24, 0.48, D / 2 + 0.28);
+        add(box(0.62, 0.06, 0.36, 0), trim, 0.18, 0.86, D / 2 + 0.18);
+        const s4 = new THREE.Shape(); s4.moveTo(-0.33, 0); s4.lineTo(0.33, 0); s4.lineTo(0, 0.18); s4.closePath();
+        add(new THREE.ExtrudeGeometry(s4, { depth: 0.36, bevelEnabled: false }), trim, 0.18, 0.89, D / 2);
+        doorAt(0.18, D / 2 + 0.01);
+        add(box(0.62, 0.06, 0.3, 0), stone, 0.18, 0.1, D / 2 + 0.2);
+        chimney(-0.7, -0.3, b.top, 0.95);
+        // side garage with its own roof and panel door
+        const gx = 1.5; body(gx, 0.95, 1.3, 0.78, 0.36, 0.06);
+        add(box(0.72, 0.6, 0.03, 0), shared("gdoor", () => mat(0xf6f2ea, siding())), gx, 0.42, 0.66);
+        for (let k = 0; k < 4; k++) add(box(0.13, 0.08, 0.02, 0), winMat, gx - 0.25 + k * 0.167, 0.62, 0.68);
+        // basketball hoop on the driveway
+        add(CYL(0.025, 0.025, 1.1, 6), shared("pole", () => mat(0x55595d, null, { metalness: 0.4, roughness: 0.5 })), gx + 0.5, 0.55, 1.3);
+        add(box(0.34, 0.24, 0.02, 0), trim, gx + 0.5, 1.14, 1.28); add(new THREE.TorusGeometry(0.07, 0.008, 4, 12), C("hoop", 0xe58c5a, null), gx + 0.5, 1.03, 1.36, Math.PI / 2);
+      }
+      // yard: lawn, driveway, path, mailbox, tree, hedges
+      add(box(3.6, 0.06, 3.0, 0), lawn, 0.25, 0.03, 0.4);
+      add(box(0.85, 0.02, 1.7, 0), conc, 1.5, 0.065, 1.55);
+      add(box(0.3, 0.02, 1.0, 0), conc, type === "craftsman" ? 0.18 : type === "capecod" ? 0 : 0.18, 0.065, D / 2 + 0.75);
+      add(CYL(0.018, 0.018, 0.36, 5), wood, 0.85, 0.24, 1.8); add(box(0.1, 0.09, 0.18, 0), C("mb", pick([0x2f4a5e, 0xc6584a, 0x3c3c3c]), null), 0.85, 0.44, 1.8);
+      add(CYL(0.06, 0.08, 0.9, 6), shared("trunk", () => mat(0x7a5a40, null)), -1.25, 0.5, 1.2);
+      for (const [dx, dy, dz, rr] of [[0, 1.15, 0, 0.42], [-0.25, 0.95, 0.1, 0.3], [0.25, 0.98, -0.05, 0.32], [0.05, 1.42, 0.05, 0.28]]) add(SPH(rr, 9, 7), dy > 1.1 ? leaf : leafDk, -1.25 + dx, dy, 1.2 + dz);
+      for (let k = 0; k < 4; k++) add(SPH(0.13, 8, 6), k % 2 ? leaf : leafDk, -0.9 + k * 0.24, 0.16, D / 2 + 0.16);
+      return raw ? g : merge(g);
+    }
+    return { hi, lo, merge, suburb, textures: TX };
   }
   const Rumah = { create };
   if (typeof module !== "undefined") module.exports = Rumah; else globalThis.Rumah = Rumah;
