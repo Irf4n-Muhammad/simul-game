@@ -746,6 +746,9 @@ svg { stroke: currentColor; }
 
 #app.in-town .hud-bottom, #app.in-town .needs, #app.in-town .moment, #app.in-town .today, #app.in-town .care, #app.in-town .toast, #app.in-town .hint, #app.in-town #floats { display: none !important; }
 .town-ui { position: absolute; inset: 0; pointer-events: none; }
+/* v79: vignette halus di kota (bukan globe/konser), biar mata ke tengah dan pinggir layar nggak pucat */
+#app.in-town:not(.in-globe):not(.in-konser)::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse 125% 100% at 50% 46%, rgba(0,0,0,0) 58%, rgba(28,34,52,.2) 100%); }
+#app.in-town.night:not(.in-globe):not(.in-konser)::after { background: radial-gradient(ellipse 125% 100% at 50% 46%, rgba(0,0,0,0) 50%, rgba(8,10,24,.4) 100%); }
 .sub.ver { display: block; text-align: center; opacity: .45; margin-top: 10px; font-size: 11px; user-select: none; }
 .dev-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.06); } .dev-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; } .dev-row small { opacity: .55; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dev-row input { width: 44%; margin: 0; }
 .dev-tbl { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; margin: 8px 0; } .dev-tbl b { text-align: right; }
@@ -1344,6 +1347,7 @@ svg { stroke: currentColor; }
 <script src="moments.js"></script>
 <script src="town-assets.js"></script>
 <script src="kota.js"></script>
+<script src="look.js"></script>
 <script src="town.js"></script>
 <script src="bumi.js"></script>
 <script src="globe.js"></script>

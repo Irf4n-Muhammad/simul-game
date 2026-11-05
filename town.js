@@ -35,6 +35,7 @@
     sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 70 }); sun.shadow.radius = 4;
     scene.add(sun, sun.target);
+    const look = globalThis.Look ? Look.create(THREE) : null;   // v79: shading (look.js): AO dinding, cahaya tepi, grading per jam/cuaca
     const lit = [];        // window and lamp materials that glow in the evening
     const roads = [];      // v75: road materials that go dark and shiny in the rain
     const lots = [];       // tap targets
@@ -519,14 +520,14 @@
     }
     let groundTex = null;
     const groundMap = () => groundTex || (groundTex = canvasTex((c, w, h) => {
-      c.fillStyle = "#b7b397"; c.fillRect(0, 0, w, h);
+      c.fillStyle = "#a9b483"; c.fillRect(0, 0, w, h);   // v79: rumput lebih segar (dulu #b7b397)
       const blob = (x, y, r, col) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { c.save(); c.translate(dx, dy); c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore(); } };
-      for (let k = 0; k < 70; k++) blob(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, Math.random() < 0.55 ? "rgba(140,168,104,0.34)" : Math.random() < 0.5 ? "rgba(196,176,138,0.3)" : "rgba(120,140,96,0.3)");
+      for (let k = 0; k < 70; k++) blob(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, Math.random() < 0.55 ? "rgba(128,164,92,0.38)" : Math.random() < 0.5 ? "rgba(196,180,132,0.28)" : "rgba(104,134,82,0.34)");
       for (let k = 0; k < 2500; k++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "90,110,70" : "220,210,180"},0.25)`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
     }, 512, 512, 60, 60));
     const unitBox = () => { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return g; };
     function buildCity() {
-      const roadM = M(0x6a6460, { roughness: 0.95 }); roads.push(roadM); const walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
+      const roadM = M(0x646468, { roughness: 0.95 }); roads.push(roadM); const walkM = M(0xd9d1c3, { roughness: 1 }), R = Kota.REACH;
       // ground everywhere, a touch under the Main Street blocks
       const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xffffff, { roughness: 1, map: groundMap() })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
       const strip = (x, z, w, d, mat, y, h) => { const m = mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z); m.castShadow = false; return m; };
@@ -1095,11 +1096,13 @@
     function applyPeriod(force) {
       const L = env.getLit(), p = env.getPeriod(), wx = wxNow(), key = p + "|" + wx, K = WXK[wx];
       if (key === lastPeriod && !force) return; lastPeriod = key;
-      const nk = p === "night" ? 0.7 : 1; sun.color.setHex(L.sun); baseHemi = hemi.intensity = L.hemi * K.hemi * nk; sun.intensity = L.sunI * 1.05 * K.sun * nk;
+      const nk = p === "night" ? 0.7 : 1; sun.color.setHex(L.sun); hemi.intensity = L.hemi * K.hemi * nk; sun.intensity = L.sunI * 1.05 * K.sun * nk;
+      if (look) { look.apply(p, wx, hemi, sun); look.patchScene(scene); }
+      baseHemi = hemi.intensity;
       const glow = Math.max(p === "night" ? 1.0 : p === "evening" ? 0.6 : 0, K.glow);
       for (const m of lit) m.emissiveIntensity = glow;
       if (poolM) poolM.opacity = p === "night" ? 0.32 : p === "evening" ? 0.16 : K.glow > 0.4 ? 0.1 : 0;
-      for (const m of roads) { m.roughness = 0.95 - 0.5 * K.wet; m.color.setHex(K.wet > 0.5 ? 0x4f4a47 : 0x6a6460).convertSRGBToLinear(); }
+      for (const m of roads) { m.roughness = 0.95 - 0.5 * K.wet; m.color.setHex(K.wet > 0.5 ? 0x47484c : 0x646468).convertSRGBToLinear(); }
       scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * L.env * nk * (K.wet > 0.5 ? 1.6 : 1); } });
       scene.fog.color.set(env.bgColor()); wxFog = K.fog;
       for (const w of walkers) w.g.visible = !(w.night && p === "night");
@@ -1226,6 +1229,7 @@
       l.content.visible = false;
       previewG = home(l.hood.kind, model, paint, rnd("preview")); previewG.userData.lot = l; l.lotG.add(previewG);
       previewG.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.isMeshStandardMaterial && m.userData.env0 === undefined) { m.userData.env0 = m.envMapIntensity; m.envMapIntensity *= env.getLit().env; } });
+      if (look) look.patchScene(previewG);
     };
     T.clearPreview = () => { if (previewG) { previewG.userData.lot.content.visible = true; previewG.parent.remove(previewG); previewG = null; } };
     T.lots = lots;
