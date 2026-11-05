@@ -99,13 +99,41 @@
         for (const x of [-0.8, 0.8]) mesh(CYL(0.04, 0.04, 0.92, 8), M(0xf3ede3), x, 0.46, 1.12, g);
         mesh(RB(0.36, 0.66, 0.06, 0.02), door, 0, 0.33, 0.66, g);
         for (const x of [-0.55, 0.55]) mesh(RB(0.36, 0.36, 0.05, 0.02), winMat(), x, 0.66, 0.66, g);
-      } else {                    // Classic gable
-        mesh(RB(2.1, 1.35, 1.7, 0.04), wall, 0, 0.675, 0, g);
-        const rf = gable(2.4, 0.95, 1.9, roof); rf.position.y = 1.35; g.add(rf);
-        mesh(RB(0.28, 0.6, 0.28, 0.02), roof, 0.6, 2.0, -0.3, g);
-        mesh(RB(0.38, 0.7, 0.06, 0.02), door, 0, 0.35, 0.86, g);
-        for (const x of [-0.65, 0.65]) mesh(RB(0.45, 0.4, 0.05, 0.02), winMat(), x, 0.82, 0.86, g);
-        mesh(RB(0.4, 0.35, 0.05, 0.02), winMat(), 0, 1.75, 0.86, g);
+      } else {                    // Classic gable (v79 tes gaya "diorama hangat": alas batu, atap tebal menjorok, jendela berbingkai + daun jendela, pot bunga, pagar tanaman)
+        const stone = M(0xb9ab98, { roughness: 1 }), trim = M(0xfaf4ea, { roughness: 0.8 }), roofDk = roof.clone(); roofDk.color.multiplyScalar(0.72);
+        const shut = M(pick(r, [0x7f9a8a, 0x8a9fb5, 0xc9876b, 0x9c8bb0]), { roughness: 0.8 }), leaf = M(0x86a26f, { roughness: 1 }), bloom = [0xe58c8a, 0xf2c46d, 0xf6efe4, 0xc98bd0];
+        mesh(RB(2.3, 0.18, 1.9, 0.06), stone, 0, 0.09, 0, g);                                  // stone plinth
+        mesh(RB(2.1, 1.25, 1.7, 0.1), wall, 0, 0.8, 0, g);                                      // rounder walls
+        mesh(RB(2.16, 0.06, 1.76, 0.03), trim, 0, 1.43, 0, g);                                  // trim under the roof
+        const gw = gable(2.1, 0.8, 1.7, wall); gw.position.y = 1.46; g.add(gw);                // gable wall in the house colour
+        const pitch = Math.atan2(0.86, 1.2);
+        for (const sx of [-1, 1]) {                                                             // two thick roof slabs with deep eaves
+          const sl = mesh(RB(1.62, 0.12, 2.2, 0.04), roof, sx * 0.62, 1.86, 0, g); sl.rotation.z = -sx * pitch;
+          const un = mesh(RB(1.58, 0.04, 2.16, 0.015), roofDk, sx * 0.6, 1.8, 0, g); un.rotation.z = -sx * pitch;
+        }
+        mesh(CYL(0.065, 0.065, 2.24, 10), roofDk, 0, 2.38, 0, g).rotation.x = Math.PI / 2;    // ridge
+        mesh(RB(0.32, 0.7, 0.32, 0.05), M(0xb8735a, { roughness: 0.9 }), 0.62, 2.1, -0.32, g);   // brick chimney
+        mesh(RB(0.4, 0.07, 0.4, 0.03), stone, 0.62, 2.47, -0.32, g);
+        // door: frame, arched top, step, little lamp
+        mesh(RB(0.52, 0.84, 0.05, 0.02), trim, 0, 0.62, 0.86, g);
+        mesh(RB(0.4, 0.72, 0.06, 0.02), door, 0, 0.56, 0.88, g);
+        const arch = mesh(CYL(0.2, 0.2, 0.06, 20, 1, false, 0, Math.PI), door, 0, 0.92, 0.88, g); arch.rotation.x = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.rotation.z = Math.PI / 2;
+        mesh(RB(0.7, 0.08, 0.3, 0.03), stone, 0, 0.22, 1.0, g);
+        mesh(SPH(0.05, 10, 8), M(0xfff1cf, { emissive: 0xffd9a0, emissiveIntensity: 0.4 }), 0.33, 0.95, 0.9, g);
+        // windows with frames, sills, shutters and flower boxes
+        const win = (x, y, w, h, box) => {
+          mesh(RB(w + 0.1, h + 0.1, 0.04, 0.02), trim, x, y, 0.86, g);
+          mesh(RB(w, h, 0.05, 0.01), winMat(), x, y, 0.875, g);
+          mesh(RB(0.025, h, 0.06, 0.005), trim, x, y, 0.885, g); mesh(RB(w, 0.025, 0.06, 0.005), trim, x, y, 0.885, g);
+          for (const sx of [-1, 1]) mesh(RB(w * 0.42, h + 0.06, 0.04, 0.01), shut, x + sx * (w / 2 + w * 0.24), y, 0.87, g);
+          mesh(RB(w + 0.16, 0.05, 0.12, 0.015), trim, x, y - h / 2 - 0.05, 0.92, g);
+          if (box) { mesh(RB(w + 0.04, 0.1, 0.12, 0.02), M(0xa9775a), x, y - h / 2 - 0.12, 0.95, g); for (let k = 0; k < 4; k++) mesh(SPH(0.045, 8, 6), M(bloom[(k + Math.floor(r() * 4)) % 4], { roughness: 1 }), x - w / 2 + 0.06 + k * (w - 0.12) / 3, y - h / 2 - 0.04, 0.97, g); }
+        };
+        for (const x of [-0.66, 0.66]) win(x, 0.85, 0.36, 0.38, true);
+        win(0, 1.78, 0.3, 0.26, false);
+        // front garden: hedges and stepping stones
+        for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const b = mesh(SPH(0.17, 12, 10), leaf, sx * (0.55 + k * 0.28), 0.14, 1.15, g); b.scale.y = 0.8; }
+        for (let k = 0; k < 2; k++) mesh(CYL(0.11, 0.11, 0.03, 12), stone, 0, 0.02, 1.28 + k * 0.26, g);
       }
       return g;
     }
