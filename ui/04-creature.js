@@ -42,15 +42,6 @@ const TAIL_GEO = tailTube(0, 1), TAIL_BASE = SPH(TAIL_R(0), 24, 18);
 const onBody = ([x, y, z]) => [x * 0.92, BODY_Y + (y - 1.4) * 0.92, z * 0.92];
 const blob = mesh(new THREE.PlaneGeometry(3.0, 3.0), F(0xffffff, { map: blobTex, transparent: true, depthWrite: false }), 0, 0.03, 0.1);
 blob.rotation.x = -Math.PI / 2;
-// garis tepi makhluk: permukaan belakang yang didorong keluar sepanjang normal, warna cokelat tua hangat
-const _outM = {};
-function outlineMat(dark) {
-  const k = dark ? "d" : "l"; if (_outM[k]) return _outM[k];
-  const m = F(dark ? 0x231c1e : 0x4a3029, { side: THREE.BackSide });
-  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", "vec3 transformed = position + normal * 0.035;"); };
-  m.customProgramCacheKey = () => "outline1";
-  return (_outM[k] = m);
-}
 function buildCreature(m) {
   if (K) scene.remove(K.root);
   K = makeCreature(m, scene); bubbleKey = null;
@@ -127,10 +118,6 @@ function makeCreature(m, parent) {
   for (const [slot, x] of worn) wearItem(slot, x, { body, root, m, young, dark });
   const dirtMat = M(0x6b5240, { transparent: true, opacity: 1, roughness: 1 });
   const dirt = [[0.8, 1.95, 0.78], [-0.9, 1.0, 0.88], [0.5, 0.7, 1.02], [-0.4, 2.35, 0.82], [1.1, 1.2, 0.55]].map(onBody).map(([x, y, z]) => { const d = mesh(SPH(0.15, 14, 10), dirtMat, x, y, z, body); d.scale.set(1.4, 0.8, 0.3); d.lookAt(x * 3, y, z * 3); return d; });
-  // v79 tes gaya "diorama hangat + makhluk bergaris": garis tepi tipis (inverted hull) di bagian siluet saja
-  const sil = []; root.traverse(o => { if (o.isMesh && (o.material === fur || o.material === furDark || o.material === tailMat)) sil.push(o); });
-  const om = outlineMat(dark);
-  for (const o of sil) { const h = new THREE.Mesh(o.geometry, om); h.castShadow = h.receiveShadow = false; o.add(h); }
   root.traverse(envScale);
   return { root, body, belly, eyes, pupils, smile, mouth, dirtMat, dirt, twinkle, tail, ears, arms, cheeks, smileY: 1.06, id: m.id, fase: m.fase, key: lookKey(m), scale: (PHASE_SCALE[m.fase] || 1) * PET };
 }
