@@ -24,7 +24,10 @@
 
   function create(env) {
     const { THREE, renderer } = env;
-    const { M, F, RB, SPH, CYL, canvasTex } = env;
+    const { M, F, SPH, CYL, canvasTex } = env;
+    // v79: kotak membulat versi kota. Bawaan 3 ruas = 588 segitiga per kotak, padahal tiangnya cuma sejari. Lengkung di bawah
+    // 2 cm tidak kelihatan dari kamera kota: kotak biasa (12). Benda kecil: 1 ruas (108). Yang besar: 2 ruas (300).
+    const RB = (w, h, d, r = 0.08) => r <= 0.02 ? new THREE.BoxGeometry(w, h, d) : env.RB(w, h, d, r, Math.max(w, h, d) < 1.2 ? 1 : 2);
     renderer.localClippingEnabled = true;
     const scene = new THREE.Scene();
     scene.environment = env.environment;
@@ -1326,13 +1329,18 @@
       zoom = Math.max(0, Math.min(Z_OUT + 0.02, z));
       if (zoom >= Z_OUT && !leaving && env.toGlobe) { leaving = true; env.toGlobe(); }
     }
+    // v79: kapan terakhir disentuh. Kamera diam + tidak ada animasi kamera = kota boleh digambar lebih jarang (ui/29-town.js)
+    let touchT = 0;
+    const touched = () => { touchT = performance.now(); };
+    T.calm = t => !tgt && !ptr.size && !walk && !(inside && inside.k > 0 && inside.k < 1) && t - touchT > 1500;
     T.down = e => {
-      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tgt = null;
+      touched(); ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tgt = null;
       if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom }; drag = null; moved = 99; return; }
       drag = { x: e.clientX, y: e.clientY, fx: focusX, fz: focusZ }; moved = 0;
     };
     T.move = e => {
       if (!ptr.has(e.pointerId)) return;
+      touched();
       ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinch && ptr.size >= 2) { const [a, b] = [...ptr.values()]; setZoom(pinch.zoom - Math.log(Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d) / LZ); return; }
       if (!drag) return;
@@ -1341,6 +1349,7 @@
       focusX = drag.fx - dx * k; focusZ = drag.fz - dy * k / Math.sin(pitchOf(zoom)); clampFocus();
     };
     T.up = e => {
+      touched();
       const tap = drag && moved < 8 && ptr.size === 1;
       ptr.delete(e.pointerId); if (ptr.size < 2) pinch = null;
       if (tap) {
@@ -1357,7 +1366,7 @@
       drag = null;
     };
     T.cancel = e => { ptr.delete(e.pointerId); pinch = null; drag = null; };
-    T.wheel = e => { tgt = null; setZoom(zoom + e.deltaY * 0.0011); };
+    T.wheel = e => { touched(); tgt = null; setZoom(zoom + e.deltaY * 0.0011); };
     T.zoomBy = dz => { const z0 = tgt ? tgt.zoom : zoom; if (dz > 0 && z0 >= 0.995) return setZoom(Z_OUT); tgt = { x: tgt ? tgt.x : focusX, z: tgt ? tgt.z : focusZ, zoom: Math.max(0, Math.min(1, z0 + dz)) }; };
     T.flyTo = (x, z, zm) => { tgt = { x, z, zoom: zm ?? zoom }; };
     T.mapView = () => { tgt = zoom > Z_MAP ? { x: T.homeX ?? 0, z: (T.homeZ ?? -4) + 3.6, zoom: Z_STREET } : { x: 6, z: -24, zoom: 0.97 }; };
@@ -1387,6 +1396,7 @@
     };
     T.exit = () => { T.on = false; };
     T.resume = () => { T.on = true; };   // v78: balik dari konser tanpa bangun ulang kota
+    let shKey = "", shT = 0;
     T.frame = (t, dt) => {
       if (tgt) {
         const k = 1 - Math.pow(0.025, dt);
@@ -1394,6 +1404,13 @@
         if (Math.abs(tgt.x - focusX) + Math.abs(tgt.z - focusZ) < 0.03 && Math.abs(tgt.zoom - zoom) < 0.002) tgt = null;
       }
       applyPeriod(false); updateLife(t, dt); updateInside(t, dt); updateFair(t); place(); updateSky(t, dt);
+      // v79: di peta kota bayangan kecil sekali, jadi peta bayangannya tidak dihitung ulang tiap frame: hanya kalau kamera
+      // (dan matahari yang ikut kamera) bergeser, atau tiap 1 detik. Di jalan tetap tiap frame (mobil dan warga bergerak).
+      if (zoom > Z_MAP) {
+        const key = Math.round(sun.position.x * 4) + "," + Math.round(sun.position.z * 4) + "," + shHalf;
+        renderer.shadowMap.autoUpdate = false;
+        if (key !== shKey || t - shT > 1000) { shKey = key; shT = t; renderer.shadowMap.needsUpdate = true; }
+      } else renderer.shadowMap.autoUpdate = true;
       if (T.homeMarker) T.homeMarker.rotation.y = t / 700;
       drawClock();
       if (t - lastSite > 1000) { lastSite = t; for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05); }

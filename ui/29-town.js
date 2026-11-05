@@ -356,7 +356,7 @@ function resize() {
 }
 addEventListener("resize", resize); resize();
 
-let last = now();
+let last = now(), townT = 0;
 function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
@@ -374,9 +374,13 @@ function frame(t) {
     if (Math.floor(ts * 2) !== Math.floor((ts - dt) * 2)) townChips();
     return;
   }
+  renderer.shadowMap.autoUpdate = true;   // v79: kota boleh mematikannya di peta; adegan lain selalu hitung bayangan
   if (TOWN && TOWN.on) {
-    if (Math.floor(ts / 30) !== Math.floor((ts - dt) / 30)) applyLight();
-    TOWN.frame(t, dt); renderer.render(TOWN.scene, TOWN.camera);
+    // v79: kamera diam > 1,5 detik = kota digambar 30 kali per detik, bukan 60 (HP lebih adem, baterai lebih awet)
+    if (TOWN.calm && TOWN.calm(t) && t - townT < 31) return;
+    const tdt = Math.min(0.05, (t - townT) / 1000); townT = t;
+    if (Math.floor(ts / 30) !== Math.floor((ts - tdt) / 30)) applyLight();
+    TOWN.frame(t, tdt); renderer.render(TOWN.scene, TOWN.camera);
     const hn = TOWN.hoodAt(); if ($("hoodName").textContent !== hn) $("hoodName").textContent = hn;
     if (Math.floor(ts * 2) !== Math.floor((ts - dt) * 2)) townChips();
     return;
