@@ -278,7 +278,101 @@
       for (let k = 0; k < 4; k++) add(SPH(0.13, 8, 6), k % 2 ? leaf : leafDk, -0.9 + k * 0.24, 0.16, D / 2 + 0.16);
       return raw ? g : merge(g);
     }
-    return { hi, lo, merge, suburb, textures: TX };
+
+    // ================= v79: Old Town, rumah deret gaya Belanda/Belgia (konsep: konsep/01-old-town-rumah-deret.png)
+    // Satu lot = dua rumah sempit nempel. Tiap rumah: lantai dasar (pintu melengkung + jendela besar atau kafe berkanopi),
+    // tiga lantai atas berjendela tinggi berbingkai putih, dan gevel di puncak: tangga, lonceng, leher, atau runcing.
+    // Bata atau plester warna lembut, balok kerekan di puncak gevel, pot bunga di lantai satu.
+    // Jendela lantai atas = kamar sewaan (12 per lot): yang dihuni nyala malam (winLit), yang kosong gelap, kamar pemain diberi
+    // bingkai oranye (youMat). Rumah menghadap +z.
+    const ROW = {
+      walls: [[0xb2654c, "brick"], [0x8e4a3a, "brick"], [0xd9b46a, "plaster"], [0xa9bba4, "plaster"], [0xe6d8c0, "plaster"], [0x9fb0bd, "plaster"], [0xc98b6a, "brick"]],
+      gables: ["step", "bell", "neck", "point"],
+      roof: [0x4f4a48, 0x5d6670, 0x7a4a3a],
+      door: [0x3f5b6e, 0x7a3f34, 0x2f4a3a, 0x8d4f45, 0x5f7a6d],
+      shut: [0x5f7a6d, 0xf0e7d6, 0x3f5b6e, 0x2f4a3a],
+    };
+    function gableShape(kind, w, gh) {
+      const s = new THREE.Shape(), x0 = -w / 2, x1 = w / 2;
+      s.moveTo(x0, 0); s.lineTo(x1, 0);
+      if (kind === "step") {   // tiga anak tangga tiap sisi + puncak datar
+        const st = 3, sw = w / (2 * st + 1);
+        s.lineTo(x1, gh / (st + 1));
+        for (let i = 0; i < st; i++) { s.lineTo(x1 - (i + 1) * sw, gh * (i + 1) / (st + 1)); s.lineTo(x1 - (i + 1) * sw, gh * (i + 2) / (st + 1)); }
+        for (let i = st - 1; i >= 0; i--) { s.lineTo(x0 + (i + 1) * sw, gh * (i + 2) / (st + 1)); s.lineTo(x0 + (i + 1) * sw, gh * (i + 1) / (st + 1)); }
+        s.lineTo(x0, gh / (st + 1));
+      } else if (kind === "bell") {
+        s.bezierCurveTo(x1, gh * 0.6, w * 0.32, gh * 0.45, w * 0.22, gh * 0.8); s.quadraticCurveTo(0, gh * 1.15, -w * 0.22, gh * 0.8); s.bezierCurveTo(-w * 0.32, gh * 0.45, x0, gh * 0.6, x0, 0);
+      } else if (kind === "neck") {
+        s.quadraticCurveTo(w * 0.32, gh * 0.4, w * 0.22, gh * 0.45); s.lineTo(w * 0.22, gh * 0.9); s.quadraticCurveTo(0, gh * 1.12, -w * 0.22, gh * 0.9); s.lineTo(-w * 0.22, gh * 0.45); s.quadraticCurveTo(-w * 0.32, gh * 0.4, x0, 0);
+      } else s.lineTo(0, gh);
+      s.lineTo(x0, 0);
+      return s;
+    }
+    function rowhouse(r, units, youUnit, winLit, winDark, youMat, raw) {
+      const pick = a => a[Math.floor(r() * a.length) % a.length];
+      const g = new THREE.Group(), add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
+      const C = (k, c, map, o) => shared(k + c, () => mat(c, map, o));
+      const trim = shared("trim", () => mat(0xfaf5ec, null, { roughness: 0.7 })), sill = C("sill", 0xe9e1d3, null), glassD = winDark;
+      const wood = shared("wood", () => mat(0x8a5a3c, planks())), beam = C("beam", 0x5a4030, null), leaf = shared("leaf", () => mat(0x7f9f69, null, { roughness: 1 }));
+      const FLW = [0xe58c8a, 0xf2c46d, 0xf6efe4, 0xc98bd0, 0xef9f6b];
+      const W = 1.02, D = 1.5, G0 = 0.82, FH = 0.6, FL = 3, HW = G0 + FL * FH + 0.06, GH = 0.72;
+      let used = -1, youY = null;
+      for (let h = 0; h < 2; h++) {
+        const cx = (h - 0.5) * W, [wc, kind] = pick(ROW.walls.filter((_, i) => i !== used)); used = ROW.walls.findIndex(w => w[0] === wc);
+        const wall = kind === "brick" ? C("rb", wc, bricks()) : C("rp", wc, plaster());
+        const gk = pick(ROW.gables), roof = C("rr", pick(ROW.roof), tiles(), { roughness: 0.8 }), door = C("rd", pick(ROW.door), planks());
+        const shut = kind === "plaster" && r() < 0.6 ? C("rs", pick(ROW.shut), slats()) : null;
+        // badan, plint batu bawah, pita putih tiap lantai
+        add(uvs(new THREE.BoxGeometry(W - 0.01, HW, D), W, HW), wall, cx, HW / 2, 0);
+        add(box(W, 0.14, D + 0.02, 0), C("plint", 0x8f877c, null), cx, 0.07, 0);
+        for (let f = 0; f <= FL; f++) add(box(W, 0.035, 0.05, 0), trim, cx, G0 + f * FH - 0.02, D / 2 + 0.02);
+        // gevel depan (bentuk khas) + gevel belakang runcing, atap pelana di antaranya (bubungan tegak lurus jalan)
+        const gf = new THREE.ExtrudeGeometry(gableShape(gk, W, GH), { depth: 0.1, bevelEnabled: false, curveSegments: 6 });
+        uvs(gf, 1, 1); add(gf, wall, cx, HW, D / 2 - 0.1);
+        const edge = new THREE.ExtrudeGeometry(gableShape(gk, W + 0.04, GH + 0.04), { depth: 0.02, bevelEnabled: false, curveSegments: 6 });
+        add(edge, trim, cx, HW - 0.01, D / 2 - 0.115);
+        const gb = new THREE.ExtrudeGeometry(gableShape("point", W, GH * 0.8), { depth: 0.08, bevelEnabled: false }); add(gb, wall, cx, HW, -D / 2);
+        const pitch = Math.atan2(GH * 0.8, W / 2), slope = Math.hypot(W / 2, GH * 0.8);
+        for (const sx of [-1, 1]) add(box(slope + 0.04, 0.05, D - 0.16, 0, 0.5), roof, cx + sx * W / 4, HW + GH * 0.4 + 0.02, -0.02, 0, 0, -sx * pitch);
+        // jendela gevel + balok kerekan
+        add(box(0.24, 0.3, 0.03, 0), trim, cx, HW + GH * 0.36, D / 2 + 0.005); add(box(0.18, 0.24, 0.03, 0), glassD, cx, HW + GH * 0.36, D / 2 + 0.015);
+        add(box(0.05, 0.05, 0.22, 0), beam, cx, HW + GH * (gk === "point" ? 0.66 : 0.78), D / 2 + 0.08);
+        // lantai atas: dua jendela tinggi per lantai; tiap jendela = satu kamar
+        for (let f = 0; f < FL; f++) for (let c = 0; c < 2; c++) {
+          const u = h * 6 + f * 2 + c, x = cx + (c - 0.5) * 0.46, y = G0 + f * FH + FH * 0.48, lived = u === youUnit || units[u];
+          add(box(0.3, 0.42, 0.03, 0), trim, x, y, D / 2 + 0.01);
+          add(box(0.23, 0.35, 0.03, 0), lived ? winLit : glassD, x, y, D / 2 + 0.02);
+          add(box(0.012, 0.35, 0.035, 0), trim, x, y, D / 2 + 0.025); add(box(0.23, 0.012, 0.035, 0), trim, x, y + 0.04, D / 2 + 0.025);
+          add(box(0.34, 0.03, 0.07, 0), sill, x, y - 0.22, D / 2 + 0.035);
+          if (shut) for (const sx of [-1, 1]) add(box(0.1, 0.36, 0.02, 0), shut, x + sx * 0.2, y, D / 2 + 0.012);
+          if (f === 0 && (lived || r() < 0.4)) {   // pot bunga di lantai satu
+            add(box(0.28, 0.06, 0.07, 0), wood, x, y - 0.27, D / 2 + 0.06);
+            for (let k = 0; k < 3; k++) add(SPH(0.04, 6, 5), k === 1 ? C("fl", pick(FLW), null) : leaf, x - 0.09 + k * 0.09, y - 0.22, D / 2 + 0.07);
+          }
+          if (u === youUnit) { add(box(0.36, 0.48, 0.02, 0), youMat, x, y, D / 2 + 0.002); youY = y; }
+        }
+        // lantai dasar: pintu melengkung di satu sisi, jendela besar atau kafe di sisi lain
+        const ds = h ? 1 : -1, dx = cx + ds * 0.28;
+        add(box(0.32, 0.62, 0.04, 0), trim, dx, 0.31 + 0.1, D / 2 + 0.01);
+        add(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 12, 1, false, Math.PI / 2, Math.PI), trim, dx, 0.72, D / 2 + 0.01, Math.PI / 2, 0, 0);
+        add(box(0.24, 0.52, 0.04, 0), door, dx, 0.4, D / 2 + 0.025);
+        add(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 10, 1, false, Math.PI / 2, Math.PI), glassD, dx, 0.66, D / 2 + 0.025, Math.PI / 2, 0, 0);
+        add(box(0.36, 0.03, 0.14, 0), C("step", 0xcfc6b8, null), dx, 0.155, D / 2 + 0.07);
+        const wx = cx - ds * 0.2, cafe = h === 0 && r() < 0.3;
+        add(box(0.5, 0.48, 0.03, 0), trim, wx, 0.46, D / 2 + 0.01); add(box(0.44, 0.42, 0.03, 0), cafe ? winLit : glassD, wx, 0.46, D / 2 + 0.02);
+        if (cafe) {   // kanopi bergaris
+          for (let k = 0; k < 5; k++) add(box(0.12, 0.02, 0.3, 0), C("aw", k % 2 ? 0xf6efe4 : 0xc6584a, null), wx - 0.24 + k * 0.12, 0.76, D / 2 + 0.15, 0.3, 0, 0);
+          add(CYL(0.012, 0.012, 0.3, 5), beam, wx - 0.2, 0.15, D / 2 + 0.32); add(box(0.2, 0.02, 0.2, 0), beam, wx - 0.2, 0.3, D / 2 + 0.32);
+        } else add(box(0.5, 0.05, 0.08, 0), sill, wx, 0.2, D / 2 + 0.04);
+      }
+      // batas atap antar rumah
+      add(box(0.04, 0.12, D, 0), C("plint", 0x8f877c, null), 0, HW + 0.03, 0);
+      const out = raw ? g : merge(g);
+      out.userData.youY = youY; out.userData.top = HW + GH;
+      return out;
+    }
+    return { hi, lo, merge, suburb, rowhouse, textures: TX };
   }
   const Rumah = { create };
   if (typeof module !== "undefined") module.exports = Rumah; else globalThis.Rumah = Rumah;

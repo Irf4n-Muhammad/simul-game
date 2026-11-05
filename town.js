@@ -225,6 +225,14 @@
     // lived-in windows have curtains by day and glow in the evening, empty ones stay dark.
     const BLOCK_PAINT = { apartment: [0xc49a84, 0xb8a490, 0xd2c2ad, 0xa9a59a], flat: [0xe6dccb, 0xd8cbb8, 0xcfd3c8, 0xe2d0c4] };
     function block(kind, r, occ, youUnit) {
+      // v79: Old Town = rumah deret gaya Belanda/Belgia (rumah.js), kamar sewaan = jendela lantai atas
+      if (kind === "apartment" && rumah) {
+        const units = Array.from({ length: 12 }, (_, u) => u === youUnit || (occ ? occ[u] : r() < 0.8));
+        const wl = M(0xd9c7a6, { roughness: 0.7, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(wl);
+        const h = rumah.rowhouse(r, units, youUnit, wl, M(0x58616a, { roughness: 0.3 }), F(0xc2704f), false);
+        h.position.z = -0.15; h.userData.units = units;
+        const g = new THREE.Group(); g.add(h); g.userData.units = units; g.userData.youY = h.userData.youY; return g;
+      }
       const g = new THREE.Group(), flat = kind === "flat";
       const floors = flat ? 3 : 4, cols = 3, fh = flat ? 0.78 : 0.68, W = flat ? 1.95 : 1.85, D = 1.55, H = floors * fh + 0.25;
       const wall = M(pick(r, BLOCK_PAINT[kind]), { roughness: 0.9 }), trim = M(0xf1ebe1, { roughness: 0.8 }), dark = M(0x58616a, { roughness: 0.3 });
