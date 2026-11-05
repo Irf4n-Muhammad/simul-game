@@ -39,6 +39,7 @@
     const rumah = globalThis.Rumah ? Rumah.create({ THREE, M, RB, canvasTex }) : null;   // v79: rumah gaya nyata (rumah.js)   // v79: shading (look.js): AO dinding, cahaya tepi, grading per jam/cuaca
     const lit = [];        // window and lamp materials that glow in the evening
     const roads = [];      // v75: road materials that go dark and shiny in the rain
+    const statics = [];    // v79: groups that never move after build (bakeTown merges them)
     const lots = [];       // tap targets
     const sites = [];      // houses being built: their clip plane rises with the real clock
     const walkers = [];
@@ -69,7 +70,17 @@
       if (!kit[name]) return null;
       const o = kit[name].clone(); o.position.set(x, y, z); o.scale.setScalar(s); o.rotation.y = ry; parent.add(o); return o;
     };
-    const mesh = (geo, mat, x, y, z, parent = scene) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !mat.transparent && !mat.isMeshBasicMaterial; parent.add(m); return m; };
+    // v79: kotak dengan 6 bahan = 6 kali gambar, walau bahannya cuma 2 macam. Sisi yang bahannya sama dijadikan satu kelompok.
+    function packGroups(geo, mats) {
+      const uniq = [...new Set(mats)]; if (uniq.length === mats.length || !geo.groups.length) return [geo, mats];
+      const idx = geo.index ? geo.index.array : Array.from({ length: geo.attributes.position.count }, (_, i) => i), out = [], groups = [];
+      uniq.forEach((m, u) => { const start = out.length; for (const g of geo.groups) if (mats[g.materialIndex] === m) for (let i = g.start; i < g.start + g.count; i++) out.push(idx[i]); groups.push({ start, count: out.length - start, u }); });
+      const ng = geo.clone(); ng.setIndex(out); ng.clearGroups();
+      if (uniq.length === 1) return [ng, uniq[0]];
+      for (const g of groups) ng.addGroup(g.start, g.count, g.u);
+      return [ng, uniq];
+    }
+    const mesh = (geo, mat, x, y, z, parent = scene) => { if (Array.isArray(mat)) [geo, mat] = packGroups(geo, mat); const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !mat.transparent && !mat.isMeshBasicMaterial; parent.add(m); return m; };
     const rnd = seed => { let s = 0; for (const ch of String(seed)) s = (s * 31 + ch.charCodeAt(0)) >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
     const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];
     const winMat = () => { const m = M(0x8c9aa3, { roughness: 0.2, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(m); return m; };
@@ -290,11 +301,14 @@
       sites.push({ plane, start, done, top, worker: w });
     }
     function siteProgress(S) { const now = env.now(); return Math.max(0.04, Math.min(1, (now - S.start) / Math.max(0.01, S.done - S.start))); }
+    const saleTex = {};
     function forSale(price) {
       const g = new THREE.Group();
       mesh(CYL(0.04, 0.04, 0.9, 8), M(0x6b4f3c), 0, 0.45, 0, g);
-      const tex = canvasTex((c, w, h) => { c.fillStyle = "#F7F2EA"; c.fillRect(0, 0, w, h); c.fillStyle = "#C2704F"; c.fillRect(0, 0, w, 34); c.fillStyle = "#fff"; c.font = "800 22px Manrope, sans-serif"; c.textAlign = "center"; c.fillText("FOR SALE", w / 2, 25); c.fillStyle = "#2E2A26"; c.font = "700 20px Manrope, sans-serif"; c.fillText(price, w / 2, 70); }, 160, 96);
-      mesh(new THREE.BoxGeometry(0.75, 0.45, 0.03), [M(0xf7f2ea), M(0xf7f2ea), M(0xf7f2ea), M(0xf7f2ea), M(0xffffff, { map: tex }), M(0xf7f2ea)], 0, 0.85, 0.03, g);
+      const tex = saleTex[price] || (saleTex[price] = canvasTex((c, w, h) => { c.fillStyle = "#F7F2EA"; c.fillRect(0, 0, w, h); c.fillStyle = "#C2704F"; c.fillRect(0, 0, w, 34); c.fillStyle = "#fff"; c.font = "800 22px Manrope, sans-serif"; c.textAlign = "center"; c.fillText("FOR SALE", w / 2, 25); c.fillStyle = "#2E2A26"; c.font = "700 20px Manrope, sans-serif"; c.fillText(price, w / 2, 70); }, 160, 96));
+      // v79: papan polos + muka bergambar (dulu satu kotak 6 bahan = 6 kali gambar); gambarnya sama untuk satu harga, jadi bisa digabung
+      mesh(new THREE.BoxGeometry(0.75, 0.45, 0.03), M(0xf7f2ea), 0, 0.85, 0.03, g);
+      mesh(new THREE.PlaneGeometry(0.75, 0.45), M(0xffffff, { map: tex }), 0, 0.85, 0.046, g).castShadow = false;
       return g;
     }
     function lamp(x, z) {
@@ -426,7 +440,7 @@
       for (const sx of [-1, 1]) mesh(SPH(0.08, 10, 8), M(new THREE.Color(color).multiplyScalar(0.85).getHex()), sx * 0.13, 0.05, 0.08, g).scale.y = 0.5;
       if (you) { const mk = mesh(new THREE.ConeGeometry(0.1, 0.2, 4), F(0xc2704f), 0, 1.0, 0, g); mk.rotation.x = Math.PI; g.userData.marker = mk; }
       // v77: umbrella, shown in the rain
-      const um = new THREE.Group(); um.visible = false; g.add(um); g.userData.umbrella = um;
+      const um = new THREE.Group(); um.visible = false; g.add(um); g.userData.umbrella = um; g.userData.keep = true;   // v79: bake() jangan sentuh
       const uc = UMB[Math.abs(Math.round(color)) % UMB.length];
       mesh(new THREE.ConeGeometry(0.42, 0.18, 8, 1, true), M(uc, { roughness: 0.6, side: THREE.DoubleSide }), 0.08, 1.02, 0, um);
       mesh(CYL(0.012, 0.012, 0.6, 5), M(0x3a332d), 0.08, 0.72, 0, um);
@@ -455,6 +469,7 @@
     function mapLabel(text, sub, x, y, z, k = 0.8) { const s = label(text, sub, x, y, z, false, k); s.userData.map = true; s.userData.base = s.scale.clone(); s.userData.y0 = y; mapLabels.push(s); return s; }
     function inst(geo, mat, list, set) {
       if (!list.length) return null;
+      if (Array.isArray(mat)) [geo, mat] = packGroups(geo, mat);
       const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), col = new THREE.Color(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
       list.forEach((b, i) => { const o = set(b); p.set(o.x, o.y || 0, o.z); s.set(o.sx, o.sy, o.sz); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); m4.compose(p, q, s); im.setMatrixAt(i, m4); col.setHex(o.c).convertSRGBToLinear(); im.setColorAt(i, col); });
       im.castShadow = im.receiveShadow = true; scene.add(im); return im;
@@ -772,12 +787,12 @@
       if (!T.canEnter(e)) return false;
       if (inside && inside.e !== e) leavePlace();
       const I = interiors[e.place.id] || (interiors[e.place.id] = interior(e));
-      inside = { e, I, k: inside ? inside.k : 0 }; I.g.visible = true;
+      inside = { e, I, k: inside ? inside.k : 0 }; I.g.visible = true; unbake(e.g);
       fillRoom();
       tgt = { x: e.place.x + Math.sin(e.face) * 0.6, z: e.place.z + Math.cos(e.face) * 0.6 + 1.2, zoom: 0.12 };
       return true;
     };
-    function leavePlace() { if (!inside) return; const { e, I } = inside; e.g.visible = true; e.g.scale.y = 1; I.g.visible = false; if (e.tag) e.tag.userData.hide = false; inside = null; T.inside = null; }
+    function leavePlace() { if (!inside) return; const { e, I } = inside; rebake(e.g); e.g.visible = true; e.g.scale.y = 1; I.g.visible = false; if (e.tag) e.tag.userData.hide = false; inside = null; T.inside = null; }
     T.leavePlace = leavePlace;
     function fillRoom() {
       const { e, I } = inside, c = clock(), P = e.place;
@@ -938,11 +953,143 @@
       if (!drag && !pinch && !tgt) { const f = 0.04; focusX += (L.x - focusX) * f; focusZ += (L.z + 2 - focusZ) * f; }
       return true;
     }
+    // ---------------------------------------------------------------- v79: bake (kit system, langkah 1)
+    // Kota ini dirakit dari ribuan potong kecil (kotak, silinder, papan), masing-masing satu kali gambar ke GPU, dua kali
+    // kalau ikut bayangan. Sesudah kota selesai dibangun, potongan yang diam digabung jadi satu mesh per "bahan yang sama"
+    // (warna, kekasaran, tekstur, nyala malam). M() bikin material baru tiap dipanggil, jadi bahan disamakan lewat isinya,
+    // bukan lewat objeknya. Material yang dipakai tetap material asli, jadi lampu malam, jalan basah, dan shading tetap jalan.
+    // deep = ikut cucu-cucunya (satu bangunan/lot), cell = potong per kotak dunia selebar itu supaya yang jauh tetap
+    // terbuang dari layar (frustum culling). Yang bergerak, transparan, terpotong (bangunan dalam proses), atau
+    // tersembunyi tidak disentuh.
+    const planeId = new WeakMap(); let planeN = 0, shadeMat = null;
+    const pid = p => { if (!planeId.has(p)) planeId.set(p, ++planeN); return planeId.get(p); };
+    function bakeSig(m, L, R) {
+      const c = x => (x ? x.getHex() : ""), cp = m.clippingPlanes ? m.clippingPlanes.map(pid).join(",") + (m.clipShadows ? "s" : "") : "";
+      return [m.type, c(m.color), m.roughness, m.metalness, c(m.emissive), m.emissiveIntensity, m.map ? m.map.uuid : "", m.emissiveMap ? m.emissiveMap.uuid : "",
+        m.side, m.flatShading, m.envMapIntensity, m.opacity, cp, L.has(m) ? "L" : "", R.has(m) ? "R" : ""].join("|");
+    }
+    function bake(root, deep, cell, from = [root], keep = false) {
+      root.updateMatrixWorld(true);
+      const L = new Set(lit), R = new Set(roads), canon = new Map(), buckets = new Map();
+      const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), v = new THREE.Vector3();
+      const okM = m => m.visible && !m.transparent && !m.vertexColors && (m.isMeshStandardMaterial || m.isMeshBasicMaterial);
+      const ok = o => o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.visible && !o.renderOrder && !o.userData.keep &&
+        (Array.isArray(o.material) ? o.geometry.groups.length && o.material.every(okM) : okM(o.material)) &&
+        o.geometry.attributes.normal && !o.geometry.morphAttributes.position && o.matrixWorld.determinant() > 0;
+      // kotak berbahan banyak dipecah per kelompok sisi, tiap potong masuk ember bahannya sendiri
+      const parts = o => {
+        if (!Array.isArray(o.material)) return [[null, o.material]];
+        const flat = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+        return o.geometry.groups.map(g => {
+          const sub = new THREE.BufferGeometry();
+          for (const a of ["position", "normal", "uv"]) { const at = flat.attributes[a]; if (at) sub.setAttribute(a, new THREE.BufferAttribute(at.array.slice(g.start * at.itemSize, (g.start + g.count) * at.itemSize), at.itemSize)); }
+          return [sub, o.material[g.materialIndex]];
+        });
+      };
+      const box = new THREE.Box3();
+      const take = o => {
+        // yang tipis rata di tanah (rumput, jalan setapak, tanah lot) tidak perlu bikin bayangan
+        if (o.castShadow) { box.setFromObject(o); if (box.max.y - box.min.y < 0.1 && box.max.y < 0.2) o.castShadow = false; }
+        for (const [geo, mat] of parts(o)) put1(o, geo, mat);
+      };
+      const put1 = (o, geo, mat) => {
+        const s = bakeSig(mat, L, R);
+        if (!canon.has(s)) canon.set(s, mat);
+        let k = s + (o.castShadow ? "|c" : ""), ck = "";
+        if (cell) {
+          if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+          o.getWorldPosition(v);   // jalan panjang dan tanah raksasa: satu ember sendiri, tidak dipotong per kotak
+          ck = o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > cell ? "big" : Math.floor(v.x / cell) + "," + Math.floor(v.z / cell);
+          k += "|" + ck;
+        }
+        if (!buckets.has(k)) buckets.set(k, { mat: canon.get(s), cast: o.castShadow, list: [], srcs: new Set(), ck });
+        buckets.get(k).list.push([o, geo, cur]); buckets.get(k).srcs.add(cur);
+      };
+      const visit = o => { for (const c of o.children) { if (!c.visible || c.userData.keep) continue; if (ok(c)) take(c); else if (deep && !c.isMesh) visit(c); } };
+      let cur = null;
+      for (const f of from) { cur = f; visit(f); }
+      let n = 0;
+      const shade = new Map();   // per kotak: semua yang bikin bayangan, apa pun bahannya
+      for (const b of buckets.values()) {
+        if (b.list.length < 2 && !b.list[0][1]) continue;   // sendirian: biarkan (kecuali potongan kotak berbahan banyak)
+        const geos = [], m4 = new THREE.Matrix4();
+        let count = 0;
+        for (const [o, sub, root0] of b.list) {
+          const g = sub || (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone());
+          g.applyMatrix4(m4.multiplyMatrices(inv, o.matrixWorld));
+          geos.push(g); count += g.attributes.position.count;
+          if (cell && b.cast) {   // bayangan dikelompokkan per kotak setengah ukuran (lebih rapat, supaya yang di luar sorot matahari terbuang)
+            o.getWorldPosition(v); const sk = b.ck === "big" ? "big" : Math.floor(v.x / (cell / 2)) + "," + Math.floor(v.z / (cell / 2));
+            if (!shade.has(sk)) shade.set(sk, { parts: [], srcs: new Set(), objs: [] });
+            const S = shade.get(sk); S.parts.push(g.attributes.position.array); S.srcs.add(root0); S.objs.push(o);
+          }
+        }
+        const P = new Float32Array(count * 3), N = new Float32Array(count * 3), U = new Float32Array(count * 2);
+        let o3 = 0, o2 = 0;
+        for (const g of geos) {
+          const c = g.attributes.position.count;
+          P.set(g.attributes.position.array, o3); N.set(g.attributes.normal.array, o3);
+          if (g.attributes.uv) U.set(g.attributes.uv.array.subarray(0, c * 2), o2);
+          o3 += c * 3; o2 += c * 2; g.dispose();
+        }
+        const mg = new THREE.BufferGeometry();
+        mg.setAttribute("position", new THREE.BufferAttribute(P, 3)); mg.setAttribute("normal", new THREE.BufferAttribute(N, 3)); mg.setAttribute("uv", new THREE.BufferAttribute(U, 2));
+        mg.computeBoundingSphere();
+        const mm = new THREE.Mesh(mg, b.mat); mm.castShadow = b.cast; mm.receiveShadow = true; mm.userData.baked = b.list.length; root.add(mm);
+        if (cell && b.cast) mm.castShadow = false;
+        if (keep) {   // potongan asli disimpan (tersembunyi) supaya bisa dibongkar lagi: unbake()
+          const src = [...new Set(b.list.map(e => e[0]))];
+          for (const o of src) o.visible = false;
+          mm.userData.src = src; mm.userData.open = 0;
+          for (const s of b.srcs) (s.userData.bakedInto || (s.userData.bakedInto = [])).push(mm);
+        } else for (const [o] of b.list) if (o.parent) o.parent.remove(o);
+        n += b.list.length - 1;
+      }
+      // Bayangan: lampu matahari menggambar ulang semua benda dari sudutnya, dan di situ bahan tidak penting. Jadi tiap kotak
+      // dapat satu "bayangan saja" (posisi saja): ikut digambar di peta bayangan, dilewati di gambar utama (jumlah gambar 0).
+      for (const S of shade.values()) {
+        let len = 0; for (const p of S.parts) len += p.length;
+        const A = new Float32Array(len); let o = 0; for (const p of S.parts) { A.set(p, o); o += p.length; }
+        const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(A, 3)); sg.computeBoundingSphere();
+        const sm = new THREE.Mesh(sg, shadeMat || (shadeMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })));
+        sm.castShadow = true; sm.receiveShadow = false; sm.userData.baked = S.parts.length; sm.userData.shadowOnly = true;
+        sm.onBeforeRender = () => sg.setDrawRange(0, 0); sm.onAfterRender = () => sg.setDrawRange(0, Infinity);
+        root.add(sm);
+        if (keep) { sm.userData.src = [...new Set(S.objs)]; sm.userData.open = 0; for (const s of S.srcs) s.userData.bakedInto.push(sm); }
+      }
+      return n;   // berapa kali gambar yang hilang
+    }
+    // satu bangunan/lot perlu tampil sendiri (masuk gedung, pratinjau rumah): gabungan yang memuatnya disembunyikan dan
+    // potongan aslinya (semua lot di gabungan itu) dimunculkan lagi. rebake() mengembalikannya.
+    function unbake(r) {
+      if (!r || !r.userData.bakedInto || r.userData.unbaked) return; r.userData.unbaked = true;
+      for (const mm of r.userData.bakedInto) { if (mm.userData.open++ === 0) { mm.visible = false; for (const o of mm.userData.src) o.visible = true; } }
+    }
+    function rebake(r) {
+      if (!r || !r.userData.unbaked) return; r.userData.unbaked = false;
+      for (const mm of r.userData.bakedInto) { if (--mm.userData.open === 0) { mm.visible = true; for (const o of mm.userData.src) o.visible = false; } }
+    }
+    // jalankan sesudah kota jadi. Bangunan bernama dan lot digabung per bangunan (pintunya masih bisa dibuka, pratinjau
+    // rumah di lot kosong masih bisa menyembunyikan isinya). Rumah berpenghuni dan potongan lepas di adegan digabung per kotak 48 unit.
+    // Gedung yang bisa dimasuki dan lot kosong ikut digabung, tapi potongan aslinya disimpan untuk unbake().
+    function bakeTown() {
+      let n = 0;
+      const fixed = [], open = [];
+      for (const l of lots) {
+        if (l.g) (T.canEnter(l) ? open : fixed).push(l.g);   // bisa dimasuki: dindingnya mengecil waktu masuk
+        else if (l.content && l.build) n += bake(l.content, true);   // sedang dibangun: bidang potongnya milik lot ini sendiri
+        else if (l.content) (l.who ? fixed : open).push(l.content);   // lot kosong: pratinjau rumah menyembunyikan isinya
+      }
+      for (const g of statics) n += bake(g, true);
+      n += bake(scene, false, 48, [scene]) + bake(scene, true, 48, fixed) + bake(scene, true, 48, open, true);
+      T.baked = n;
+      return n;
+    }
     // ---------------------------------------------------------------- layout
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; sky = null; inside = null; T.inside = null; walk = null; fair = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; statics.length = 0; sky = null; inside = null; T.inside = null; walk = null; fair = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
@@ -957,13 +1104,13 @@
         for (const sx of [-1, 1]) { const w = mesh(RB(WALK, 0.08, PLAZA, 0.02), M(0xddd3c4, { roughness: 1 }), sx * (ROAD_W / 2 + WALK / 2), 0.04, zc); w.castShadow = false; }
         for (let k = 0; k < 4; k++) for (const sx of [-1, 1]) lamp(sx * (ROAD_W / 2 + 0.12), 1.8 + k * 3.7 + (sx > 0 ? 1.8 : 0));
         const SQX = -(ROAD_W / 2 + WALK + 2.1);
-        const sqG = new THREE.Group(); sqG.position.set(SQX, 0, 5.4); sqG.scale.setScalar(0.72); scene.add(sqG); townSquare(sqG);
+        const sqG = new THREE.Group(); sqG.position.set(SQX, 0, 5.4); sqG.scale.setScalar(0.72); scene.add(sqG); townSquare(sqG); statics.push(sqG);
         label("Town Square", "Clock shows your time", -2.4, 4.4, 8.8, false, 0.72);
         const sqHit = new THREE.Mesh(new THREE.BoxGeometry(4.1, 3, 6.3), new THREE.MeshBasicMaterial({ visible: false })); sqHit.position.set(SQX, 1.5, 5.4); scene.add(sqHit);
         lots.push({ hit: sqHit, square: true, homes });
         for (const c of CIVIC) {
           const open = homes >= c.need, x = c.side * (ROAD_W / 2 + WALK + 1.55);
-          const cg = new THREE.Group(); cg.position.set(x, 0, c.z); cg.rotation.y = c.side > 0 ? -Math.PI / 2 + TURN * 0.6 : Math.PI / 2 - TURN * 0.6; cg.scale.setScalar(0.78); scene.add(cg);
+          const cg = new THREE.Group(); cg.position.set(x, 0, c.z); cg.rotation.y = c.side > 0 ? -Math.PI / 2 + TURN * 0.6 : Math.PI / 2 - TURN * 0.6; cg.scale.setScalar(0.78); scene.add(cg); statics.push(cg);
           const inner = new THREE.Group(); inner.rotation.y = 0; cg.add(inner);
           if (open) facility(c, inner, c.len); else lockedPlot(c, inner, c.len, homes);
           label(c.name, open ? "Open" : `Opens at ${c.need} homes`, c.side * 2.8, 2.2, c.z, false, 0.62);
@@ -1039,7 +1186,7 @@
         z = z1;
       });
       // v73: the city around the street, then the people in it
-      buildCity(); buildSky(); buildFair();
+      buildCity(); buildSky(); buildFair(); bakeTown();
       const mine = lots.find(l => l.who && l.who.you && !l.build) || lots.find(l => l.who && l.who.you);
       if (mine) { const hx = mine.hit.position.x, hz = mine.hit.position.z; T.homeX = hx; T.homeZ = T.homeZ ?? hz; T.homeDoor = { x: Math.sign(hx) * (ROAD_W / 2 + WALK / 2), z: hz }; T.homeTall = mine.hood && (mine.hood.kind === "mansion" ? 4.6 : 3.4); }
       buildLife(data);
@@ -1259,12 +1406,12 @@
     T.preview = (l, model, paint) => {
       T.clearPreview();
       if (!l) return;
-      l.content.visible = false;
+      unbake(l.content); l.content.visible = false;
       previewG = home(l.hood.kind, model, paint, rnd("preview")); previewG.userData.lot = l; l.lotG.add(previewG);
       previewG.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.isMeshStandardMaterial && m.userData.env0 === undefined) { m.userData.env0 = m.envMapIntensity; m.envMapIntensity *= env.getLit().env; } });
       if (look) look.patchScene(previewG);
     };
-    T.clearPreview = () => { if (previewG) { previewG.userData.lot.content.visible = true; previewG.parent.remove(previewG); previewG = null; } };
+    T.clearPreview = () => { if (previewG) { rebake(previewG.userData.lot.content); previewG.userData.lot.content.visible = true; previewG.parent.remove(previewG); previewG = null; } };
     T.lots = lots;
     T.HOODS = HOODS;
     // the Homes app photographs single homes; the kit has to be loaded first
