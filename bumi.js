@@ -66,7 +66,7 @@
     return { x: r * Math.cos(phi) * Math.sin(th), y: r * Math.sin(phi), z: r * Math.cos(phi) * Math.cos(th) };
   }
 
-  const API = { CONTINENTS, CONT, CITIES, HOME_CITY, landAt, contAt, toXYZ, angDist, fbm };
+  const API = { CONTINENTS, CONT, CITIES, HOME_CITY, SIZE, landAt, contAt, toXYZ, angDist, fbm };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Bumi = API;
 })();

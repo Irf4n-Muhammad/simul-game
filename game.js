@@ -32,6 +32,29 @@
       early: { label: "Lights out early", note: "+1 condition tomorrow" } } },
   };
   const GROWN = new Set(["dewasa", "tua"]);
+  // v75: jalan bareng ke kota (town.js nunjukin jalannya). Efek kecil, sekali sehari.
+  // v77: cuaca waktu jalan (dari langit asli pemain, dicatat di kunci aksi). Badai nggak bisa jalan (UI yang nahan).
+  const WALK_WX = {
+    clear: { mood: 0, lines: [] }, cloud: { mood: 0, lines: [] },
+    rain: { mood: 1, lines: ["{n} insists on holding the umbrella and splashes through every puddle on the way.", "It's raining, so {n} wears the yellow boots and is very proud of them."] },
+    snow: { mood: 3, lines: ["{n} catches snowflakes on their tongue the whole way there.", "{n} leaves a long trail of tiny footprints in the snow and keeps looking back at it."] },
+    fog: { mood: 0, lines: ["The fog makes the streets mysterious. {n} holds on a little tighter.", "{n} pretends the foggy street is a cloud and walks very carefully."] },
+  };
+  const TRIP_LINES = [
+    "{n} rides the train to {t} with you, nose pressed to the window the whole way. They count eleven cows.",
+    "In {t} {n} finds a bakery that sells bread shaped like animals and has to try three.",
+    "{n} and you spend the day in {t}, walking by the river and waving at every boat. They fall asleep on the train home.",
+    "{n} buys a postcard of {t} to put on their wall, and tells everyone at home about the train.",
+  ];
+  const WALKS = {
+    park: { name: "Riverside Park", mood: 6, health: 0.2, lines: ["{n} walks to Riverside Park with you and spends a long time watching the ducks on the pond.", "At Riverside Park {n} runs the whole loop around the pond, then flops onto the grass, very pleased."] },
+    bazaar: { name: "the Bazaar", mood: 5, bond: 0.3, lines: ["{n} tags along to the Bazaar and stops at every stall. The fruit seller gives them a free plum.", "At the Bazaar {n} holds on tight and points at everything with bright colours."] },
+    school: { name: "school", mood: 3, skill: "logic", lines: ["{n} walks past the school with you and peeks through the gate at the big classroom.", "{n} stands at the school gate for a while, reading the notices out loud."] },
+    // v76: pasar akhir pekan / festival di Riverside Park. Kalau ada festival dunia yang lagi jalan, barisnya pakai nama festivalnya.
+    fair: { name: "the market", mood: 7, bond: 0.4, lines: ["{n} goes round the Weekend Market with you and comes home with a paper bag of warm pastries.", "At the Weekend Market {n} tries every free sample and makes friends with the honey seller."],
+      fest: ["{n} spends the evening at {f} with you, eyes wide at every lantern.", "{n} dances in front of the little stage at {f} until the band stops.", "At {f} {n} wins a tiny prize at a stall and won't put it down."] },
+    square: { name: "Town Square", mood: 4, bond: 0.4, lines: ["{n} sits with you by the fountain in Town Square, counting the pigeons.", "In Town Square {n} waves at the clock tower every time it chimes."] },
+  };
   // nilai tiap rawat untuk kondisi: [dikerjakan, telat, terlewat]
   const CARE_SCORE = { tidur: [2, 0, -3], makan_m: [0.5, 0, -1], makan_p: [1.5, 0, -2.5], mandi: [1, 0, -1.5] };
   const rawatOf = (c, d) => ((c.info.rawat ||= {})[d] ||= {});
@@ -416,6 +439,43 @@
         x.remember(kind.slice(6));
         return true;
       }
+      if (kind.startsWith("jalan:")) {
+        // v75: ajak jalan ke kota (taman, Bazaar, sekolah, alun-alun). Sekali sehari; efeknya kecil dan masuk cerita hari itu.
+        // v77: cuaca ikut di kunci aksi ("jalan:park:rain"), jadi waktu diputar ulang ceritanya tetap sama tanpa nanya cuaca lagi
+        const [, dest, wx] = kind.split(":"), J = WALKS[dest];
+        if (!J || c.info.jalan === day || (wx && !WALK_WX[wx])) return false;
+        c.info.jalan = day;
+        const x = new E.Ctx(c, day, E.seed_rng("jalan", c.id, day), this.home, true);
+        x.need("mood", J.mood);
+        if (J.bond) c.bond = Math.min(100, c.bond + J.bond * (1 - c.bond / 100));
+        if (J.health) x.stat("kesehatan", J.health);
+        if (J.skill && c.st) c.st.skills[J.skill] = Math.min(100, c.st.skills[J.skill] + 0.2);
+        const fest = J.fest ? E.world_active(this.home.world, day).find(e => e.jenis === "festival") : null;
+        if (wx && WALK_WX[wx].lines.length) x.say(x.rng.choice(WALK_WX[wx].lines).replace(/\{n\}/g, x.n));
+        if (wx) x.need("mood", WALK_WX[wx].mood);
+        x.say(x.rng.choice(fest ? J.fest : J.lines).replace(/\{n\}/g, x.n).replace(/\{f\}/g, fest ? fest.nama : ""));
+        const seen = (c.info.jalan_ke ||= []);
+        if (fest) x.remember(`Went to ${fest.nama} with you.`);
+        else if (!seen.includes(dest)) { seen.push(dest); x.remember(`First walk to ${J.name} with you.`); }
+        else if (wx === "snow" && !seen.includes("snow")) { seen.push("snow"); x.remember("Walked through the snow with you."); }
+        (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["jalan:" + dest]));
+        return true;
+      }
+      if (kind.startsWith("trip:")) {
+        // v77: naik kereta ke kota kecil (peta benua, region.js). Nama kotanya ada di kunci aksi biar replay nggak tergantung peta.
+        // Dihitung jalan-jalan hari itu (nggak bisa jalan lagi), efeknya sedikit lebih besar.
+        const [, town, wx] = kind.split(":");
+        if (!/^[A-Za-z][A-Za-z' -]{1,23}$/.test(town || "") || c.info.jalan === day || (wx && !WALK_WX[wx])) return false;
+        c.info.jalan = day;
+        const x = new E.Ctx(c, day, E.seed_rng("trip", c.id, day), this.home, true);
+        x.need("mood", 8 + (wx ? WALK_WX[wx].mood : 0)); c.bond = Math.min(100, c.bond + 0.5 * (1 - c.bond / 100));
+        if (c.st) c.st.skills.creativity = Math.min(100, c.st.skills.creativity + 0.2);
+        x.say(x.rng.choice(TRIP_LINES).replace(/\{n\}/g, x.n).replace(/\{t\}/g, town));
+        const seen = (c.info.trip_ke ||= []);
+        if (!seen.includes(town)) { seen.push(town); x.remember(`Took the train to ${town} with you.`); }
+        (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["trip"]));
+        return true;
+      }
       if (kind === "peluk") {
         c.bond = Math.min(100, c.bond + 0.5 * (1 - c.bond / 100));
         c.needs.mood = Math.min(100, c.needs.mood + 5);
@@ -702,7 +762,7 @@
     }
   }
 
-  const API = { Game, NeedInput, HumanGuardian, NEED_MAP, CARE, FOOD, TITIP_MAX, TITIP_LEN };
+  const API = { Game, NeedInput, HumanGuardian, NEED_MAP, CARE, FOOD, TITIP_MAX, TITIP_LEN, WALKS, WALK_WX };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.GameLayer = API;
 })();
