@@ -1,6 +1,6 @@
 <title>Makhluk Kecil 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Caveat:wght@500;600&family=Bodoni+Moda:ital,wght@0,400..700;1,400..700&family=Anton&family=UnifrakturMaguntia&family=Manrope:wght@500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Caveat:wght@500;600&family=Bodoni+Moda:ital,wght@0,400..700;1,400..700&family=Anton&family=UnifrakturMaguntia&family=Manrope:wght@500;600;700;800&family=Roboto:wght@400;500;700&family=Cinzel:wght@600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 /* Layout: the room is a small diorama in the middle; a thin translucent HUD floats above and below it. */
 :root {
@@ -1240,6 +1240,72 @@ svg { stroke: currentColor; }
 .chip.ck-prestasi { border-color: #D4A853; box-shadow: inset 0 0 0 1px #D4A853; } .chip.ck-terbatas { border-color: var(--plum); } .chip.ck-event { border-color: #5B9BD5; } .chip.ck-hadiah { border-color: #E58A8A; }
 .chip.ck[aria-pressed="true"] { box-shadow: none; }
 .ck-sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+
+/* Buku Bintang (rasi.js, ui/40-book.js): buku muncul di atas layar main, latar game diblur */
+.bk { position: absolute; inset: 0; z-index: 62; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(12,10,8,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s ease; font-family: "IM Fell English", Georgia, serif; color: #2E1C0A; overflow: hidden; }
+.bk.on { opacity: 1; }
+.bk button { font-family: inherit; }
+.bk-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 0; display: flex; align-items: center; gap: 10px; }
+.bk-x { width: 40px; height: 40px; border-radius: 20px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 16px; }
+.bk-cap-t { flex: 1; text-align: center; font-family: Cinzel, serif; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: #F4E6C0; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.bk-diary { height: 34px; padding: 0 12px; border-radius: 17px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 13px; }
+.bk-closed { border: 0; background: none; padding: 0; width: min(92vw, 380px); filter: drop-shadow(0 26px 30px rgba(0,0,0,.7)); transition: transform .25s ease; }
+.bk-closed:active { transform: scale(.98); }
+.bk-cover-svg { display: block; width: 100%; height: auto; }
+.bk-hint { position: absolute; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); left: 24px; right: 24px; text-align: center; font-style: italic; font-size: 16px; color: #F4E6C0; text-shadow: 0 1px 4px rgba(0,0,0,.8); margin: 0; }
+.bk-open { position: relative; padding: 12px 12px 14px 12px; border-radius: 8px 14px 14px 8px; background: radial-gradient(ellipse at 50% 45%, var(--l1), var(--l2)); box-shadow: inset 0 0 0 1px rgba(232,196,106,.5), 0 24px 40px rgba(0,0,0,.7); touch-action: pan-y; }
+.bk-page { position: relative; width: min(84vw, 320px); aspect-ratio: 300 / 440; border-radius: 2px 6px 6px 2px; overflow: hidden; background: radial-gradient(ellipse at 55% 42%, #F2E2B8 0%, #E0C690 50%, #B8955A 85%, #8E6A34 100%); box-shadow: inset 0 0 44px rgba(70,40,8,.55), inset 14px 0 20px rgba(40,20,2,.5), 3px 4px 0 #C9AE7C, 5px 7px 0 #A88C58; container-type: inline-size; }
+.bk-page.pencil { background: radial-gradient(ellipse at 55% 42%, #FBF7EE 0%, #EFE8DA 70%, #D8CFBE 100%); box-shadow: inset 12px 0 18px rgba(60,50,40,.25), 3px 4px 0 #E2DACB, 5px 7px 0 #C9C0AE; color: #4A4640; font-family: Caveat, cursive; }
+.bk-page svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bk-page > div { position: absolute; font-size: 4.6cqw; line-height: 1.25; }
+.bk-page .bk-t { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 3.6cqw; font-weight: 700; letter-spacing: .24em; color: #7A1E14; }
+.bk-page .bk-h { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 9cqw; font-weight: 700; }
+.bk-page .bk-i, .bk-page .bk-p, .bk-page .bk-r { left: 11%; right: 7%; text-align: center; font-style: italic; }
+.bk-page .bk-p { font-size: 5.2cqw; color: #3E2A12; }
+.bk-page .bk-r { color: #7A1E14; font-size: 4.3cqw; }
+.bk-page .bk-n b { display: block; font-family: Cinzel, serif; font-size: 4.2cqw; font-weight: 700; }
+.bk-page.pencil .bk-n b, .bk-page.pencil .bk-g, .bk-page.pencil .bk-title b, .bk-page.pencil .bk-seal b { font-family: Caveat, cursive; font-size: 5.6cqw; font-weight: 600; letter-spacing: 0; }
+.bk-page .bk-n i { font-size: 4.2cqw; }
+.bk-page .bk-n.nx { color: #7A1E14; }
+.bk-page.pencil .bk-n.nx { color: #5A5650; }
+.bk-page .bk-g { text-align: center; font-family: Cinzel, serif; font-size: 3.3cqw; line-height: 1.15; font-weight: 700; color: #6A4512; }
+.bk-page .bk-fog { left: 0; right: 0; text-align: center; font-style: italic; font-size: 4cqw; color: rgba(110,29,20,.55); }
+.bk-page .bk-cap { left: 11%; top: 6%; width: 17%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 70%, #000), color-mix(in srgb, var(--rc) 35%, #000)); box-shadow: inset 0 0 0 2px #1A0F08, inset 0 0 0 3px #C9962E, 0 2px 6px rgba(40,20,0,.5); }
+.bk-page .bk-cap span { font-family: Cinzel, serif; font-size: 10cqw; font-weight: 700; background: linear-gradient(160deg, #8A5E18, #FFF0B8 40%, #E8C46A 60%, #8A5E18); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bk-page.pencil .bk-cap { background: none; box-shadow: inset 0 0 0 1.5px #7A7670; }
+.bk-page.pencil .bk-cap span { background: none; color: #5A5650; font-family: Caveat, cursive; font-size: 11cqw; }
+.bk-page .bk-title { left: 31%; top: 7%; right: 6%; display: flex; flex-direction: column; }
+.bk-page .bk-title b { font-family: Cinzel, serif; font-size: 7.6cqw; line-height: 1; letter-spacing: .04em; }
+.bk-page .bk-title i { font-size: 4.3cqw; color: #6E1D14; padding-top: 4px; }
+.bk-page.pencil .bk-title i { color: #6A6660; }
+.bk-page.pencil .bk-title { left: 11%; }
+.bk-page .bk-seal { left: 11%; right: 6%; bottom: 8%; display: flex; align-items: center; gap: 10px; }
+.bk-page .bk-seal .wax { flex: none; width: 15cqw; height: 15cqw; border-radius: 47% 53% 50% 48%; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 7cqw; color: #F0B3A6; background: radial-gradient(circle at 38% 32%, #D2503F, #8E1F1C 55%, #5A0F0D); box-shadow: 0 3px 5px rgba(50,10,4,.5), inset 0 0 0 3px rgba(90,15,13,.6); }
+.bk-page .bk-seal .wax.warm { opacity: .55; background: radial-gradient(circle at 38% 32%, #C77A6E, #9A4A40 60%, #6E3028); }
+.bk-page .bk-seal span { display: flex; flex-direction: column; }
+.bk-page .bk-seal b { font-family: Cinzel, serif; font-size: 3.6cqw; letter-spacing: .08em; color: #7A1E14; }
+.bk-page .bk-seal i { font-size: 4.6cqw; }
+.bk-curl { position: absolute; right: 12px; bottom: 14px; width: 40px; height: 40px; border: 0; padding: 0; background: linear-gradient(135deg, transparent 50%, #E8D4A4 50%, #CDB383 70%, var(--l2) 70.5%); border-radius: 0 0 6px 0; }
+.bk-nav { margin-top: 18px; display: flex; align-items: center; gap: 14px; }
+.bk-nav button { width: 40px; height: 40px; border-radius: 20px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 22px; line-height: 1; }
+.bk-nav button:disabled { opacity: .35; }
+.bk-nav span { display: flex; gap: 6px; }
+.bk-nav span i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,248,232,.45); }
+.bk-nav span i.on { background: #FFF3D0; }
+.bk-rit { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(6,5,10,.96); padding: 24px; }
+.bk-rit-book { position: relative; width: min(64vw, 260px); aspect-ratio: 270 / 370; }
+.bk-rit-book > div { position: absolute; inset: 0; transition: opacity 2.2s ease 1s, transform 2.2s ease 1s, filter 2.2s ease 1s; }
+.bk-rit-book .new { opacity: 0; transform: scale(.94); filter: brightness(2.4) blur(4px); }
+.bk-rit.go .bk-rit-book .old { opacity: 0; transform: scale(1.04); filter: brightness(2) blur(3px); }
+.bk-rit.go .bk-rit-book .new { opacity: 1; transform: none; filter: drop-shadow(0 0 40px rgba(255,214,120,.45)); }
+.bk-rit-t { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #F4E6C0; opacity: 0; transform: translateY(8px); transition: opacity 1s ease 3s, transform 1s ease 3s; max-width: 340px; }
+.bk-rit.go .bk-rit-t { opacity: 1; transform: none; }
+.bk-rit-t small { font-family: Cinzel, serif; font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: #E8C46A; }
+.bk-rit-t b { font-family: Cinzel, serif; font-size: 21px; line-height: 1.2; }
+.bk-rit-t span { font-style: italic; font-size: 16px; }
+.bk-rit-t em { font-size: 13px; color: #B9AE98; }
+.bk-rit-t button { margin-top: 8px; height: 46px; padding: 0 28px; border-radius: 23px; border: 1.5px solid #C9962E; background: rgba(255,214,110,.12); color: #F0CF7E; font-family: Cinzel, serif; font-size: 14px; font-weight: 700; letter-spacing: .12em; }
+@media (prefers-reduced-motion: reduce) { .bk, .bk-rit-book > div, .bk-rit-t { transition: none; } }
 </style>
 
 <div id="app">
@@ -1263,7 +1329,7 @@ svg { stroke: currentColor; }
         <button class="icon-btn" id="lifeBtn" aria-label="Phone">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></svg>
         </button>
-        <button class="icon-btn" id="diaryBtn" aria-label="Diary">
+        <button class="icon-btn" id="diaryBtn" aria-label="Book">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" fill="none"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M10 8h5"/></svg>
         </button>
       </div>
@@ -1383,6 +1449,7 @@ svg { stroke: currentColor; }
 <script src="bank.js"></script>
 <script src="status.js"></script>
 <script src="tree.js"></script>
+<script src="rasi.js"></script>
 <script src="cosmetics.js"></script>
 <script src="career.js"></script>
 <script src="market.js"></script>
