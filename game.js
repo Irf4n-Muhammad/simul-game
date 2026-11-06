@@ -4,6 +4,8 @@
 "use strict";
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
+  const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const W = (typeof module !== "undefined") ? require("./wants.js") : globalThis.Wants;  // keinginan: dicek sesudah tiap tindakan pemain
   const O = (typeof module !== "undefined") ? require("./obrolan.js") : globalThis.Obrolan;  // v48: pertanyaan harian makhluk (Ngobrol)
   const NEED_MAP = { makan: "lapar", mandi: "kebersihan", tidur: "energi" };
@@ -549,8 +551,8 @@
             x.need("mood", -10);
             x.flag("bersalah", 30);
             if (wed && c.st) {
-              const fee = Math.round(c.st.wallet * 0.25);
-              c.st.wallet -= fee;
+              const fee = Math.round(c.st.wallet * CFG.DIVORCE_FEE);
+              Money.move(c, -fee, "cerai", x.day);
               if (fee > 0) x.say(`The divorce settlement costs ${x.n} ${fee.toLocaleString("en")} coins.`);
             }
           }

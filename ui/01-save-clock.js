@@ -14,7 +14,25 @@ const save = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state))
 let chats = (() => { try { return JSON.parse(localStorage.getItem(CHAT_KEY)) || {}; } catch (e) { return {}; } })();
 const saveChats = () => { try { localStorage.setItem(CHAT_KEY, JSON.stringify(chats)); } catch (e) { /* ignore */ } };
 // jam.pause: hari yang dibekukan (tombol jeda di build dev); selama terisi, seluruh game diam di hari itu
-const dayFloat = () => state.jam.pause != null ? state.jam.pause : state.jam.base_day + (Date.now() - state.jam.base_ts) / state.jam.ms;
+// jam penjaga (tahap 2 rencana ekonomi): jam HP nggak dipercaya penuh.
+// - monoton: jam HP diputar mundur = waktu game diam di titik terjauh yang pernah dilihat sampai jam HP menyusul
+// - batas catch-up (jam nyata saja): lompatan lebih dari EconConfig.CATCHUP_DAYS hari sejak terakhir dilihat dipotong;
+//   base_ts digeser maju kelipatan hari utuh, jadi pergantian hari tetap di tengah malam. Ini juga yang terjadi kalau
+//   app nggak dibuka lebih dari sebulan: keluarga cuma maju sebulan.
+function clockNow() {
+  const J = state.jam, now = Date.now();
+  if (J.seen_ts == null || !isFinite(J.seen_ts)) { J.seen_ts = now; return now; }
+  if (now <= J.seen_ts) return J.seen_ts;
+  const cap = EconConfig.CATCHUP_DAYS * J.ms, over = now - J.seen_ts - cap;
+  if (J.ms === 86400000 && over > 0) {
+    const shift = Math.ceil(over / J.ms) * J.ms;
+    J.base_ts += shift;
+    Tele.teknis("jam_lompat", { hari: Math.round((now - J.seen_ts) / J.ms), potong: shift / J.ms });
+  }
+  J.seen_ts = now;
+  return now;
+}
+const dayFloat = () => state.jam.pause != null ? state.jam.pause : state.jam.base_day + (clockNow() - state.jam.base_ts) / state.jam.ms;
 const liveDay = () => Math.floor(dayFloat());
 // telemetry (lokal dulu): konteks buat tiap sesi. Kamus event: riset/kamus-event.md
 Tele.init({ ver: APP_VER, ctx: () => state ? { hari: liveDay(), umur: state.hadir.length, akun: state.akun, aksi: state.aksi, hadir: state.hadir } : {} });
