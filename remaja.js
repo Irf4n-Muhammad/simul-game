@@ -27,13 +27,14 @@
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const Anak = (typeof module !== "undefined") ? require("./anak.js") : globalThis.Anak;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { FORCED, seed_rng, phase_of, RULESETS, START_DATE } = E;
   const sahabatOf = c => c.info.sahabat || null;
   // jar coins = dompet status.js (c.st.wallet, 1 poin stats.uang = 50 coins); tanpa status.js (tes mesin murni) cuma stats.uang yang gerak
   const wallet = c => Math.round(c.st ? c.st.wallet : (c.stats.uang || 0) * 50);
   function coins(x, n) {
     const c = x.c;
-    if (c.st) { c.st.wallet = Math.max(0, c.st.wallet + n); c.stats.uang = Math.min(5000, c.st.wallet / 50); }
+    if (c.st) { Money.move(c, n, "cerita", x.day, "floor"); c.stats.uang = Math.min(5000, c.st.wallet / 50); }
     else c.stats.uang = Math.max(0, Math.min(5000, (c.stats.uang || 0) + n / 50));
   }
   // pagar jarak (sama dengan anak.js): dilema terjadwal berikutnya cuma ditanya kalau yang sebelumnya >= 14 hari lalu

@@ -5,6 +5,8 @@
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const S = (typeof module !== "undefined") ? require("./storylets.js") : globalThis.Storylets;
+  const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { HOOKS, REGISTRY, seed_rng, clamp, FOREVER, phase_of, Ctx } = E;
 
   // ---------------------------------------------------------------- data
@@ -82,7 +84,7 @@
   const DICE_BONUS = [0, 2, 4, 6, 9, 12, 15];
   const BANK_MAX = 2;
   const BANK_DAYS = 5; // dadu simpanan pudar setelah 5 hari, jadi hoki tetap terasa
-  const LIVING_COST = 15;
+  const LIVING_COST = CFG.LIVING_COST;
   const POP_N = 5000;
 
   // ---------------------------------------------------------------- keadaan keluarga (disimpan di world supaya ikut snapshot)
@@ -363,11 +365,11 @@
     const stale = !st.job || st.job.id !== m.job || (m.since != null && st.job.since !== m.since) || (m.co !== undefined && st.job.co !== m.co);
     if ((m.kind === "review" || m.kind === "comp") && stale) return;
     // keburu pensiun atau nggak bisa kerja lagi: wawancara batal, modal pendiri dikembalikan
-    if (m.kind === "interview" && !canWork(c, x.day)) { if (m.job === "founder" && JOBS.founder.capital) st.wallet += JOBS.founder.capital; return; }
+    if (m.kind === "interview" && !canWork(c, x.day)) { if (m.job === "founder" && JOBS.founder.capital) Money.move(c, JOBS.founder.capital, "founder", x.day); return; }
     if (m.kind === "interview") {
       if (pass) {
         const J = JOBS[m.job];
-        if (m.job === "founder") st.wallet = Math.max(0, st.wallet); // modal sudah dibayar saat mendaftar
+        if (m.job === "founder") Money.set(c, Math.max(0, st.wallet), "founder", x.day); // modal sudah dibayar saat mendaftar
         setJob(x, m.job, x.day, m);
         st.fails = 0;
         line = `${c.name} got the job: ${st.job.co && EXT.coName ? `${title(st.job)} at ${EXT.coName(st.job.co)}` : J.label}! Score ${total} vs ${m.req} needed.`;
@@ -399,7 +401,7 @@
     } else if (m.kind === "comp") {
       const P = PRIZES[m.prize];
       if (pass) {
-        st.wallet += P.coins;
+        Money.move(c, P.coins, "hadiah", x.day);
         big = true;
         line = `${c.name} won the ${P.label}, beating ${m.rival}! Score ${total} vs ${m.req}. Prize: ${P.coins.toLocaleString("en")} coins.`;
         achieve(x, "prize_" + m.prize + "_" + x.day, `${P.win} (beat ${m.rival}).`);
@@ -477,19 +479,19 @@
     if (st.job && !c.info.kerja) {
       // dipecat atau pensiun lewat cerita
       // pemilik bisnis nggak punya gaji tetap: pensiunnya dari rata-rata ambilan hariannya
-      if (c.info.pensiun) st.pension = Math.round((st.job.id === "owner" ? Math.max(0, st.drawAvg || 0) : salary(st.job)) * 0.4);
+      if (c.info.pensiun) st.pension = Math.round((st.job.id === "owner" ? Math.max(0, st.drawAvg || 0) : salary(st.job)) * CFG.PENSION_RATE);
       st.job = null; st.next_review = null; st.next_comp = null;
     }
     if (ph === "dewasa" || ph === "tua") {
-      if (!st.started) { st.started = true; st.wallet += 300; }
-      if (st.job) st.wallet += salary(st.job);
-      else if (c.info.pensiun) st.wallet += st.pension;
+      if (!st.started) { st.started = true; Money.move(c, CFG.START_BONUS, "mulai", x.day); }
+      if (st.job) Money.move(c, salary(st.job), "gaji", x.day);
+      else if (c.info.pensiun) Money.move(c, st.pension, "pensiun", x.day);
       if (!c.info.kuliah_aktif) {  // selama kuliah biaya hidup ditanggung keluarga
         if (st.wallet < LIVING_COST) x.need("mood", -1);
-        st.wallet = Math.max(0, st.wallet - LIVING_COST);
+        Money.move(c, -LIVING_COST, "hidup", x.day, "floor");
       }
     }
-    c.stats.uang = Math.min(5000, st.wallet / 50);
+    c.stats.uang = Math.min(CFG.STAT_UANG_MAX, st.wallet / CFG.STAT_UANG_COINS);
     finishBuild(x);
   }
   // Pembangunan selesai: keluarga pindah ke rumah baru
@@ -579,8 +581,8 @@
   const _stat = Ctx.prototype.stat;
   Ctx.prototype.stat = function (key, delta) {
     if (key === "uang" && this.c.st) {
-      this.c.st.wallet = Math.max(0, this.c.st.wallet + delta * 50);
-      this.c.stats.uang = Math.min(5000, this.c.st.wallet / 50);
+      Money.move(this.c, delta * CFG.STAT_UANG_COINS, "cerita", this.day, "floor");
+      this.c.stats.uang = Math.min(CFG.STAT_UANG_MAX, this.c.st.wallet / CFG.STAT_UANG_COINS);
       return;
     }
     return _stat.call(this, key, delta);
@@ -599,9 +601,9 @@
       if (!heirs.length) heirs = home.members.filter(m => m !== c && at(m));
       if (heirs.length) {
         const share = Math.floor(c.st.wallet / heirs.length);
-        for (const h of heirs) h.st.wallet += share;
+        for (const h of heirs) Money.move(h, share, "warisan", day);
         log.lines.push(`${c.name} left ${(share * heirs.length).toLocaleString("en")} coins to ${heirs.map(h => h.name).join(", ")}.`);
-        c.st.wallet = 0;
+        Money.set(c, 0, "warisan", day);
       }
     }
     return log;
@@ -637,12 +639,11 @@
       if (!J || J.internal || !canWork(c, day) || pendingFor(home, cid).some(m => m.kind === "interview")) return false;
       if (c.st.job && c.st.job.id === id) return false;
       if (J.capital) {
-        if (c.st.wallet < J.capital) return false;
-        c.st.wallet -= J.capital;
+        if (!Money.move(c, -J.capital, "founder", day, "need")) return false;
       }
       const m = schedule(home, { cid, kind: "interview", day: day + 2, req: J.req, w: J.w, job: id, by: "you",
         label: id === "founder" ? "Investor pitch: your own company" : `Job interview: ${J.label}` });
-      if (!m && J.capital) c.st.wallet += J.capital;
+      if (!m && J.capital) Money.move(c, J.capital, "founder", day);
       return !!m;
     }
     if (kind.startsWith("beli:")) {
@@ -658,8 +659,8 @@
         if (c.st.items.includes(it.id)) return false;
         c.st.items.push(it.id);
       }
-      c.st.wallet -= it.price;
-      c.stats.uang = Math.min(5000, c.st.wallet / 50);
+      Money.move(c, -it.price, "barang", day);
+      c.stats.uang = Math.min(CFG.STAT_UANG_MAX, c.st.wallet / CFG.STAT_UANG_COINS);
       const x = new Ctx(c, day, seed_rng(cid, day, "beli"), home, true);
       x.drama = "sedang";
       if (it.cat === "Car" && it.price >= 80000) achieve(x, "car_" + it.id, `Bought a ${it.label}.`);
