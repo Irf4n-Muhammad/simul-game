@@ -10,6 +10,7 @@
   const { HOOKS, seed_rng, phase_of } = E;
   const JOBS = ST.JOBS;
   const CITY = "old-town";
+  const MK = (typeof module !== "undefined") ? require("./makro.js") : globalThis.Makro;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
 
   // ---------------------------------------------------------------- perusahaan
@@ -73,7 +74,7 @@
   const companiesAt = (day, ind) => COS.filter(co => alive(co, day) && (!ind || co.ind === ind));
   function layoffDay(co, day) {
     const p = Math.floor(day / 30), h = hash(co.id + "lo" + p);
-    return h < co.sz.layoff ? p * 30 + Math.floor(hash(co.id + "lod" + p) * 30) : null;
+    return h < co.sz.layoff * MK.layoffMult(p * 30) ? p * 30 + Math.floor(hash(co.id + "lod" + p) * 30) : null;
   }
   const coName = id => (CO[id] ? CO[id].name : "");
 
@@ -90,7 +91,7 @@
     const out = [], w0 = Math.floor(day / 7);
     for (const co of COS) for (let w = w0 - 2; w <= w0; w++) for (let k = 0; k < 2; k++) {
       const h = hash(co.id + "job" + w + "-" + k);
-      if (h > co.sz.hire * 0.42) continue;
+      if (h > co.sz.hire * 0.42 * MK.hireMult(w * 7)) continue;
       const posted = w * 7 + Math.floor(hash(co.id + "pd" + w + k) * 7), dur = 6 + Math.floor(hash(co.id + "du" + w + k) * 7);
       if (posted > day || day >= posted + dur || !alive(co, posted) || !alive(co, day)) continue;
       const lh = hash(co.id + "lv" + w + k), level = lh < 0.62 ? 0 : lh < 0.88 ? 1 : 2;

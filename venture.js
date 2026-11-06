@@ -9,6 +9,7 @@
   const BR = (typeof module !== "undefined") ? require("./brands.js") : globalThis.Brands;
   const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
+  const MK = (typeof module !== "undefined") ? require("./makro.js") : globalThis.Makro;
   const { HOOKS, seed_rng, phase_of, clamp, Ctx } = E;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const r2 = v => Math.round(v * 100) / 100;
@@ -80,25 +81,8 @@
 
   // ---------------------------------------------------------------- ekonomi kota (sama untuk semua pemain)
   const YEAR = 365;
-  function recession(day) {
-    for (let b = Math.floor(day / 240) - 1; b <= Math.floor(day / 240); b++) {
-      if (hash("resesi" + b) >= 0.14) continue;
-      const start = b * 240 + Math.floor(hash("resesi-m" + b) * 150), len = 60 + Math.floor(hash("resesi-l" + b) * 70);
-      if (day >= start && day < start + len) return { start, len, depth: 0.18 + hash("resesi-d" + b) * 0.14 };
-    }
-    return null;
-  }
-  const _econ = new Map();
-  function econ(day) {
-    if (_econ.has(day)) return _econ.get(day);
-    let v = 1 + 0.1 * Math.sin(2 * Math.PI * day / 720 + 1.3) + 0.04 * Math.sin(2 * Math.PI * day / 170 + 0.4);
-    const R = recession(day);
-    if (R) { const t = (day - R.start) / R.len; v *= 1 - R.depth * Math.sin(Math.PI * Math.min(1, t * 1.4)); }
-    v = r2(v * 1000) / 1000;
-    if (_econ.size > 4000) _econ.clear();
-    _econ.set(day, v);
-    return v;
-  }
+  // indeks dunia dan resesi pindah ke makro.js (dipakai juga oleh karier, status, bank)
+  const { recession, econ } = MK;
   const econLabel = v => v >= 1.08 ? "Booming" : v >= 0.98 ? "Steady" : v >= 0.88 ? "Slowing" : "Recession";
   // trend per jenis bisnis: lagi naik atau turun di kota (berubah tiap ~4 bulan)
   function trend(id, day) {

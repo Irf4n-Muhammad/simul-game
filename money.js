@@ -16,7 +16,7 @@
   const WHY = {
     gaji: "Salary", pensiun: "Pension", mulai: "Start-of-adult bonus", hidup: "Living costs", cerita: "Life events",
     hadiah: "Prize money", lembur: "Overtime and extras", kursus: "Courses",
-    barang: "Purchases", pasar_beli: "Bazaar purchases", pasar_jual: "Bazaar sales",
+    barang: "Purchases", rumah: "Home: purchase and upkeep", pasar_beli: "Bazaar purchases", pasar_jual: "Bazaar sales",
     founder: "Founder capital", bisnis_ambil: "Business draw", bisnis_tutup: "Covering business losses",
     bisnis_modal: "Business start-up capital", bisnis_jual: "Business sale", urunan: "Family chip-in",
     warisan: "Inheritance", hewan: "Pets", cerai: "Divorce settlement", demo: "Test mode",
