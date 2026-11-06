@@ -45,7 +45,7 @@ function showSky() {
       <button class="chip" data-wx="tz" aria-pressed="${wxCfg.on && wxCfg.src !== "geo"}">My time zone${city ? ` (${esc(city)})` : ""}</button>
       <button class="chip" data-wx="geo" aria-pressed="${wxCfg.on && wxCfg.src === "geo"}">My exact location</button>
       <button class="chip" data-wx="off" aria-pressed="${!wxCfg.on}">Off</button></div></div>
-    <p class="muted">Only the sky changes. Nothing in the house, the town or ${n}'s life looks at the weather. Your location is rounded to about 10 km and only sent to the weather service.</p>
+    <p class="muted">The sky and the town outside follow it: rain, snow, fog and storms show up on the streets. Nothing in the house or ${n}'s life changes because of it. Your location is rounded to about 10 km and only sent to the weather service.</p>
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
   sheet.querySelectorAll("[data-wx]").forEach(b => b.onclick = () => {

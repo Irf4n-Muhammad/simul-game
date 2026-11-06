@@ -24,7 +24,10 @@
 
   function create(env) {
     const { THREE, renderer } = env;
-    const { M, F, RB, SPH, CYL, canvasTex } = env;
+    const { M, F, SPH, CYL, canvasTex } = env;
+    // v79: kotak membulat versi kota. Bawaan 3 ruas = 588 segitiga per kotak, padahal tiangnya cuma sejari. Lengkung di bawah
+    // 2 cm tidak kelihatan dari kamera kota: kotak biasa (12). Benda kecil: 1 ruas (108). Yang besar: 2 ruas (300).
+    const RB = (w, h, d, r = 0.08) => r <= 0.02 ? new THREE.BoxGeometry(w, h, d) : env.RB(w, h, d, r, Math.max(w, h, d) < 1.2 ? 1 : 2);
     renderer.localClippingEnabled = true;
     const scene = new THREE.Scene();
     scene.environment = env.environment;
@@ -35,7 +38,11 @@
     sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 70 }); sun.shadow.radius = 4;
     scene.add(sun, sun.target);
+    const look = globalThis.Look ? Look.create(THREE) : null;
+    const rumah = globalThis.Rumah ? Rumah.create({ THREE, M, RB, canvasTex }) : null;   // v79: rumah gaya nyata (rumah.js)   // v79: shading (look.js): AO dinding, cahaya tepi, grading per jam/cuaca
     const lit = [];        // window and lamp materials that glow in the evening
+    const roads = [];      // v75: road materials that go dark and shiny in the rain
+    const statics = [];    // v79: groups that never move after build (bakeTown merges them)
     const lots = [];       // tap targets
     const sites = [];      // houses being built: their clip plane rises with the real clock
     const walkers = [];
@@ -66,7 +73,17 @@
       if (!kit[name]) return null;
       const o = kit[name].clone(); o.position.set(x, y, z); o.scale.setScalar(s); o.rotation.y = ry; parent.add(o); return o;
     };
-    const mesh = (geo, mat, x, y, z, parent = scene) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !mat.transparent && !mat.isMeshBasicMaterial; parent.add(m); return m; };
+    // v79: kotak dengan 6 bahan = 6 kali gambar, walau bahannya cuma 2 macam. Sisi yang bahannya sama dijadikan satu kelompok.
+    function packGroups(geo, mats) {
+      const uniq = [...new Set(mats)]; if (uniq.length === mats.length || !geo.groups.length) return [geo, mats];
+      const idx = geo.index ? geo.index.array : Array.from({ length: geo.attributes.position.count }, (_, i) => i), out = [], groups = [];
+      uniq.forEach((m, u) => { const start = out.length; for (const g of geo.groups) if (mats[g.materialIndex] === m) for (let i = g.start; i < g.start + g.count; i++) out.push(idx[i]); groups.push({ start, count: out.length - start, u }); });
+      const ng = geo.clone(); ng.setIndex(out); ng.clearGroups();
+      if (uniq.length === 1) return [ng, uniq[0]];
+      for (const g of groups) ng.addGroup(g.start, g.count, g.u);
+      return [ng, uniq];
+    }
+    const mesh = (geo, mat, x, y, z, parent = scene) => { if (Array.isArray(mat)) [geo, mat] = packGroups(geo, mat); const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !mat.transparent && !mat.isMeshBasicMaterial; parent.add(m); return m; };
     const rnd = seed => { let s = 0; for (const ch of String(seed)) s = (s * 31 + ch.charCodeAt(0)) >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
     const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];
     const winMat = () => { const m = M(0x8c9aa3, { roughness: 0.2, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(m); return m; };
@@ -97,13 +114,41 @@
         for (const x of [-0.8, 0.8]) mesh(CYL(0.04, 0.04, 0.92, 8), M(0xf3ede3), x, 0.46, 1.12, g);
         mesh(RB(0.36, 0.66, 0.06, 0.02), door, 0, 0.33, 0.66, g);
         for (const x of [-0.55, 0.55]) mesh(RB(0.36, 0.36, 0.05, 0.02), winMat(), x, 0.66, 0.66, g);
-      } else {                    // Classic gable
-        mesh(RB(2.1, 1.35, 1.7, 0.04), wall, 0, 0.675, 0, g);
-        const rf = gable(2.4, 0.95, 1.9, roof); rf.position.y = 1.35; g.add(rf);
-        mesh(RB(0.28, 0.6, 0.28, 0.02), roof, 0.6, 2.0, -0.3, g);
-        mesh(RB(0.38, 0.7, 0.06, 0.02), door, 0, 0.35, 0.86, g);
-        for (const x of [-0.65, 0.65]) mesh(RB(0.45, 0.4, 0.05, 0.02), winMat(), x, 0.82, 0.86, g);
-        mesh(RB(0.4, 0.35, 0.05, 0.02), winMat(), 0, 1.75, 0.86, g);
+      } else {                    // Classic gable (v79 tes gaya "diorama hangat": alas batu, atap tebal menjorok, jendela berbingkai + daun jendela, pot bunga, pagar tanaman)
+        const stone = M(0xb9ab98, { roughness: 1 }), trim = M(0xfaf4ea, { roughness: 0.8 }), roofDk = roof.clone(); roofDk.color.multiplyScalar(0.72);
+        const shut = M(pick(r, [0x7f9a8a, 0x8a9fb5, 0xc9876b, 0x9c8bb0]), { roughness: 0.8 }), leaf = M(0x86a26f, { roughness: 1 }), bloom = [0xe58c8a, 0xf2c46d, 0xf6efe4, 0xc98bd0];
+        mesh(RB(2.3, 0.18, 1.9, 0.06), stone, 0, 0.09, 0, g);                                  // stone plinth
+        mesh(RB(2.1, 1.25, 1.7, 0.1), wall, 0, 0.8, 0, g);                                      // rounder walls
+        mesh(RB(2.16, 0.06, 1.76, 0.03), trim, 0, 1.43, 0, g);                                  // trim under the roof
+        const gw = gable(2.1, 0.8, 1.7, wall); gw.position.y = 1.46; g.add(gw);                // gable wall in the house colour
+        const pitch = Math.atan2(0.86, 1.2);
+        for (const sx of [-1, 1]) {                                                             // two thick roof slabs with deep eaves
+          const sl = mesh(RB(1.62, 0.12, 2.2, 0.04), roof, sx * 0.62, 1.86, 0, g); sl.rotation.z = -sx * pitch;
+          const un = mesh(RB(1.58, 0.04, 2.16, 0.015), roofDk, sx * 0.6, 1.8, 0, g); un.rotation.z = -sx * pitch;
+        }
+        mesh(CYL(0.065, 0.065, 2.24, 10), roofDk, 0, 2.38, 0, g).rotation.x = Math.PI / 2;    // ridge
+        mesh(RB(0.32, 0.7, 0.32, 0.05), M(0xb8735a, { roughness: 0.9 }), 0.62, 2.1, -0.32, g);   // brick chimney
+        mesh(RB(0.4, 0.07, 0.4, 0.03), stone, 0.62, 2.47, -0.32, g);
+        // door: frame, arched top, step, little lamp
+        mesh(RB(0.52, 0.84, 0.05, 0.02), trim, 0, 0.62, 0.86, g);
+        mesh(RB(0.4, 0.72, 0.06, 0.02), door, 0, 0.56, 0.88, g);
+        const arch = mesh(CYL(0.2, 0.2, 0.06, 20, 1, false, 0, Math.PI), door, 0, 0.92, 0.88, g); arch.rotation.x = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.rotation.z = Math.PI / 2;
+        mesh(RB(0.7, 0.08, 0.3, 0.03), stone, 0, 0.22, 1.0, g);
+        mesh(SPH(0.05, 10, 8), M(0xfff1cf, { emissive: 0xffd9a0, emissiveIntensity: 0.4 }), 0.33, 0.95, 0.9, g);
+        // windows with frames, sills, shutters and flower boxes
+        const win = (x, y, w, h, box) => {
+          mesh(RB(w + 0.1, h + 0.1, 0.04, 0.02), trim, x, y, 0.86, g);
+          mesh(RB(w, h, 0.05, 0.01), winMat(), x, y, 0.875, g);
+          mesh(RB(0.025, h, 0.06, 0.005), trim, x, y, 0.885, g); mesh(RB(w, 0.025, 0.06, 0.005), trim, x, y, 0.885, g);
+          for (const sx of [-1, 1]) mesh(RB(w * 0.42, h + 0.06, 0.04, 0.01), shut, x + sx * (w / 2 + w * 0.24), y, 0.87, g);
+          mesh(RB(w + 0.16, 0.05, 0.12, 0.015), trim, x, y - h / 2 - 0.05, 0.92, g);
+          if (box) { mesh(RB(w + 0.04, 0.1, 0.12, 0.02), M(0xa9775a), x, y - h / 2 - 0.12, 0.95, g); for (let k = 0; k < 4; k++) mesh(SPH(0.045, 8, 6), M(bloom[(k + Math.floor(r() * 4)) % 4], { roughness: 1 }), x - w / 2 + 0.06 + k * (w - 0.12) / 3, y - h / 2 - 0.04, 0.97, g); }
+        };
+        for (const x of [-0.66, 0.66]) win(x, 0.85, 0.36, 0.38, true);
+        win(0, 1.78, 0.3, 0.26, false);
+        // front garden: hedges and stepping stones
+        for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const b = mesh(SPH(0.17, 12, 10), leaf, sx * (0.55 + k * 0.28), 0.14, 1.15, g); b.scale.y = 0.8; }
+        for (let k = 0; k < 2; k++) mesh(CYL(0.11, 0.11, 0.03, 12), stone, 0, 0.02, 1.28 + k * 0.26, g);
       }
       return g;
     }
@@ -180,6 +225,14 @@
     // lived-in windows have curtains by day and glow in the evening, empty ones stay dark.
     const BLOCK_PAINT = { apartment: [0xc49a84, 0xb8a490, 0xd2c2ad, 0xa9a59a], flat: [0xe6dccb, 0xd8cbb8, 0xcfd3c8, 0xe2d0c4] };
     function block(kind, r, occ, youUnit) {
+      // v79: Old Town = rumah deret gaya Belanda/Belgia (rumah.js), kamar sewaan = jendela lantai atas
+      if (kind === "apartment" && rumah) {
+        const units = Array.from({ length: 12 }, (_, u) => u === youUnit || (occ ? occ[u] : r() < 0.8));
+        const wl = M(0xd9c7a6, { roughness: 0.7, emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(wl);
+        const h = rumah.rowhouse(r, units, youUnit, wl, M(0x58616a, { roughness: 0.3 }), F(0xc2704f), false);
+        h.position.z = -0.15; h.userData.units = units;
+        const g = new THREE.Group(); g.add(h); g.userData.units = units; g.userData.youY = h.userData.youY; return g;
+      }
       const g = new THREE.Group(), flat = kind === "flat";
       const floors = flat ? 3 : 4, cols = 3, fh = flat ? 0.78 : 0.68, W = flat ? 1.95 : 1.85, D = 1.55, H = floors * fh + 0.25;
       const wall = M(pick(r, BLOCK_PAINT[kind]), { roughness: 0.9 }), trim = M(0xf1ebe1, { roughness: 0.8 }), dark = M(0x58616a, { roughness: 0.3 });
@@ -207,7 +260,11 @@
     }
     // one home for a lot, set back from the street the right amount for its tier
     function home(kind, model, paint, r) {
-      if (kind === "house") { const h = familyHouse(model % 3, paint, r); h.position.z = -0.35; return h; }
+      if (kind === "house") {
+        // v79: rumah keluarga = rumah pinggiran gaya Amerika (rumah.js): model 0/1/2 = Colonial/Craftsman/Cape Cod, cat = warna dinding
+        if (rumah) { const h = rumah.suburb(["colonial", "craftsman", "capecod"][model % 3], r, winMat(), false, PAINT(paint)); h.scale.setScalar(0.82); h.position.set(-0.2, 0, -0.55); return h; }
+        const h = familyHouse(model % 3, paint, r); h.position.z = -0.35; return h;
+      }
       if (kind === "villa") { const h = villa(model % 3, paint, r); h.position.z = -0.5; return h; }
       if (kind === "mansion") { const h = mansion(model % 3, paint, r); h.position.z = -0.9; return h; }
       return block(kind === "flat" ? "flat" : "apartment", r, null, -1);
@@ -255,11 +312,14 @@
       sites.push({ plane, start, done, top, worker: w });
     }
     function siteProgress(S) { const now = env.now(); return Math.max(0.04, Math.min(1, (now - S.start) / Math.max(0.01, S.done - S.start))); }
+    const saleTex = {};
     function forSale(price) {
       const g = new THREE.Group();
       mesh(CYL(0.04, 0.04, 0.9, 8), M(0x6b4f3c), 0, 0.45, 0, g);
-      const tex = canvasTex((c, w, h) => { c.fillStyle = "#F7F2EA"; c.fillRect(0, 0, w, h); c.fillStyle = "#C2704F"; c.fillRect(0, 0, w, 34); c.fillStyle = "#fff"; c.font = "800 22px Manrope, sans-serif"; c.textAlign = "center"; c.fillText("FOR SALE", w / 2, 25); c.fillStyle = "#2E2A26"; c.font = "700 20px Manrope, sans-serif"; c.fillText(price, w / 2, 70); }, 160, 96);
-      mesh(new THREE.BoxGeometry(0.75, 0.45, 0.03), [M(0xf7f2ea), M(0xf7f2ea), M(0xf7f2ea), M(0xf7f2ea), M(0xffffff, { map: tex }), M(0xf7f2ea)], 0, 0.85, 0.03, g);
+      const tex = saleTex[price] || (saleTex[price] = canvasTex((c, w, h) => { c.fillStyle = "#F7F2EA"; c.fillRect(0, 0, w, h); c.fillStyle = "#C2704F"; c.fillRect(0, 0, w, 34); c.fillStyle = "#fff"; c.font = "800 22px Manrope, sans-serif"; c.textAlign = "center"; c.fillText("FOR SALE", w / 2, 25); c.fillStyle = "#2E2A26"; c.font = "700 20px Manrope, sans-serif"; c.fillText(price, w / 2, 70); }, 160, 96));
+      // v79: papan polos + muka bergambar (dulu satu kotak 6 bahan = 6 kali gambar); gambarnya sama untuk satu harga, jadi bisa digabung
+      mesh(new THREE.BoxGeometry(0.75, 0.45, 0.03), M(0xf7f2ea), 0, 0.85, 0.03, g);
+      mesh(new THREE.PlaneGeometry(0.75, 0.45), M(0xffffff, { map: tex }), 0, 0.85, 0.046, g).castShadow = false;
       return g;
     }
     function lamp(x, z) {
@@ -381,12 +441,20 @@
     }
 
     // ---------------------------------------------------------------- little creatures walking around
+    const UMB = [0xc2704f, 0x5f8a6e, 0xd4a853, 0x6d7790, 0xb86f8a, 0x2e2a26];
+    let wetNow = false;   // v77: umbrellas up
+    const umbrella = (g, on) => { const u = g.userData.umbrella; if (u && u.visible !== on) u.visible = on; };
     function walker(color, you) {
       const g = new THREE.Group(), fur = M(color, { roughness: 0.95 });
       const b = mesh(SPH(0.32, 20, 14), fur, 0, 0.36, 0, g); b.scale.set(1, 0.95, 0.88);
       for (const sx of [-1, 1]) { mesh(SPH(0.1, 12, 8), fur, sx * 0.2, 0.62, 0, g); mesh(SPH(0.035, 8, 6), M(0x231c1a, { roughness: 0.2 }), sx * 0.1, 0.42, 0.27, g); }
       for (const sx of [-1, 1]) mesh(SPH(0.08, 10, 8), M(new THREE.Color(color).multiplyScalar(0.85).getHex()), sx * 0.13, 0.05, 0.08, g).scale.y = 0.5;
       if (you) { const mk = mesh(new THREE.ConeGeometry(0.1, 0.2, 4), F(0xc2704f), 0, 1.0, 0, g); mk.rotation.x = Math.PI; g.userData.marker = mk; }
+      // v77: umbrella, shown in the rain
+      const um = new THREE.Group(); um.visible = false; g.add(um); g.userData.umbrella = um; g.userData.keep = true;   // v79: bake() jangan sentuh
+      const uc = UMB[Math.abs(Math.round(color)) % UMB.length];
+      mesh(new THREE.ConeGeometry(0.42, 0.18, 8, 1, true), M(uc, { roughness: 0.6, side: THREE.DoubleSide }), 0.08, 1.02, 0, um);
+      mesh(CYL(0.012, 0.012, 0.6, 5), M(0x3a332d), 0.08, 0.72, 0, um);
       scene.add(g); return g;
     }
 
@@ -412,6 +480,7 @@
     function mapLabel(text, sub, x, y, z, k = 0.8) { const s = label(text, sub, x, y, z, false, k); s.userData.map = true; s.userData.base = s.scale.clone(); s.userData.y0 = y; mapLabels.push(s); return s; }
     function inst(geo, mat, list, set) {
       if (!list.length) return null;
+      if (Array.isArray(mat)) [geo, mat] = packGroups(geo, mat);
       const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), col = new THREE.Color(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
       list.forEach((b, i) => { const o = set(b); p.set(o.x, o.y || 0, o.z); s.set(o.sx, o.sy, o.sz); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); m4.compose(p, q, s); im.setMatrixAt(i, m4); col.setHex(o.c).convertSRGBToLinear(); im.setColorAt(i, col); });
       im.castShadow = im.receiveShadow = true; scene.add(im); return im;
@@ -459,6 +528,8 @@
       return (facadeCache[kind] = [side, side, top, top, side, side]);
     }
     let movers = null;   // instanced moving cars, boats and birds, updated from the clock
+    let poolM = null, glowT = null;
+    const glowTex = () => glowT || (glowT = canvasTex((c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.45, "rgba(255,255,255,0.45)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, 64, 64));
     function instAt(geo, mat, n) { const im = new THREE.InstancedMesh(geo, mat, n); im.count = 0; im.castShadow = true; im.frustumCulled = false; scene.add(im); return im; }
     function buildDetails() {
       const D = Kota.details(), box = (w, h, d, y = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2 + y, 0); return g; };
@@ -468,6 +539,10 @@
       const lampM = M(0x3a332d, { roughness: 0.5 }), headM = M(0xfff1d6, { emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(headM);
       inst(new THREE.CylinderGeometry(0.035, 0.05, 1.6, 6).translate(0, 0.8, 0), lampM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
       inst(new THREE.SphereGeometry(0.1, 10, 8).translate(0, 1.62, 0), headM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      // v75: warm pools of light on the pavement after dark
+      poolM = new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xffc98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+      const pools = inst(new THREE.PlaneGeometry(3.2, 3.2).rotateX(-Math.PI / 2).translate(0, 0.09, 0), poolM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      if (pools) { pools.castShadow = false; pools.receiveShadow = false; pools.renderOrder = 2; }
       inst(new THREE.CylinderGeometry(0.13, 0.11, 0.4, 10).translate(0, 0.2, 0), M(0xffffff, { roughness: 0.6 }), D.bins, b => ({ x: b.x, z: b.z, sx: b.kind === "bin" ? 1 : 0.7, sy: b.kind === "bin" ? 1 : 1.6, sz: b.kind === "bin" ? 1 : 0.7, c: b.kind === "bin" ? 0x4f6b55 : 0xc2503f }));
       // road paint
       const paint = M(0xf2ede4, { roughness: 0.9 });
@@ -504,14 +579,14 @@
     }
     let groundTex = null;
     const groundMap = () => groundTex || (groundTex = canvasTex((c, w, h) => {
-      c.fillStyle = "#b7b397"; c.fillRect(0, 0, w, h);
+      c.fillStyle = "#a9b483"; c.fillRect(0, 0, w, h);   // v79: rumput lebih segar (dulu #b7b397)
       const blob = (x, y, r, col) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { c.save(); c.translate(dx, dy); c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore(); } };
-      for (let k = 0; k < 70; k++) blob(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, Math.random() < 0.55 ? "rgba(140,168,104,0.34)" : Math.random() < 0.5 ? "rgba(196,176,138,0.3)" : "rgba(120,140,96,0.3)");
+      for (let k = 0; k < 70; k++) blob(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, Math.random() < 0.55 ? "rgba(128,164,92,0.38)" : Math.random() < 0.5 ? "rgba(196,180,132,0.28)" : "rgba(104,134,82,0.34)");
       for (let k = 0; k < 2500; k++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "90,110,70" : "220,210,180"},0.25)`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
     }, 512, 512, 60, 60));
     const unitBox = () => { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return g; };
     function buildCity() {
-      const roadM = M(0x6a6460, { roughness: 0.95 }), walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
+      const roadM = M(0x646468, { roughness: 0.95 }); roads.push(roadM); const walkM = M(0xd9d1c3, { roughness: 1 }), R = Kota.REACH;
       // ground everywhere, a touch under the Main Street blocks
       const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xffffff, { roughness: 1, map: groundMap() })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
       const strip = (x, z, w, d, mat, y, h) => { const m = mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z); m.castShadow = false; return m; };
@@ -587,7 +662,7 @@
         const pond = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), M(0x6fa9c4, { roughness: 0.2 })); pond.rotation.x = -Math.PI / 2; pond.scale.set(1, 1.6, 1); pond.position.set(0.6, 0.06, 3); g.add(pond);
         mesh(new THREE.BoxGeometry(0.8, 0.055, P.d - 1), walkM2(), -2.6, 0.04, 0, g).castShadow = false;
         mesh(new THREE.BoxGeometry(P.w - 1, 0.055, 0.8), walkM2(), 0, 0.04, -5, g).castShadow = false;
-        for (const [x, z, ry] of [[-1.8, -2, Math.PI / 2], [-1.8, 2, Math.PI / 2], [1, -6, 0], [3, -6, 0], [-3.4, -8, Math.PI / 2]]) bench(x, z, ry, g);
+        for (const [x, z, ry] of [[-1.8, -2, Math.PI / 2], [-1.8, 2, Math.PI / 2], [1, -6, 0], [3, -6, 0], [-3.4, -3.2, Math.PI / 2]]) bench(x, z, ry, g);
       } else if (P.kind === "market") {
         mesh(new THREE.BoxGeometry(W, P.h, D * 0.62), M(0xe3d4bd), 0, P.h / 2, -D * 0.19, front);
         roofOn(W + 0.6, 1.4, D * 0.62 + 0.6, P.h, 0x7a6a5a, -D * 0.19);
@@ -603,8 +678,163 @@
         for (const z of [-4, 0, 4]) mesh(CYL(0.05, 0.05, 2.1, 6), M(0x3a332d), Kota.RAIL.x + 2.9 - P.x, 1.25, z, g);
       }
       const hit = new THREE.Mesh(new THREE.BoxGeometry(P.w, Math.max(1.5, P.h), P.d), new THREE.MeshBasicMaterial({ visible: false })); hit.position.set(P.x, Math.max(0.75, P.h / 2), P.z); scene.add(hit);
-      const entry = { hit, place: P }; lots.push(entry);
+      const entry = { hit, place: P, g, face, W, D }; lots.push(entry);
       entry.tag = mapLabel(P.name, PLACE_SUB[P.kind] || "", P.x, (P.h || 0.5) + (P.kind === "office" ? 1.2 : 1.8), P.z);
+    }
+    // ---------------------------------------------------------------- v76: the market and festivals at Riverside Park
+    // kota.js says when it's on (Weekend Market on Sat/Sun mornings, or a world festival from the server). Built once,
+    // hidden until it opens: two rows of stalls with awnings and goods, a little stage with bunting, poles with strings of
+    // lanterns that glow in the evening, paper lanterns floating on the pond at festival nights, and a crowd browsing.
+    let fair = null;
+    function buildFair() {
+      const P = Kota.PLACE[Kota.FAIR.place], g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.visible = false; scene.add(g);
+      const F = Kota.FAIR, wood = M(0xa9825e, { roughness: 0.8 }), awn = [0xc2704f, 0x5f8a6e, 0xd4a853, 0x6d7790, 0xb86f8a, 0xe9e2d6, 0x8fb06a, 0xc98b6a, 0x7d9ab8, 0xd9b48f];
+      const goods = [0xd9534f, 0xf0ad4e, 0x8fb06a, 0xe8d8be, 0xb86f8a, 0x6d7790];
+      for (const st of F.stalls) {
+        const s0 = new THREE.Group(); s0.position.set(st.x, 0, st.z); s0.rotation.y = st.ry; g.add(s0);
+        mesh(RB(1.3, 0.55, 0.6, 0.03), wood, 0, 0.28, 0, s0);
+        for (let k = 0; k < 4; k++) mesh(RB(0.24, 0.12, 0.24, 0.03), M(goods[(st.c + k) % goods.length], { roughness: 0.8 }), -0.42 + k * 0.28, 0.62, 0.05, s0);
+        for (const sx of [-0.6, 0.6]) for (const sz of [-0.25, 0.3]) mesh(CYL(0.025, 0.025, 1.3, 6), M(0x3a332d), sx, 0.65, sz, s0);
+        const a = mesh(RB(1.45, 0.06, 0.85, 0.02), M(awn[st.c % awn.length], { roughness: 0.7 }), 0, 1.32, 0.05, s0); a.rotation.x = -0.2;
+        for (let k = 0; k < 5; k++) mesh(new THREE.ConeGeometry(0.08, 0.14, 4), M(k % 2 ? 0xf7f2ea : awn[st.c % awn.length]), -0.58 + k * 0.29, 1.2, 0.48, s0).rotation.x = Math.PI;
+      }
+      // stage with bunting
+      const S = F.stage; mesh(RB(S.w, 0.35, S.d, 0.04), M(0x8a6a5a), S.x, 0.18, S.z, g);
+      for (const sz of [-1, 1]) mesh(CYL(0.04, 0.04, 2, 6), M(0x3a332d), S.x - S.w / 2 + 0.1, 1.2, S.z + sz * (S.d / 2 - 0.1), g);
+      for (let k = 0; k < 7; k++) { const f = mesh(new THREE.ConeGeometry(0.12, 0.22, 3), M(awn[k]), S.x - S.w / 2 + 0.1, 2.0 - Math.sin(k / 6 * Math.PI) * 0.25, S.z - S.d / 2 + 0.2 + k * (S.d - 0.4) / 6, g); f.rotation.x = Math.PI; }
+      // poles and lantern strings (the bulbs glow at dusk and on festival nights)
+      const bulbM = M(0xfff1d6, { emissive: 0xffc070, emissiveIntensity: 0 }), bulbs = [];
+      for (const [x, z] of F.poles) mesh(CYL(0.04, 0.05, 2.4, 6), M(0x3a332d), x, 1.2, z, g);
+      const pairs = [[0, 2], [1, 3], [0, 4], [4, 2], [1, 5], [5, 3], [4, 5]];
+      for (const [a, b] of pairs) {
+        const A = F.poles[a], B = F.poles[b], n = Math.max(4, Math.round(Math.hypot(B[0] - A[0], B[1] - A[1]) / 0.6));
+        for (let k = 1; k < n; k++) { const t = k / n; bulbs.push({ x: A[0] + (B[0] - A[0]) * t, y: 2.35 - Math.sin(t * Math.PI) * 0.35, z: A[1] + (B[1] - A[1]) * t, c: [0xffc070, 0xff8f70, 0xfff1d6, 0x9fd0ff][k % 4] }); }
+      }
+      const bim = new THREE.InstancedMesh(SPH(0.07, 8, 6), bulbM, bulbs.length), m4 = new THREE.Matrix4(), col = new THREE.Color();
+      bulbs.forEach((b, i) => { m4.makeTranslation(b.x, b.y, b.z); bim.setMatrixAt(i, m4); col.setHex(b.c).convertSRGBToLinear(); bim.setColorAt(i, col); }); g.add(bim);
+      // paper lanterns floating on the pond (festival nights only)
+      const lanM = M(0xffd9a0, { emissive: 0xff9a40, emissiveIntensity: 1.4 }), lan = new THREE.Group(); lan.visible = false; g.add(lan);
+      for (let k = 0; k < 9; k++) { const l = mesh(RB(0.22, 0.2, 0.22, 0.05), lanM, 0, 0.16, 0, lan); l.userData.k = k; }
+      // the crowd: their own little pool (only drawn near the camera)
+      const folkG = []; for (let k = 0; k < 24; k++) { const f = walker(FOLK[k % FOLK.length]); scene.remove(f); g.add(f); f.visible = false; folkG.push(f); }
+      const tag = label("Weekend Market", "On now", P.x - 0.6, 4.2, P.z - 10, true, 0.8); tag.userData.map = true; tag.userData.base = tag.scale.clone(); tag.userData.y0 = 4.2; tag.visible = false;
+      fair = { g, bulbM, lan, folkG, tag, P, key: "" };
+    }
+    function updateFair(t) {
+      if (!fair) return;
+      const F = env.getFair ? env.getFair() : null, on = !!(F && F.on);
+      fair.g.visible = on; fair.tag.userData.hide = !on; T.fair = F;
+      if (!on) return;
+      const key = F.name + "|" + env.getPeriod();
+      if (key !== fair.key) {
+        fair.key = key; const p = env.getPeriod();
+        fair.bulbM.emissiveIntensity = p === "night" ? 2.2 : p === "evening" ? 1.4 : F.lights ? 0.5 : 0.15;
+        scene.remove(fair.tag); const i = signs.indexOf(fair.tag); if (i >= 0) signs.splice(i, 1);
+        fair.tag = label(`${F.ikon} ${F.name}`, `On now · until ${F.to}:00`, fair.P.x - 0.6, 4.2, fair.P.z - 10, true, 0.8); fair.tag.userData.map = true; fair.tag.userData.base = fair.tag.scale.clone(); fair.tag.userData.y0 = 4.2;
+        fair.lan.visible = F.kind === "festival" && (p === "night" || p === "evening");
+      }
+      if (fair.lan.visible) fair.lan.children.forEach(l => { const k = l.userData.k, a = t / 9000 + k * 0.7; l.position.set(0.6 + Math.cos(a) * 1.6, 0.16 + Math.sin(t / 700 + k) * 0.03, 3 + Math.sin(a) * 3.2); });
+      const near = zoom < 0.56, sec = clock().sec, L = near ? Kota.fairFolk(sec, fair.folkG.length) : null;
+      fair.folkG.forEach((f, k) => {
+        f.visible = near; if (!near) return;
+        const p = L[k], bob = p.walk ? Math.abs(Math.sin(t / 160 + k)) : Math.abs(Math.sin(t / 900 + k)) * 0.3;
+        f.position.set(p.x - fair.P.x, bob * 0.06, p.z - fair.P.z); f.rotation.y = p.dir; umbrella(f, wetNow);
+      });
+    }
+    // ---------------------------------------------------------------- v75: going inside a building
+    // The walls sink away (a doll's-house cutaway) and the room appears: desks in a school, desk clusters in an office,
+    // stalls in the Bazaar, benches at the station. The townsfolk who are there right now sit in it (kota.js crowd), and
+    // your creature takes a seat if its day plan has it there. Zoom out or pan away and you step back outside.
+    const ROOM = { school: { zc: -0.2, dd: 0.6 }, market: { zc: -0.19, dd: 0.62 }, office: { zc: 0, dd: 1 }, station: { zc: 0, dd: 1 } };
+    let inside = null;
+    function interior(e) {
+      const P = e.place, R = ROOM[P.kind]; if (!R) return null;
+      const g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.rotation.y = e.face; scene.add(g);
+      const W = e.W - 0.3, D = e.D * R.dd - 0.3, z0 = e.D * R.zc, seats = [];
+      const floorC = { school: 0xd9b98f, office: 0xb9bfc4, market: 0xcdb497, station: 0xd8d0c2 }[P.kind], wallC = { school: 0xf1e6d2, office: 0xe4e8ea, market: 0xe8d9c0, station: 0xe9e1d3 }[P.kind];
+      const fl = mesh(new THREE.BoxGeometry(W, 0.06, D), M(floorC, { roughness: 0.8 }), 0, 0.05, z0, g); fl.castShadow = false;
+      const wm = M(wallC, { roughness: 0.95 }), wh = 0.9, th = 0.14, cap = M(0x8a7a6a);
+      const wall = (x, z, w, d) => { mesh(new THREE.BoxGeometry(w, wh, d), wm, x, wh / 2, z, g); mesh(new THREE.BoxGeometry(w + 0.02, 0.05, d + 0.02), cap, x, wh + 0.02, z, g); };
+      wall(0, z0 - D / 2, W, th); wall(-W / 2, z0, th, D); wall(W / 2, z0, th, D);
+      const gap = 1.2; for (const sx of [-1, 1]) { mesh(new THREE.BoxGeometry(W / 2 - gap / 2, 0.3, th), wm, sx * (W / 2 + gap / 2) / 2, 0.15, z0 + D / 2, g); mesh(new THREE.BoxGeometry(W / 2 - gap / 2, 0.05, th + 0.02), cap, sx * (W / 2 + gap / 2) / 2, 0.32, z0 + D / 2, g); }   // low front wall with the door, so you can see in
+      const wood = M(0xa9825e, { roughness: 0.7 }), dark = M(0x3a332d, { roughness: 0.5 });
+      const desk = (x, z, w = 0.62, d = 0.42) => { mesh(new THREE.BoxGeometry(w, 0.05, d), wood, x, 0.46, z, g); for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.04, 0.44, d * 0.9), wood, x + sx * (w / 2 - 0.04), 0.23, z, g); };
+      if (P.kind === "school") {
+        const board = mesh(new THREE.BoxGeometry(Math.min(3.2, W * 0.5), 0.75, 0.04), M(0x35574a, { roughness: 0.9 }), 0, 1.05, z0 - D / 2 + 0.1, g);
+        mesh(new THREE.BoxGeometry(board.geometry.parameters.width + 0.1, 0.06, 0.08), wood, 0, 0.66, z0 - D / 2 + 0.12, g);
+        desk(0, z0 - D / 2 + 0.75, 1.0, 0.5); seats.push({ x: 0, z: z0 - D / 2 + 1.25, ry: Math.PI, teacher: true });
+        for (let r = 0; r < 4; r++) for (let c = -2; c <= 2; c++) {
+          const x = c * Math.min(1.0, (W - 1) / 5), z = z0 - D / 2 + 1.9 + r * Math.min(0.95, (D - 2.4) / 4); if (z > z0 + D / 2 - 0.5) continue;
+          desk(x, z); seats.push({ x, z: z + 0.38, ry: Math.PI });
+        }
+      } else if (P.kind === "office") {
+        const scr = M(0x26303a, { roughness: 0.3, emissive: 0x6fa0c8, emissiveIntensity: 0.35 });
+        for (let cz = z0 - D / 2 + 1.1; cz < z0 + D / 2 - 0.9; cz += 1.6) for (let cx = -W / 2 + 1.1; cx < W / 2 - 0.7; cx += 1.9) {
+          mesh(new THREE.BoxGeometry(1.3, 0.05, 0.9), M(0xeeeae4), cx, 0.46, cz, g); mesh(new THREE.BoxGeometry(0.05, 0.42, 0.85), dark, cx, 0.24, cz, g);
+          for (const sz of [-1, 1]) { mesh(new THREE.BoxGeometry(0.42, 0.28, 0.03), scr, cx, 0.66, cz + sz * 0.12, g); seats.push({ x: cx, z: cz + sz * 0.62, ry: sz > 0 ? Math.PI : 0 }); }
+        }
+        for (const sx of [-1, 1]) { mesh(CYL(0.16, 0.13, 0.32, 10), M(0xc9b8a3), sx * (W / 2 - 0.4), 0.16, z0 - D / 2 + 0.4, g); mesh(SPH(0.32, 10, 8), M(0x6f8f52, { roughness: 1 }), sx * (W / 2 - 0.4), 0.55, z0 - D / 2 + 0.4, g); }
+      } else if (P.kind === "market") {
+        const cols = [0xc2704f, 0xd4a853, 0x8fb06a, 0xb86f8a, 0x6d7790];
+        for (let k = 0; k < 6; k++) {
+          const x = (k % 3 - 1) * (W / 3.2), z = z0 + (k < 3 ? -D / 4 : D / 6);
+          mesh(RB(1.3, 0.62, 0.7, 0.03), wood, x, 0.31, z, g);
+          for (let j = 0; j < 4; j++) mesh(RB(0.26, 0.12, 0.26, 0.02), M(cols[(k + j) % 5], { roughness: 0.8 }), x - 0.45 + j * 0.3, 0.68, z, g);
+          seats.push({ x, z: z - 0.6, ry: 0, stand: true }, { x: x + 0.4, z: z + 0.65, ry: Math.PI, stand: true });
+        }
+      } else if (P.kind === "station") {
+        mesh(new THREE.BoxGeometry(2.4, 0.9, 0.6), M(0x8a6a5a), 0, 0.45, z0 - D / 2 + 0.6, g); mesh(new THREE.BoxGeometry(2.4, 0.5, 0.04), M(0x2e2a26, { emissive: 0xd4a853, emissiveIntensity: 0.5 }), 0, 1.3, z0 - D / 2 + 0.1, g);
+        for (let r = 0; r < 3; r++) for (const sx of [-1, 1]) { const x = sx * W / 4, z = z0 - D / 2 + 1.8 + r * 1.1; if (z > z0 + D / 2 - 0.6) continue; mesh(new THREE.BoxGeometry(W / 3, 0.06, 0.4), wood, x, 0.4, z, g); mesh(new THREE.BoxGeometry(W / 3, 0.36, 0.05), wood, x, 0.6, z + 0.2, g); for (const k of [-1, 0, 1]) seats.push({ x: x + k * W / 10, z: z - 0.1, ry: Math.PI }); }
+      }
+      // who's in here now: townsfolk + your creature
+      const folkG = [];
+      for (let k = 0; k < Math.min(seats.length, 24); k++) { const f = walker(FOLK[k % FOLK.length]); scene.remove(f); g.add(f); f.visible = false; folkG.push(f); }
+      g.visible = false;
+      return { g, seats, folkG, P };
+    }
+    const interiors = {};
+    T.canEnter = e => !!(e && e.place && ROOM[e.place.kind]);
+    T.enterPlace = e => {
+      if (!T.canEnter(e)) return false;
+      if (inside && inside.e !== e) leavePlace();
+      const I = interiors[e.place.id] || (interiors[e.place.id] = interior(e));
+      inside = { e, I, k: inside ? inside.k : 0 }; I.g.visible = true; unbake(e.g);
+      fillRoom();
+      tgt = { x: e.place.x + Math.sin(e.face) * 0.6, z: e.place.z + Math.cos(e.face) * 0.6 + 1.2, zoom: 0.12 };
+      return true;
+    };
+    function leavePlace() { if (!inside) return; const { e, I } = inside; rebake(e.g); e.g.visible = true; e.g.scale.y = 1; I.g.visible = false; if (e.tag) e.tag.userData.hide = false; inside = null; T.inside = null; }
+    T.leavePlace = leavePlace;
+    function fillRoom() {
+      const { e, I } = inside, c = clock(), P = e.place;
+      let n = (Kota.crowd(c.day, c.dow, c.sec, undefined, wxNow())[P.id] || 0);
+      if (P.kind === "school") { const h = c.sec / 3600, open = c.dow > 0 && c.dow < 6 && h >= 7.5 && h < 15; n = open ? Math.round(I.seats.length * 0.75) : 0; }
+      const youHere = T.you && T.you.at === P.id;
+      I.youSeat = youHere ? (P.kind === "school" ? 1 + ((P.id.length * 3) % Math.max(1, I.seats.length - 1)) : 0) : -1;
+      let used = 0;
+      I.folkG.forEach((f, k) => {
+        const si = k; if (si === I.youSeat || used >= n || !I.seats[si]) { f.visible = false; return; }
+        const S = I.seats[si]; used++; f.visible = true; f.position.set(S.x, S.stand ? 0.08 : 0.12, S.z); f.rotation.y = S.ry; f.userData.seat = S;
+      });
+      T.inside = { id: P.id, name: P.name, n: used, you: youHere };
+    }
+    function updateInside(t, dt) {
+      if (!inside) return;
+      const { e, I } = inside, P = e.place;
+      inside.k = Math.min(1, inside.k + dt * 2.5);
+      e.g.scale.y = Math.max(0.001, 1 - smooth(inside.k)); e.g.visible = inside.k < 1; if (e.tag) e.tag.userData.hide = true;
+      I.g.scale.y = 0.2 + 0.8 * smooth(inside.k);
+      if (Math.floor(t / 5000) !== Math.floor((t - dt * 1000) / 5000)) fillRoom();
+      I.folkG.forEach((f, k) => { if (f.visible) f.position.y = (f.userData.seat && f.userData.seat.stand ? 0.08 : 0.12) + Math.abs(Math.sin(t / 700 + k * 1.3)) * 0.03; });
+      // stepping back out: zoomed out, or moved away from the building
+      const far = Math.hypot(focusX - P.x, focusZ - P.z) > Math.max(P.w, P.d) * 0.9 + 3;
+      if (!tgt && (zoom > 0.34 || far)) leavePlace();
+    }
+    // world spot of your creature's seat when it's inside the building you're looking into
+    function youSeatWorld(at) {
+      if (!inside || inside.e.place.id !== at || inside.I.youSeat < 0) return null;
+      const S = inside.I.seats[inside.I.youSeat]; if (!S) return null;
+      const v = new THREE.Vector3(S.x, 0.12, S.z); inside.I.g.localToWorld(v); return { x: v.x, z: v.z, ry: S.ry + inside.e.face };
     }
     let _walk2 = null; const walkM2 = () => _walk2 || (_walk2 = M(0xddd3c4, { roughness: 1 }));
     const PLACE_SUB = { office: "Offices", school: "School", park: "Park", market: "Market", station: "Trains" };
@@ -620,8 +850,8 @@
       return { sec, dow: d.getDay(), day: Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5) };
     }
     function plans(c) {
-      const k = c.day + ":" + c.dow; if (k === tlKey && TL) return TL;
-      tlKey = k; TL = folk.map(p => Kota.timeline(Kota.plan(p, c.day, c.dow), p.home, p.side)); return TL;
+      const wx = wxNow(), k = c.day + ":" + c.dow + ":" + wx; if (k === tlKey && TL) return TL;
+      tlKey = k; TL = folk.map(p => Kota.timeline(Kota.plan(p, c.day, c.dow, wx), p.home, p.side)); return TL;
     }
     function buildLife(data) {
       pool = []; for (let i = 0; i < 26; i++) { const g = walker(FOLK[i % FOLK.length]); g.visible = false; g.userData.who = -1; pool.push(g); }
@@ -644,7 +874,8 @@
     }
     const smooth = k => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
     function updateLife(t, dt) {
-      const c = clock(), T0 = plans(c), near = zoom < 0.56, d = distNow();
+      const c = clock(), T0 = plans(c), near = zoom < 0.56, d = distNow(); wetNow = Kota.WET.has(wxNow());
+      if (youG) umbrella(youG, wetNow && !youSeatWorld(T.you && T.you.at));
       // townsfolk
       const vis = [];
       for (let i = 0; i < folk.length; i++) { const L = Kota.locate(T0[i], c.sec, (i * 0.618) % 1); if (L.show) { L.i = i; L.d = Math.hypot(L.x - focusX, L.z - focusZ); vis.push(L); } }
@@ -657,7 +888,7 @@
           g.visible = true;
           if (g.userData.who !== L.i) { g.userData.who = L.i; g.children[0].material.color.setHex(FOLK[folk[L.i].tint]).convertSRGBToLinear(); }
           const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 160 * 1.1 + L.i)) : Math.abs(Math.sin(t / 900 + L.i)) * 0.3;
-          g.position.set(L.x, bob * 0.06, L.z); g.rotation.y = L.dir; g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1);
+          g.position.set(L.x, bob * 0.06, L.z); g.rotation.y = L.dir; g.scale.set(1 + bob * 0.04, 1 - bob * 0.05, 1); umbrella(g, wetNow);
         });
         dots.count = 0;
       } else {
@@ -675,6 +906,7 @@
       }
       // your creature: plan refreshed every few seconds, position every frame
       if (!you) { T.you = null; return; }
+      if (walk && walkStep(t, near, d)) return;
       if (!youNow || t - youAt > 4000) { youAt = t; youNow = Kota.creatureNow(you.o, you.day, c.sec, T.homeDoor || Kota.PLACE.square.spot); }
       if (!youNow) { youG.visible = youPin.visible = false; if (youTag) youTag.visible = false; T.you = null; return; }
       const L = youNow.T ? Kota.locate(youNow.T, c.sec, 0.37) : youNow;
@@ -688,21 +920,187 @@
         const moving = L.mode !== "out", bob = moving ? Math.abs(Math.sin(t / 150)) : 0;
         youG.visible = near; youG.position.set(L.x, bob * 0.07, L.z); youG.rotation.y = L.dir;
         px = L.x; pz = L.z; py = near ? 1.5 : 0.6;
+      } else if (youSeatWorld(L.at)) {
+        const S = youSeatWorld(L.at);
+        youG.visible = true; youG.position.set(S.x, 0.14 + Math.abs(Math.sin(t / 600)) * 0.03, S.z); youG.rotation.y = S.ry;
+        px = S.x; pz = S.z; py = 1.2;
       } else {
         youG.visible = false;
         const P = L.at === "home" ? null : Kota.PLACE[L.at];
         px = P ? P.x : (T.homeX ?? Kota.PLACE.square.x); pz = P ? P.z : (T.homeZ ?? Kota.PLACE.square.z); py = P ? (P.h || 0.5) + 0.8 : (T.homeTall || 3) + 0.6;
       }
       T.youX = px; T.youZ = pz;
-      youPin.visible = !near || !L.show;
+      youPin.visible = (!near || !L.show) && !youSeatWorld(L.at);
       youPin.position.set(px, py + Math.sin(t / 320) * 0.12 * pinS, pz); youPin.scale.setScalar(pinS); youPin.rotation.y = t / 900;
       youTag.visible = true; youTag.position.set(px, py + (youPin.visible ? 1.9 * pinS : 1.0) + 0.6 * k, pz); youTag.scale.copy(youTag.userData.base).multiplyScalar(k);
+    }
+    // ---------------------------------------------------------------- v75: out for a walk with you
+    // game.js records the walk ("jalan:<place>"); here you watch it: your creature leaves home, walks the streets to the
+    // place (a bit faster than townsfolk, so it doesn't take ages), the camera follows, and it hangs around there for a while.
+    let walk = null;
+    const WALK_STAY = 6 * 60 * 1000, WALK_V = 3.4;
+    T.walkWith = (dest, school) => {
+      if (!you) return false;
+      const P = Kota.PLACE[dest === "school" ? Kota.SCHOOL_OF[school] || "primary" : dest === "fair" ? Kota.FAIR.place : dest]; if (!P) return false;
+      const a = T.homeDoor || Kota.PLACE.square.spot, door = Kota.doorOf(P), r = Kota.route(a, door, 1);
+      if (P.spot) r.push({ x: P.spot.x, z: P.spot.z });
+      if (dest === "fair") r.push({ x: P.x - 2.6, z: P.z - 10 });   // into the market aisle
+      walk = { r, len: Kota.pathLen(r), t0: performance.now(), P, line: `Out with you · ${dest === "fair" && T.fair ? T.fair.name : P.name}` };
+      youTagDraw(walk.line); tgt = { x: a.x, z: a.z + 2, zoom: 0.2 };
+      return true;
+    };
+    T.walking = () => !!walk;
+    function walkStep(t, near, d) {
+      const s = (performance.now() - walk.t0) / 1000 * WALK_V, there = s >= walk.len;
+      if (there && performance.now() - walk.t0 - walk.len / WALK_V * 1000 > WALK_STAY) { walk = null; youNow = null; return false; }
+      const L = Kota.along(walk.r, Math.min(s, walk.len)), bob = there ? Math.abs(Math.sin(t / 500)) * 0.4 : Math.abs(Math.sin(t / 150));
+      youG.visible = near; youG.position.set(L.x, bob * 0.07, L.z); youG.rotation.y = there ? t / 2000 : L.dir;
+      youPin.visible = !near; const pinS = Math.max(1, d / 26), k = Math.max(1, d / 34);
+      youPin.position.set(L.x, 0.6 + Math.sin(t / 320) * 0.12 * pinS, L.z); youPin.scale.setScalar(pinS);
+      if (youLineDrawn !== walk.line) youTagDraw(walk.line);
+      youTag.visible = true; youTag.position.set(L.x, (near ? 1.5 : 0.6) + (youPin.visible ? 1.9 * pinS : 1.0) + 0.6 * k, L.z); youTag.scale.copy(youTag.userData.base).multiplyScalar(k);
+      T.youX = L.x; T.youZ = L.z; T.you = { line: walk.line, at: there ? walk.P.id : "walk", show: true, away: false, walking: true };
+      // camera follows unless you're dragging around
+      if (!drag && !pinch && !tgt) { const f = 0.04; focusX += (L.x - focusX) * f; focusZ += (L.z + 2 - focusZ) * f; }
+      return true;
+    }
+    // ---------------------------------------------------------------- v79: bake (kit system, langkah 1)
+    // Kota ini dirakit dari ribuan potong kecil (kotak, silinder, papan), masing-masing satu kali gambar ke GPU, dua kali
+    // kalau ikut bayangan. Sesudah kota selesai dibangun, potongan yang diam digabung jadi satu mesh per "bahan yang sama"
+    // (warna, kekasaran, tekstur, nyala malam). M() bikin material baru tiap dipanggil, jadi bahan disamakan lewat isinya,
+    // bukan lewat objeknya. Material yang dipakai tetap material asli, jadi lampu malam, jalan basah, dan shading tetap jalan.
+    // deep = ikut cucu-cucunya (satu bangunan/lot), cell = potong per kotak dunia selebar itu supaya yang jauh tetap
+    // terbuang dari layar (frustum culling). Yang bergerak, transparan, terpotong (bangunan dalam proses), atau
+    // tersembunyi tidak disentuh.
+    const planeId = new WeakMap(); let planeN = 0, shadeMat = null;
+    const pid = p => { if (!planeId.has(p)) planeId.set(p, ++planeN); return planeId.get(p); };
+    function bakeSig(m, L, R) {
+      const c = x => (x ? x.getHex() : ""), cp = m.clippingPlanes ? m.clippingPlanes.map(pid).join(",") + (m.clipShadows ? "s" : "") : "";
+      return [m.type, c(m.color), m.roughness, m.metalness, c(m.emissive), m.emissiveIntensity, m.map ? m.map.uuid : "", m.emissiveMap ? m.emissiveMap.uuid : "",
+        m.side, m.flatShading, m.envMapIntensity, m.opacity, cp, L.has(m) ? "L" : "", R.has(m) ? "R" : ""].join("|");
+    }
+    function bake(root, deep, cell, from = [root], keep = false) {
+      root.updateMatrixWorld(true);
+      const L = new Set(lit), R = new Set(roads), canon = new Map(), buckets = new Map();
+      const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), v = new THREE.Vector3();
+      const okM = m => m.visible && !m.transparent && !m.vertexColors && (m.isMeshStandardMaterial || m.isMeshBasicMaterial);
+      const ok = o => o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.visible && !o.renderOrder && !o.userData.keep &&
+        (Array.isArray(o.material) ? o.geometry.groups.length && o.material.every(okM) : okM(o.material)) &&
+        o.geometry.attributes.normal && !o.geometry.morphAttributes.position && o.matrixWorld.determinant() > 0;
+      // kotak berbahan banyak dipecah per kelompok sisi, tiap potong masuk ember bahannya sendiri
+      const parts = o => {
+        if (!Array.isArray(o.material)) return [[null, o.material]];
+        const flat = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+        return o.geometry.groups.map(g => {
+          const sub = new THREE.BufferGeometry();
+          for (const a of ["position", "normal", "uv"]) { const at = flat.attributes[a]; if (at) sub.setAttribute(a, new THREE.BufferAttribute(at.array.slice(g.start * at.itemSize, (g.start + g.count) * at.itemSize), at.itemSize)); }
+          return [sub, o.material[g.materialIndex]];
+        });
+      };
+      const box = new THREE.Box3();
+      const take = o => {
+        // yang tipis rata di tanah (rumput, jalan setapak, tanah lot) tidak perlu bikin bayangan
+        if (o.castShadow) { box.setFromObject(o); if (box.max.y - box.min.y < 0.1 && box.max.y < 0.2) o.castShadow = false; }
+        for (const [geo, mat] of parts(o)) put1(o, geo, mat);
+      };
+      const put1 = (o, geo, mat) => {
+        const s = bakeSig(mat, L, R);
+        if (!canon.has(s)) canon.set(s, mat);
+        let k = s + (o.castShadow ? "|c" : ""), ck = "";
+        if (cell) {
+          if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+          o.getWorldPosition(v);   // jalan panjang dan tanah raksasa: satu ember sendiri, tidak dipotong per kotak
+          ck = o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > cell ? "big" : Math.floor(v.x / cell) + "," + Math.floor(v.z / cell);
+          k += "|" + ck;
+        }
+        if (!buckets.has(k)) buckets.set(k, { mat: canon.get(s), cast: o.castShadow, list: [], srcs: new Set(), ck });
+        buckets.get(k).list.push([o, geo, cur]); buckets.get(k).srcs.add(cur);
+      };
+      const visit = o => { for (const c of o.children) { if (!c.visible || c.userData.keep) continue; if (ok(c)) take(c); else if (deep && !c.isMesh) visit(c); } };
+      let cur = null;
+      for (const f of from) { cur = f; visit(f); }
+      let n = 0;
+      const shade = new Map();   // per kotak: semua yang bikin bayangan, apa pun bahannya
+      for (const b of buckets.values()) {
+        if (b.list.length < 2 && !b.list[0][1]) continue;   // sendirian: biarkan (kecuali potongan kotak berbahan banyak)
+        const geos = [], m4 = new THREE.Matrix4();
+        let count = 0;
+        for (const [o, sub, root0] of b.list) {
+          const g = sub || (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone());
+          g.applyMatrix4(m4.multiplyMatrices(inv, o.matrixWorld));
+          geos.push(g); count += g.attributes.position.count;
+          if (cell && b.cast) {   // bayangan dikelompokkan per kotak setengah ukuran (lebih rapat, supaya yang di luar sorot matahari terbuang)
+            o.getWorldPosition(v); const sk = b.ck === "big" ? "big" : Math.floor(v.x / (cell / 2)) + "," + Math.floor(v.z / (cell / 2));
+            if (!shade.has(sk)) shade.set(sk, { parts: [], srcs: new Set(), objs: [] });
+            const S = shade.get(sk); S.parts.push(g.attributes.position.array); S.srcs.add(root0); S.objs.push(o);
+          }
+        }
+        const P = new Float32Array(count * 3), N = new Float32Array(count * 3), U = new Float32Array(count * 2);
+        let o3 = 0, o2 = 0;
+        for (const g of geos) {
+          const c = g.attributes.position.count;
+          P.set(g.attributes.position.array, o3); N.set(g.attributes.normal.array, o3);
+          if (g.attributes.uv) U.set(g.attributes.uv.array.subarray(0, c * 2), o2);
+          o3 += c * 3; o2 += c * 2; g.dispose();
+        }
+        const mg = new THREE.BufferGeometry();
+        mg.setAttribute("position", new THREE.BufferAttribute(P, 3)); mg.setAttribute("normal", new THREE.BufferAttribute(N, 3)); mg.setAttribute("uv", new THREE.BufferAttribute(U, 2));
+        mg.computeBoundingSphere();
+        const mm = new THREE.Mesh(mg, b.mat); mm.castShadow = b.cast; mm.receiveShadow = true; mm.userData.baked = b.list.length; root.add(mm);
+        if (cell && b.cast) mm.castShadow = false;
+        if (keep) {   // potongan asli disimpan (tersembunyi) supaya bisa dibongkar lagi: unbake()
+          const src = [...new Set(b.list.map(e => e[0]))];
+          for (const o of src) o.visible = false;
+          mm.userData.src = src; mm.userData.open = 0;
+          for (const s of b.srcs) (s.userData.bakedInto || (s.userData.bakedInto = [])).push(mm);
+        } else for (const [o] of b.list) if (o.parent) o.parent.remove(o);
+        n += b.list.length - 1;
+      }
+      // Bayangan: lampu matahari menggambar ulang semua benda dari sudutnya, dan di situ bahan tidak penting. Jadi tiap kotak
+      // dapat satu "bayangan saja" (posisi saja): ikut digambar di peta bayangan, dilewati di gambar utama (jumlah gambar 0).
+      for (const S of shade.values()) {
+        let len = 0; for (const p of S.parts) len += p.length;
+        const A = new Float32Array(len); let o = 0; for (const p of S.parts) { A.set(p, o); o += p.length; }
+        const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(A, 3)); sg.computeBoundingSphere();
+        const sm = new THREE.Mesh(sg, shadeMat || (shadeMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })));
+        sm.castShadow = true; sm.receiveShadow = false; sm.userData.baked = S.parts.length; sm.userData.shadowOnly = true;
+        sm.onBeforeRender = () => sg.setDrawRange(0, 0); sm.onAfterRender = () => sg.setDrawRange(0, Infinity);
+        root.add(sm);
+        if (keep) { sm.userData.src = [...new Set(S.objs)]; sm.userData.open = 0; for (const s of S.srcs) s.userData.bakedInto.push(sm); }
+      }
+      return n;   // berapa kali gambar yang hilang
+    }
+    // satu bangunan/lot perlu tampil sendiri (masuk gedung, pratinjau rumah): gabungan yang memuatnya disembunyikan dan
+    // potongan aslinya (semua lot di gabungan itu) dimunculkan lagi. rebake() mengembalikannya.
+    function unbake(r) {
+      if (!r || !r.userData.bakedInto || r.userData.unbaked) return; r.userData.unbaked = true;
+      for (const mm of r.userData.bakedInto) { if (mm.userData.open++ === 0) { mm.visible = false; for (const o of mm.userData.src) o.visible = true; } }
+    }
+    function rebake(r) {
+      if (!r || !r.userData.unbaked) return; r.userData.unbaked = false;
+      for (const mm of r.userData.bakedInto) { if (--mm.userData.open === 0) { mm.visible = true; for (const o of mm.userData.src) o.visible = false; } }
+    }
+    // jalankan sesudah kota jadi. Bangunan bernama dan lot digabung per bangunan (pintunya masih bisa dibuka, pratinjau
+    // rumah di lot kosong masih bisa menyembunyikan isinya). Rumah berpenghuni dan potongan lepas di adegan digabung per kotak 48 unit.
+    // Gedung yang bisa dimasuki dan lot kosong ikut digabung, tapi potongan aslinya disimpan untuk unbake().
+    function bakeTown() {
+      let n = 0;
+      const fixed = [], open = [];
+      for (const l of lots) {
+        if (l.g) (T.canEnter(l) ? open : fixed).push(l.g);   // bisa dimasuki: dindingnya mengecil waktu masuk
+        else if (l.content && l.build) n += bake(l.content, true);   // sedang dibangun: bidang potongnya milik lot ini sendiri
+        else if (l.content) (l.who ? fixed : open).push(l.content);   // lot kosong: pratinjau rumah menyembunyikan isinya
+      }
+      for (const g of statics) n += bake(g, true);
+      n += bake(scene, false, 48, [scene]) + bake(scene, true, 48, fixed) + bake(scene, true, 48, open, true);
+      T.baked = n;
+      return n;
     }
     // ---------------------------------------------------------------- layout
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; roads.length = 0; statics.length = 0; sky = null; inside = null; T.inside = null; walk = null; fair = null; for (const k in interiors) delete interiors[k]; poolM = null; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;
@@ -712,18 +1110,18 @@
         T.homes = homes;
         const gw = 2 * (ROAD_W / 2 + WALK + 6.6), zc = PLAZA / 2;
         const gnd = mesh(new THREE.BoxGeometry(gw, 0.2, PLAZA), M(0xb9b596, { roughness: 1 }), 0, -0.1, zc); gnd.castShadow = false;
-        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, PLAZA), M(0x6a6460, { roughness: 0.95 }), 0, 0.03, zc); road.castShadow = false;
+        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, PLAZA), (roads[roads.length] = M(0x6a6460, { roughness: 0.95 })), 0, 0.03, zc); road.castShadow = false;
         for (let dz = PLAZA - 0.6; dz > 0.3; dz -= 1.4) mesh(new THREE.BoxGeometry(0.07, 0.01, 0.6), F(0xe9e2d6), 0, 0.065, dz);
         for (const sx of [-1, 1]) { const w = mesh(RB(WALK, 0.08, PLAZA, 0.02), M(0xddd3c4, { roughness: 1 }), sx * (ROAD_W / 2 + WALK / 2), 0.04, zc); w.castShadow = false; }
         for (let k = 0; k < 4; k++) for (const sx of [-1, 1]) lamp(sx * (ROAD_W / 2 + 0.12), 1.8 + k * 3.7 + (sx > 0 ? 1.8 : 0));
         const SQX = -(ROAD_W / 2 + WALK + 2.1);
-        const sqG = new THREE.Group(); sqG.position.set(SQX, 0, 5.4); sqG.scale.setScalar(0.72); scene.add(sqG); townSquare(sqG);
+        const sqG = new THREE.Group(); sqG.position.set(SQX, 0, 5.4); sqG.scale.setScalar(0.72); scene.add(sqG); townSquare(sqG); statics.push(sqG);
         label("Town Square", "Clock shows your time", -2.4, 4.4, 8.8, false, 0.72);
         const sqHit = new THREE.Mesh(new THREE.BoxGeometry(4.1, 3, 6.3), new THREE.MeshBasicMaterial({ visible: false })); sqHit.position.set(SQX, 1.5, 5.4); scene.add(sqHit);
         lots.push({ hit: sqHit, square: true, homes });
         for (const c of CIVIC) {
           const open = homes >= c.need, x = c.side * (ROAD_W / 2 + WALK + 1.55);
-          const cg = new THREE.Group(); cg.position.set(x, 0, c.z); cg.rotation.y = c.side > 0 ? -Math.PI / 2 + TURN * 0.6 : Math.PI / 2 - TURN * 0.6; cg.scale.setScalar(0.78); scene.add(cg);
+          const cg = new THREE.Group(); cg.position.set(x, 0, c.z); cg.rotation.y = c.side > 0 ? -Math.PI / 2 + TURN * 0.6 : Math.PI / 2 - TURN * 0.6; cg.scale.setScalar(0.78); scene.add(cg); statics.push(cg);
           const inner = new THREE.Group(); inner.rotation.y = 0; cg.add(inner);
           if (open) facility(c, inner, c.len); else lockedPlot(c, inner, c.len, homes);
           label(c.name, open ? "Open" : `Opens at ${c.need} homes`, c.side * 2.8, 2.2, c.z, false, 0.62);
@@ -738,7 +1136,7 @@
         const gw = 2 * (ROAD_W / 2 + WALK + H.lot + 1.2);
         const gnd = mesh(new THREE.BoxGeometry(gw, 0.2, len), M(H.ground, { roughness: 1 }), 0, -0.1, (z0 + z1) / 2); gnd.castShadow = false;
         // road and sidewalks
-        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, len), M(0x6a6460, { roughness: 0.95 }), 0, 0.03, (z0 + z1) / 2); road.castShadow = false;
+        const road = mesh(new THREE.BoxGeometry(ROAD_W, 0.06, len), (roads[roads.length] = M(0x6a6460, { roughness: 0.95 })), 0, 0.03, (z0 + z1) / 2); road.castShadow = false;
         for (let dz = z0 - 0.6; dz > z1 + 0.3; dz -= 1.4) mesh(new THREE.BoxGeometry(0.07, 0.01, 0.6), F(0xe9e2d6), 0, 0.065, dz);
         for (let k = 0; k < H.per; k++) for (const sx of [-1, 1]) lamp(sx * (ROAD_W / 2 + 0.12), z0 - GAP / 2 - k * H.lot - (sx > 0 ? H.lot / 2 : 0));
         for (const sx of [-1, 1]) { const w = mesh(RB(WALK, 0.08, len, 0.02), M(0xddd3c4, { roughness: 1 }), sx * (ROAD_W / 2 + WALK / 2), 0.04, (z0 + z1) / 2); w.castShadow = false; }
@@ -799,7 +1197,7 @@
         z = z1;
       });
       // v73: the city around the street, then the people in it
-      buildCity();
+      buildCity(); buildSky(); buildFair(); bakeTown();
       const mine = lots.find(l => l.who && l.who.you && !l.build) || lots.find(l => l.who && l.who.you);
       if (mine) { const hx = mine.hit.position.x, hz = mine.hit.position.z; T.homeX = hx; T.homeZ = T.homeZ ?? hz; T.homeDoor = { x: Math.sign(hx) * (ROAD_W / 2 + WALK / 2), z: hz }; T.homeTall = mine.hood && (mine.hood.kind === "mansion" ? 4.6 : 3.4); }
       buildLife(data);
@@ -811,17 +1209,95 @@
       return prices[H.id];
     }
 
-    // ---------------------------------------------------------------- light that follows the real clock
-    let lastPeriod = "";
+    // ---------------------------------------------------------------- light that follows the real clock (v75: and the real weather)
+    // Weather comes from the same real forecast as the window sky (ui/33-weather.js). Rain and snow fall around the camera
+    // when you're near the street; from the map you see clouds drifting over the city instead. Storms flash now and then.
+    const WXK = {   // sun = how much direct sun gets through, fog = how far you can see, wet = shiny roads, glow = lamps on in the day
+      clear: { sun: 1, hemi: 1, fog: 1, wet: 0, glow: 0, clouds: 3, cloudC: 0xffffff, cloudO: 0.5 },
+      cloud: { sun: 0.6, hemi: 1.12, fog: 0.85, wet: 0, glow: 0, clouds: 12, cloudC: 0xf2f4f6, cloudO: 0.62 },
+      fog: { sun: 0.55, hemi: 1.1, fog: 0.42, wet: 0.3, glow: 0.25, clouds: 6, cloudC: 0xeef0f2, cloudO: 0.5 },
+      rain: { sun: 0.45, hemi: 1.0, fog: 0.7, wet: 1, glow: 0.3, clouds: 14, cloudC: 0x9aa3ae, cloudO: 0.7, rain: 1 },
+      storm: { sun: 0.3, hemi: 0.85, fog: 0.58, wet: 1, glow: 0.55, clouds: 16, cloudC: 0x6b7280, cloudO: 0.78, rain: 1.6, bolt: true },
+      snow: { sun: 0.7, hemi: 1.15, fog: 0.66, wet: 0.2, glow: 0.2, clouds: 12, cloudC: 0xf7f8fa, cloudO: 0.66, snow: 1 },
+    };
+    const wxNow = () => (env.getWeather && WXK[env.getWeather()]) ? env.getWeather() : "clear";
+    let sky = null, flash = 0, nextBolt = 0, wxFog = 1;
+    function buildSky() {
+      // rain: short streaks; snow: soft dots. Both live in a unit box that follows (and scales with) the camera.
+      const N = 1600, rp = new Float32Array(N * 6), sp = new Float32Array(N * 3), seed = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { seed[i * 3] = Math.random() * 2 - 1; seed[i * 3 + 1] = Math.random(); seed[i * 3 + 2] = Math.random() * 2 - 1; }
+      const rg = new THREE.BufferGeometry(); rg.setAttribute("position", new THREE.BufferAttribute(rp, 3));
+      const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0xc9d6e4, transparent: true, opacity: 0.55, depthWrite: false, fog: false }));
+      const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+      const snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, map: glowTex(), size: 0.12, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
+      for (const o of [rain, snow]) { o.frustumCulled = false; o.visible = false; o.renderOrder = 5; scene.add(o); }
+      // clouds over the city, seen from the map
+      const cm = new THREE.SpriteMaterial({ map: cloudTex(), transparent: true, opacity: 0, depthWrite: false, fog: false });
+      const clouds = [];
+      for (let k = 0; k < 16; k++) { const c = new THREE.Sprite(cm); c.userData = { x: -90 + ((k * 61) % 190), z: -110 + ((k * 37) % 170), s: 34 + (k % 5) * 9, v: 0.6 + (k % 3) * 0.25 }; c.visible = false; c.renderOrder = 6; scene.add(c); clouds.push(c); }
+      sky = { N, rp, sp, seed, rain, snow, clouds, cm, t: 0 };
+    }
+    let cloudT = null;
+    const cloudTex = () => cloudT || (cloudT = canvasTex((c, w, h) => {
+      for (let k = 0; k < 9; k++) { const x = w * (0.22 + 0.56 * ((k * 0.37) % 1)), y = h * (0.38 + 0.24 * ((k * 0.61) % 1)), r = w * (0.16 + 0.1 * ((k * 0.53) % 1)); const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, "rgba(255,255,255,0.75)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+    }, 128, 128));
+    function updateSky(t, dt) {
+      if (!sky) return;
+      const K = WXK[wxNow()], d = distNow(), near = 1 - smooth((zoom - 0.42) / 0.16), mapK = smooth((zoom - 0.45) / 0.2);
+      sky.t += dt;
+      // precipitation box: wide enough to fill the view, scaled with the camera distance
+      const W = Math.min(60, d * 0.75 + 6), Hh = Math.min(40, d * 0.7 + 5);
+      const fall = (o, on) => { o.visible = on && near > 0.02; if (o.visible) { o.position.set(focusX, 0, focusZ); o.scale.set(W, Hh, W); o.material.opacity = (o === sky.rain ? 0.5 : 0.95) * near; } return o.visible; };
+      if (fall(sky.rain, !!K.rain)) {
+        const v = 1.7 * K.rain, len = 0.045 * (1 + 0.4 * K.rain);
+        for (let i = 0; i < sky.N; i++) {
+          const y = 1 - ((sky.seed[i * 3 + 1] + sky.t * v * (0.85 + 0.3 * ((i * 0.37) % 1))) % 1), x = sky.seed[i * 3] - y * 0.08, z = sky.seed[i * 3 + 2], o = i * 6;
+          sky.rp[o] = x; sky.rp[o + 1] = y; sky.rp[o + 2] = z; sky.rp[o + 3] = x + 0.006; sky.rp[o + 4] = y + len; sky.rp[o + 5] = z;
+        }
+        sky.rain.geometry.attributes.position.needsUpdate = true;
+      }
+      if (fall(sky.snow, !!K.snow)) {
+        sky.snow.material.size = 0.1 * W / 12;
+        for (let i = 0; i < sky.N; i++) {
+          const ph = (i * 0.618) % 1, y = 1 - ((sky.seed[i * 3 + 1] + sky.t * 0.12 * (0.7 + 0.6 * ph)) % 1), o = i * 3;
+          sky.sp[o] = sky.seed[i * 3] + Math.sin(sky.t * 0.9 + ph * 20) * 0.025; sky.sp[o + 1] = y; sky.sp[o + 2] = sky.seed[i * 3 + 2] + Math.cos(sky.t * 0.7 + ph * 17) * 0.02;
+        }
+        sky.snow.geometry.attributes.position.needsUpdate = true;
+      }
+      // clouds drift east over the city; only from up high
+      const nC = K.clouds, cO = K.cloudO * mapK;
+      sky.cm.opacity = cO; sky.cm.color.setHex(env.getPeriod() === "night" ? 0x4a5168 : K.cloudC).convertSRGBToLinear();
+      sky.clouds.forEach((c, k) => {
+        c.visible = k < nC && cO > 0.02; if (!c.visible) return;
+        const u = c.userData, x = -100 + (((u.x + 100) + sky.t * u.v) % 200);
+        c.position.set(x, Math.max(18, d * 0.42), u.z); c.scale.set(u.s * 1.6, u.s, 1);
+      });
+      // lightning: a quick double flash every 6–16 s (not with reduced motion)
+      if (K.bolt && !env.reduce) {
+        if (!nextBolt) nextBolt = t + 6000 + Math.random() * 10000;
+        if (t > nextBolt) { flash = 1; nextBolt = t + 6000 + Math.random() * 10000; if (env.onBolt) env.onBolt(); }
+      }
+      if (flash > 0) {
+        const f = flash > 0.6 || (flash < 0.4 && flash > 0.25) ? 1 : 0.2;
+        hemi.intensity = baseHemi + 1.6 * f * flash; flash = Math.max(0, flash - dt * 2.2);
+        if (!flash) hemi.intensity = baseHemi;
+      }
+    }
+    let lastPeriod = "", baseHemi = 0.5;
     function applyPeriod(force) {
-      const L = env.getLit(), p = env.getPeriod();
-      if (p === lastPeriod && !force) return; lastPeriod = p;
-      sun.color.setHex(L.sun); hemi.intensity = L.hemi; sun.intensity = L.sunI * 1.05;
-      const glow = p === "night" ? 1.0 : p === "evening" ? 0.6 : 0;
+      const L = env.getLit(), p = env.getPeriod(), wx = wxNow(), key = p + "|" + wx, K = WXK[wx];
+      if (key === lastPeriod && !force) return; lastPeriod = key;
+      const nk = p === "night" ? 0.7 : 1; sun.color.setHex(L.sun); hemi.intensity = L.hemi * K.hemi * nk; sun.intensity = L.sunI * 1.05 * K.sun * nk;
+      if (look) { look.apply(p, wx, hemi, sun); look.patchScene(scene); }
+      baseHemi = hemi.intensity;
+      const glow = Math.max(p === "night" ? 1.0 : p === "evening" ? 0.6 : 0, K.glow);
       for (const m of lit) m.emissiveIntensity = glow;
-      scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * L.env; } });
-      scene.fog.color.set(env.bgColor());
+      if (poolM) poolM.opacity = p === "night" ? 0.32 : p === "evening" ? 0.16 : K.glow > 0.4 ? 0.1 : 0;
+      for (const m of roads) { m.roughness = 0.95 - 0.5 * K.wet; m.color.setHex(K.wet > 0.5 ? 0x47484c : 0x646468).convertSRGBToLinear(); }
+      scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * L.env * nk * (K.wet > 0.5 ? 1.6 : 1); } });
+      scene.fog.color.set(env.bgColor()); wxFog = K.fog;
       for (const w of walkers) w.g.visible = !(w.night && p === "night");
+      T.weather = wx;
     }
 
     // ---------------------------------------------------------------- camera and input (v73: bird view over the whole city)
@@ -837,7 +1313,7 @@
       const d = distNow(), p = pitchOf(zoom), yaw = 0.085;
       camera.position.set(focusX + d * Math.cos(p) * Math.sin(yaw), d * Math.sin(p), focusZ + d * Math.cos(p) * Math.cos(yaw)); camera.lookAt(focusX, 0, focusZ);
       const nf = Math.max(0.5, d * 0.04); if (Math.abs(camera.near - nf) > 0.01) { camera.near = nf; camera.far = d * 6 + 150; camera.updateProjectionMatrix(); }
-      scene.fog.near = d * 1.05 + 8; scene.fog.far = d * 2.4 + 50;
+      scene.fog.near = (d * 1.05 + 8) * (0.35 + 0.65 * wxFog); scene.fog.far = (d * 2.4 + 50) * wxFog;
       const sh = Math.round(Math.min(110, Math.max(16, d * 0.62)));
       if (sh !== shHalf) { shHalf = sh; Object.assign(sun.shadow.camera, { left: -sh, right: sh, top: sh, bottom: -sh, far: sh * 5 + 40 }); sun.shadow.camera.updateProjectionMatrix(); }
       sun.position.set(focusX - sh * 0.5, sh * 1.05, focusZ + sh * 0.65); sun.target.position.set(focusX, 0, focusZ - 2);
@@ -845,6 +1321,7 @@
       const kM = Math.max(1, d / 42), fade = 1 - smooth((zoom - 0.4) / 0.1);
       for (const s of signs) {
         if (s === youTag) continue;
+        if (s.userData.hide) { s.visible = false; continue; }
         if (s.userData.map) {
           const hood = s.userData.hood, street = s.userData.street;
           s.scale.copy(s.userData.base).multiplyScalar(hood ? Math.max(1, d / 30) : kM);
@@ -860,13 +1337,18 @@
       zoom = Math.max(0, Math.min(Z_OUT + 0.02, z));
       if (zoom >= Z_OUT && !leaving && env.toGlobe) { leaving = true; env.toGlobe(); }
     }
+    // v79: kapan terakhir disentuh. Kamera diam + tidak ada animasi kamera = kota boleh digambar lebih jarang (ui/29-town.js)
+    let touchT = 0;
+    const touched = () => { touchT = performance.now(); };
+    T.calm = t => !tgt && !ptr.size && !walk && !(inside && inside.k > 0 && inside.k < 1) && t - touchT > 1500;
     T.down = e => {
-      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tgt = null;
+      touched(); ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tgt = null;
       if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom }; drag = null; moved = 99; return; }
       drag = { x: e.clientX, y: e.clientY, fx: focusX, fz: focusZ }; moved = 0;
     };
     T.move = e => {
       if (!ptr.has(e.pointerId)) return;
+      touched();
       ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinch && ptr.size >= 2) { const [a, b] = [...ptr.values()]; setZoom(pinch.zoom - Math.log(Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d) / LZ); return; }
       if (!drag) return;
@@ -875,6 +1357,7 @@
       focusX = drag.fx - dx * k; focusZ = drag.fz - dy * k / Math.sin(pitchOf(zoom)); clampFocus();
     };
     T.up = e => {
+      touched();
       const tap = drag && moved < 8 && ptr.size === 1;
       ptr.delete(e.pointerId); if (ptr.size < 2) pinch = null;
       if (tap) {
@@ -891,15 +1374,17 @@
       drag = null;
     };
     T.cancel = e => { ptr.delete(e.pointerId); pinch = null; drag = null; };
-    T.wheel = e => { tgt = null; setZoom(zoom + e.deltaY * 0.0011); };
+    T.wheel = e => { touched(); tgt = null; setZoom(zoom + e.deltaY * 0.0011); };
     T.zoomBy = dz => { const z0 = tgt ? tgt.zoom : zoom; if (dz > 0 && z0 >= 0.995) return setZoom(Z_OUT); tgt = { x: tgt ? tgt.x : focusX, z: tgt ? tgt.z : focusZ, zoom: Math.max(0, Math.min(1, z0 + dz)) }; };
     T.flyTo = (x, z, zm) => { tgt = { x, z, zoom: zm ?? zoom }; };
     T.mapView = () => { tgt = zoom > Z_MAP ? { x: T.homeX ?? 0, z: (T.homeZ ?? -4) + 3.6, zoom: Z_STREET } : { x: 6, z: -24, zoom: 0.97 }; };
     T.findYou = () => { if (T.youX === undefined) return false; tgt = { x: T.youX, z: T.youZ + 2, zoom: 0.22 }; return true; };
     T.zoomLevel = () => zoom;
+    T.focus = () => ({ x: focusX, z: focusZ });
     T.resize = (w, h) => { camera.aspect = w / h; camera.updateProjectionMatrix(); };
     const DISTRICT = x => x < Kota.RAIL.x ? "Westfield" : x < -22 ? "Station Quarter" : x < 0 ? "Office Row" : x < 22 ? "Eastside" : x < Kota.RIVER.x0 ? "Riverside" : x < Kota.RIVER.x1 ? "The river" : "Far Bank";
     T.hoodAt = () => {
+      if (T.inside) return `Inside · ${T.inside.name}`;
       if (zoom > Z_MAP) return "Old Town · city map";
       if (Math.abs(focusX) < Kota.STRIP && focusZ < Kota.PLAZA + 1 && focusZ > Kota.ZMIN - 2)
         return focusZ > 1.5 ? "Town Square" : (HOODS.find(H => focusZ <= H.z0 + 0.5 && focusZ > H.z1) || HOODS[focusZ > 0 ? 0 : HOODS.length - 1]).name;
@@ -918,13 +1403,22 @@
       for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05);
     };
     T.exit = () => { T.on = false; };
+    T.resume = () => { T.on = true; };   // v78: balik dari konser tanpa bangun ulang kota
+    let shKey = "", shT = 0;
     T.frame = (t, dt) => {
       if (tgt) {
         const k = 1 - Math.pow(0.025, dt);
         focusX += (tgt.x - focusX) * k; focusZ += (tgt.z - focusZ) * k; zoom += (tgt.zoom - zoom) * k;
         if (Math.abs(tgt.x - focusX) + Math.abs(tgt.z - focusZ) < 0.03 && Math.abs(tgt.zoom - zoom) < 0.002) tgt = null;
       }
-      applyPeriod(false); updateLife(t, dt); place();
+      applyPeriod(false); updateLife(t, dt); updateInside(t, dt); updateFair(t); place(); updateSky(t, dt);
+      // v79: di peta kota bayangan kecil sekali, jadi peta bayangannya tidak dihitung ulang tiap frame: hanya kalau kamera
+      // (dan matahari yang ikut kamera) bergeser, atau tiap 1 detik. Di jalan tetap tiap frame (mobil dan warga bergerak).
+      if (zoom > Z_MAP) {
+        const key = Math.round(sun.position.x * 4) + "," + Math.round(sun.position.z * 4) + "," + shHalf;
+        renderer.shadowMap.autoUpdate = false;
+        if (key !== shKey || t - shT > 1000) { shKey = key; shT = t; renderer.shadowMap.needsUpdate = true; }
+      } else renderer.shadowMap.autoUpdate = true;
       if (T.homeMarker) T.homeMarker.rotation.y = t / 700;
       drawClock();
       if (t - lastSite > 1000) { lastSite = t; for (const S of sites) S.plane.constant = 0.05 + siteProgress(S) * (S.top + 0.05); }
@@ -937,11 +1431,12 @@
     T.preview = (l, model, paint) => {
       T.clearPreview();
       if (!l) return;
-      l.content.visible = false;
+      unbake(l.content); l.content.visible = false;
       previewG = home(l.hood.kind, model, paint, rnd("preview")); previewG.userData.lot = l; l.lotG.add(previewG);
       previewG.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.isMeshStandardMaterial && m.userData.env0 === undefined) { m.userData.env0 = m.envMapIntensity; m.envMapIntensity *= env.getLit().env; } });
+      if (look) look.patchScene(previewG);
     };
-    T.clearPreview = () => { if (previewG) { previewG.userData.lot.content.visible = true; previewG.parent.remove(previewG); previewG = null; } };
+    T.clearPreview = () => { if (previewG) { rebake(previewG.userData.lot.content); previewG.userData.lot.content.visible = true; previewG.parent.remove(previewG); previewG = null; } };
     T.lots = lots;
     T.HOODS = HOODS;
     // the Homes app photographs single homes; the kit has to be loaded first
