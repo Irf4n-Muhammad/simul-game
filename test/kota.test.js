@@ -105,3 +105,58 @@ test("bumi: 5 benua, tiap kota di daratan benuanya sendiri, cuma satu kota hidup
   assert.ok(land / n > 0.15 && land / n < 0.4, `darat ${(land / n).toFixed(2)}`);
   const p = B.toXYZ(0, 90); assert.ok(Math.abs(p.x - 1) < 1e-9 && Math.abs(p.z) < 1e-9);
 });
+
+test("v74 barang kecil: mobil parkir, lampu, dan perahu nggak di tempat yang salah; mobil jalan di jalur", () => {
+  const D = K.details();
+  for (const k of ["parked", "lamps", "bins", "crossings", "dashes", "bushes", "flowers", "chimneys", "roofbits"]) assert.ok(D[k].length > 10, k);
+  const onRoad = (x, z) => K.VX.some(v => Math.abs(x - v) <= K.ROAD_W / 2 + 0.01) || K.HZ.some(h => Math.abs(z - h) <= K.ROAD_W / 2 + 0.01);
+  for (const c of D.parked) { assert.ok(onRoad(c.x, c.z), `mobil parkir di luar jalan ${c.x},${c.z}`); assert.ok(c.x < K.RIVER.x0 - 1 || c.x > K.RIVER.x1 + 1 || K.VX.includes(Math.round(c.x)), `mobil parkir di jembatan ${c.x}`); }
+  for (const l of D.lamps) assert.ok(!onRoad(l.x, l.z), `lampu di tengah jalan ${l.x},${l.z}`);
+  for (const sec of [3600 * 3, 3600 * 9, 3600 * 18]) for (const c of K.carsAt(sec)) assert.ok(onRoad(c.x, c.z), `mobil jalan keluar jalan ${c.x},${c.z}`);
+  assert.ok(K.carsAt(3600 * 3).length < K.carsAt(3600 * 12).length, "malam lebih sepi");
+  for (const b of K.boatsAt(1234)) assert.ok(b.x > K.RIVER.x0 && b.x < K.RIVER.x1);
+  assert.equal(JSON.stringify(K.carsAt(5000)), JSON.stringify(K.carsAt(5000)));
+});
+
+test("v75 peta benua: sama tiap kali, kota di daratan benuanya, semua kota nyambung jalan, sungai sampai laut", () => {
+  const R = require("../region.js");
+  for (const C of B.CONTINENTS) {
+    const g = R.region(C.id);
+    assert.ok(g.towns.length >= 6, `${C.id} cuma ${g.towns.length} kota`);
+    assert.equal(g.towns.filter(t => t.main).length, 1);
+    for (const t of g.towns) { const L = R.toLatLon(C, t.x, t.z); assert.equal(B.landAt(L.lat, L.lon).cont, C, `${t.name} nggak di ${C.id}`); }
+    assert.equal(g.roads.length, g.towns.length - 1, "pohon rentang: n-1 jalan");
+    const seen = new Set([g.towns[0].id]); let grew = true;
+    while (grew) { grew = false; for (const r of g.roads) if (seen.has(r.a) !== seen.has(r.b)) { seen.add(r.a); seen.add(r.b); grew = true; } }
+    assert.equal(seen.size, g.towns.length, "ada kota yang nggak nyambung");
+    for (const r of g.rivers) { const e = r[r.length - 1]; assert.ok(g.at(e.x, e.z).h < 0.02, "sungai nggak sampai laut"); }
+  }
+  // Old Town ada di peta Meridia dan bisa dimasuki
+  assert.ok(R.region("meridia").towns.find(t => t.live && t.id === B.HOME_CITY));
+  const p = R.toMap(B.CONT.meridia, 30, 0), q = R.toLatLon(B.CONT.meridia, p.x, p.z);
+  assert.ok(Math.abs(q.lat - 30) < 1e-9 && Math.abs(q.lon) < 1e-9);
+});
+
+test("v76 pasar dan festival: jadwal buka, lapak nggak di kolam, pengunjung di lorong pasar", () => {
+  const at = (dow, h) => { const d = new Date(2026, 10, 1 + ((dow - 0 + 7) % 7), h, 0); assert.equal(d.getDay(), dow); return d; };   // 1 Nov 2026 = Minggu
+  assert.equal(K.fairNow(at(2, 10), null), null, "Selasa tanpa festival: nggak ada pasar");
+  assert.equal(K.fairNow(at(6, 9), null).on, true); assert.equal(K.fairNow(at(6, 9), null).kind, "market");
+  assert.equal(K.fairNow(at(0, 15), null).on, false);
+  const f = K.fairNow(at(2, 20), { nama: "Lantern Night", ikon: "🏮" });
+  assert.equal(f.on, true); assert.equal(f.name, "Lantern Night"); assert.equal(f.lights, true);
+  for (const s of K.FAIR.stalls) assert.ok(s.z < -6.5 && s.z > -13 && Math.abs(s.x) < 6, `lapak ${s.x},${s.z}`);   // kolam di z 0..7 lokal, jalan pasar motong ujung utara, taman lebar 12
+  for (const z of K.HZ) assert.ok(Math.abs(K.PLACE.park.z - 10 - z) > 4, "lapangan pasar kena jalan");
+  const P = K.PLACE.park, A = K.FAIR.aisle;
+  for (const sec of [100, 5000, 40000]) for (const p of K.fairFolk(sec)) { assert.ok(p.x - P.x >= A.x0 - 1e-9 && p.x - P.x <= A.x1 + 1e-9 && p.z - P.z >= A.z0 - 1e-9 && p.z - P.z <= A.z1 + 1e-9); }
+  assert.equal(JSON.stringify(K.fairFolk(777)), JSON.stringify(K.fairFolk(777)));
+});
+
+test("v77 cuaca: hujan bikin taman dan alun-alun sepi, Jumat malam alun-alun ramai, rencana dasar nggak geser", () => {
+  const P = K.people(), out = (dow, sec, wx) => P.filter(p => { const L = K.locate(K.timeline(K.plan(p, 20100, dow, wx), p.home, p.side), sec, 0.3); return L.show && (L.at === "park" || L.at === "square"); }).length;
+  const dry = out(6, H(16), "clear"), wet = out(6, H(16), "rain"), storm = out(6, H(16), "storm");
+  assert.ok(wet < dry * 0.6, `hujan ${wet} vs cerah ${dry}`); assert.ok(storm <= wet);
+  const fri = out(5, H(20.5), "clear"), wed = out(3, H(20.5), "clear");
+  assert.ok(fri > wed, `Jumat ${fri} vs Rabu ${wed}`);
+  // kantor tetap jalan walau hujan
+  const c = K.crowd(20100, 2, H(11), undefined, "rain"); assert.ok((c.tower1 || 0) + (c.tower2 || 0) + (c.tower3 || 0) >= 20);
+});

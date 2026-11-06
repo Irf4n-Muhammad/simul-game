@@ -180,8 +180,11 @@
     function checkEnter() {
       if (entering || !T.on) return;
       const H = home();
-      if (dist <= ENTER && B.angDist(lat0, lon0, H.lat, H.lon) < 14) { entering = true; env.enterCity(H); }
-      else if (dist <= ENTER + 0.02) { const C = B.contAt(lat0, lon0); if (C && !C.live && env.soonHint) env.soonHint(C); }
+      // v75: zoom dekat di atas benua mana pun = peta benua itu (kalau ada); tanpa peta benua, langsung ke kota hidup
+      const C = B.contAt(lat0, lon0) || (B.angDist(lat0, lon0, H.lat, H.lon) < 14 ? B.CONT[H.cont] : null);
+      if (dist <= ENTER && C && env.enterRegion) { entering = true; env.enterRegion(C); }
+      else if (dist <= ENTER && B.angDist(lat0, lon0, H.lat, H.lon) < 14) { entering = true; env.enterCity(H); }
+      else if (dist <= ENTER + 0.02) { if (C && !C.live && env.soonHint) env.soonHint(C); }
     }
     function tap(e) {
       const r = env.canvas.getBoundingClientRect();
@@ -218,7 +221,7 @@
       if (!painted) paint();
       const H = home();
       entering = false; ptr.clear(); drag = pinch = null;
-      if (opt.back) { lat0 = H.lat; lon0 = H.lon; dist = ENTER + 0.12; goal = { lat: H.lat - 4, lon: H.lon + 10, dist: 2.6 }; }
+      if (opt.back) { const P = opt.at || H; lat0 = P.lat; lon0 = P.lon; dist = ENTER + 0.12; goal = { lat: P.lat - 4, lon: P.lon + 10, dist: 2.6 }; }
       else { lat0 = H.lat - 10; lon0 = H.lon + 70; dist = FAR; goal = { lat: H.lat - 6, lon: H.lon + 8, dist: 3.3 }; }
       idleAt = performance.now() + 9000;
       T.on = true; place();

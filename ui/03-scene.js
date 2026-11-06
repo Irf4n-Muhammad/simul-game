@@ -343,7 +343,25 @@ function envScale(o) {
   const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
   for (const m of ms) if (m.isMeshStandardMaterial) { if (m.userData.env0 === undefined) m.userData.env0 = m.envMapIntensity; m.envMapIntensity = m.userData.env0 * LIT.env; }
 }
+// v75: langit kota (di luar rumah): gradasi atas → cakrawala, ikut jam dan cuaca asli. Kabut kota pakai warna cakrawala.
+const TOWN_SKY = { morning: ["#E9C3A6", "#F3E1CE"], day: ["#9DC0DA", "#DDE7EC"], evening: ["#6F638A", "#E2AE8C"], night: ["#10152A", "#262C44"] };
+function townSky() {
+  const p = litName || "day", X = typeof WX === "string" && WX !== "clear" ? WX_SKY[WX] : null;
+  if (!X) return TOWN_SKY[p];
+  const n = p === "night", c = X[n ? "night" : "day"];
+  return p === "evening" || p === "morning" ? [artShade(c[0], 0.82), artShade(c[1], 0.86)] : c;
+}
 function paintBg() {
+  if (app.classList.contains("in-town") && !app.classList.contains("in-globe")) {
+    const [a, b] = townSky(), stars = litName === "night" && (typeof WX !== "string" || WX === "clear");
+    const dots = stars ? "radial-gradient(1.2px 1.2px at 23px 31px, #fff 60%, transparent), radial-gradient(1px 1px at 141px 77px, #dfe6ff 60%, transparent), radial-gradient(1.4px 1.4px at 87px 143px, #fff 60%, transparent), radial-gradient(1px 1px at 189px 18px, #fff 60%, transparent), " : "";
+    app.style.background = `${dots}linear-gradient(180deg, ${a} 0%, ${b} 42%, ${b} 100%)`;
+    if (stars) app.style.backgroundSize = "211px 167px, 173px 199px, 229px 181px, 197px 223px, auto";
+    else app.style.backgroundSize = "";
+    document.body.style.background = b; app.classList.toggle("night", litName === "night");
+    return;
+  }
+  app.style.backgroundSize = "";
   // v44.1: latar sedikit mengabu saat cuaca mendung/hujan (kulit saja)
   const X = typeof WX === "string" && WX !== "clear" ? WX_SKY[WX] : null, r = ROOMS[roomIx] || ROOMS[0], t0 = LIT.tint || r.bg, t = X ? [artShade(t0[0], 0.92), artShade(t0[1], 0.9)] : t0;
   app.style.background = `radial-gradient(120% 80% at 50% 40%, ${t[0]} 0%, ${t[1]} 100%)`;
