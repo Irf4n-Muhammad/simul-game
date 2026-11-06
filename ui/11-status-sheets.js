@@ -178,6 +178,8 @@ function showLife(tab = lifeTab) {
     const old = cur.umur >= 180 && cur.fase !== "meninggal" && cur.fase !== "merantau";
     openSheet("life", `${lifeHead(tab)}
       <div class="row"><h2>${esc(cur.nama)}'s money</h2><span class="coins">${coins(s.wallet)}</span></div>
+      ${s.debt ? `<div class="box"><h3>Old business debt: ${coins(s.debt.left)}</h3><small>${coins(s.debt.pay)} a day from ${esc(cur.nama)}'s wallet · ${Math.round(s.debt.rate * 100)}% a year, floating${s.debt.late ? ` · behind for ${s.debt.late} day${s.debt.late > 1 ? "s" : ""}` : ""}</small></div>` : ""}
+      ${s.credit_bad ? `<p><small>The bank won't lend to this family for now. An old debt went unpaid.</small></p>` : ""}
       <div class="box"><h3>Family home: ${esc(house.label)}</h3><small>${esc(house.hood)} neighborhood · prestige +${house.pts}</small>
         ${famStatus().build ? `<small>Building a ${esc(famStatus().build.item.label)} in ${esc(famStatus().build.item.hood)} · ${famStatus().build.left ? `${famStatus().build.left} day${famStatus().build.left > 1 ? "s" : ""} left` : "moving in today"}</small>` : ""}</div>
       ${old ? "" : `<p>Shopping opens in the teen years.</p>`}

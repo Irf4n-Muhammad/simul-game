@@ -19,7 +19,7 @@
     barang: "Purchases", rumah: "Home: purchase and upkeep", pasar_beli: "Bazaar purchases", pasar_jual: "Bazaar sales",
     founder: "Founder capital", bisnis_ambil: "Business draw", bisnis_tutup: "Covering business losses",
     bisnis_modal: "Business start-up capital", bisnis_jual: "Business sale", urunan: "Family chip-in",
-    warisan: "Inheritance", hewan: "Pets", cerai: "Divorce settlement", demo: "Test mode",
+    warisan: "Inheritance", hewan: "Pets", cerai: "Divorce settlement", utang: "Debt payments", demo: "Test mode",
   };
   const r2 = v => Math.round(v * 100) / 100;
 

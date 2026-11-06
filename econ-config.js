@@ -15,11 +15,22 @@
     STAT_UANG_MAX: 5000,        // batas stat "uang" yang ditampilkan ke cerita lama
     // keluarga (game.js)
     DIVORCE_FEE: 0.25,          // bagian dompet yang habis saat cerai
-    // bank (venture.js): pinjaman modal kerja bisnis yang sudah berjalan
-    LOANS: [{ term: 120, rate: 0.06, label: "4 months" }, { term: 240, rate: 0.13, label: "8 months" }, { term: 480, rate: 0.26, label: "16 months" }],
-    // pinjaman saat buka bisnis kalau modal kurang
-    OPEN_LOAN: { term: 240, rate: 0.15 },
-    EARLY_REPAY: 0.97,          // lunas dipercepat: bayar 97% sisa tagihan
+    // tenor pinjaman modal kerja bisnis yang sudah berjalan (bunganya mengambang, lihat BANK)
+    LOANS: [{ term: 120, label: "4 months" }, { term: 240, label: "8 months" }, { term: 480, label: "16 months" }],
+    // bank.js (tahap 4): bunga mengambang = Makro.rate(hari) + spread per jenis
+    BANK: {
+      SPREAD: { biz: 0.10, open: 0.12, personal: 0.14 },
+      BAD_SPREAD: 0.03,         // tambahan bunga selama riwayat kredit keluarga jelek
+      BAD_BLOCK: 180,           // hari tidak bisa pinjam setelah gagal bayar
+      BAD_PEN: 365,             // hari bunga lebih mahal setelah gagal bayar
+      HOUSEHOLD_SHARE: 0.4,     // total cicilan yang dijamin keluarga maks 40% pemasukan rutin harian
+      OPEN_TERM: 240,           // tenor pinjaman buka usaha
+      OLD_TERM: 120,            // tenor maks untuk makhluk tua (plafonnya juga separuh)
+      PERSONAL_TERM: 365,       // tenor utang pribadi sisa bisnis tutup
+      EARLY_FEE: 1.02,          // lunas dipercepat bayar 102% sisa pokok
+      COOLDOWN: 30,             // jeda pinjam lagi setelah lunas dipercepat
+      LATE_BAD: 60,             // hari menunggak utang pribadi sebelum dianggap gagal bayar
+    },
     // rumah (status.js): biaya pegang per tahun (pajak, perawatan, listrik) dari harga beli, dibayar harian oleh anggota dewasa terkaya
     HOUSE_UPKEEP: { flat: 0.02, house: 0.03, villa: 0.05, mansion: 0.07 },
     // jam (ui/01-save-clock.js): hari yang boleh lewat sekaligus saat app dibuka lagi (jam nyata saja)
