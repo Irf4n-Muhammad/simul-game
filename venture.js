@@ -7,6 +7,8 @@
   const ST = (typeof module !== "undefined") ? require("./status.js") : globalThis.Status;
   const CR = (typeof module !== "undefined") ? require("./career.js") : globalThis.Career;
   const BR = (typeof module !== "undefined") ? require("./brands.js") : globalThis.Brands;
+  const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { HOOKS, seed_rng, phase_of, clamp, Ctx } = E;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const r2 = v => Math.round(v * 100) / 100;
@@ -69,7 +71,7 @@
   const roles = t => ROLES_TPL[t.id] || ROLES_CAT[t.cat];
   const SLOTS = [2, 5, 10, 20];
   const SUPPLY = { cheap: { label: "Cheap", mat: 0.85, q: -0.05 }, standard: { label: "Standard", mat: 1, q: 0 }, premium: { label: "Premium", mat: 1.2, q: 0.05 } };
-  const LOANS = [{ term: 120, rate: 0.06, label: "4 months" }, { term: 240, rate: 0.13, label: "8 months" }, { term: 480, rate: 0.26, label: "16 months" }];
+  const LOANS = CFG.LOANS;
   const NPC_FIRST = ["Ari", "Beni", "Cika", "Dodo", "Eli", "Fani", "Gita", "Hani", "Ipul", "Juju", "Kemi", "Lolo", "Mimi", "Nino", "Opi", "Pepe", "Quin", "Riri", "Sisi", "Tobi", "Umi", "Vivi", "Wawa", "Yaya", "Zuzu"];
   const NPC_LAST = ["Ash", "Bloom", "Fern", "Lark", "Reed", "Wren", "Moss", "Pike", "Vale", "Hollow"];
   const SUP_NAME = ["Hillside", "Riverbend", "Oakmoor", "Sunvale", "Brookside", "Thornfield"];
@@ -706,9 +708,9 @@
     }
     if (b.cash < 0) {
       const take = Math.min(c.st.wallet, -b.cash);
-      c.st.wallet -= take; b.cash += take;
+      Money.move(c, -take, "bisnis_tutup", day); b.cash += take;
     }
-    c.st.wallet += draw;
+    Money.move(c, draw, "bisnis_ambil", day);
     if (!b.demo) c.st.drawAvg = Math.round(((c.st.drawAvg ?? draw) * 0.97 + draw * 0.03) * 100) / 100;  // buat pensiun pemilik
     b.debt = b.cash < 0 ? (b.debt || 0) + 1 : 0;
     b.today = { d: day, rev, cost, profit, cust, draw, rent: t.fund ? Math.round(rent / 2) : rent, wages, mat: matC, loan: loanC, con: conR, rnd: rndC };
@@ -840,7 +842,7 @@
     const total = others.reduce((s, m) => s + m.st.wallet, 0);
     if (total < need) return false;
     let left = need;
-    for (const m of others) { const k = Math.min(m.st.wallet, left); m.st.wallet -= k; left -= k; if (left <= 0) break; }
+    for (const m of others) { const k = Math.min(m.st.wallet, left); Money.move(m, -k, "urunan", day); left -= k; if (left <= 0) break; }
     return true;
   }
   function open(home, c, tplId, day, via) {
@@ -849,9 +851,9 @@
     const own = Math.min(c.st.wallet, t.cap), short = t.cap - own;
     let loan = null;
     if (short > 0 && via === "loan" && t.fund) return null;
-    if (short > 0 && via === "loan") loan = { left: Math.round(short * 1.15), pay: Math.max(1, Math.round(short * 1.15 / 240)), from: day, amt: short, term: 240, rate: 0.15 };
+    if (short > 0 && via === "loan") { const L = CFG.OPEN_LOAN; loan = { left: Math.round(short * (1 + L.rate)), pay: Math.max(1, Math.round(short * (1 + L.rate) / L.term)), from: day, amt: short, term: L.term, rate: L.rate }; }
     else if (short > 0 && !(via === "fund" && familyChip(home, c, short, day))) return null;
-    c.st.wallet -= own;
+    Money.move(c, -own, "bisnis_modal", day);
     const S = B(home), id = "b" + (++S.seq);
     const b = { id, tpl: tplId, owner: c.id, founder: c.name, name: bizName(t, c, day, home), since: day, level: 0, cash: t.fund ? t.cap : Math.round(t.cap * (t.hits ? 0.9 : 0.25)), hwm: t.fund ? t.cap : null,
       rep: 30, q: null, focus: "steady", price: "normal", supply: "standard", staff: [], sseq: 0, equity: 1, owners: [[c.id, c.name, day]], via };
@@ -883,7 +885,7 @@
     if (c) leaveWork(c, b, day, "Owner", why);
     const sale0 = sale; sale = Math.round(sale0 * (b.equity ?? 1));
     if (c && c.st) {
-      c.st.wallet += sale;
+      Money.move(c, sale, "bisnis_jual", day);
       if (c.st.job && c.st.job.biz === b.id) { c.st.job = null; delete c.info.kerja; c.st.ready_since = day; c.st.retry_after = day + 10; }
       c.st.bizCool = day + 120;
     }
@@ -1046,7 +1048,7 @@
         const at = m => m.alive(day + 1) && !("keluar" in m.info) && m.st;
         let heirs = home.children_of(c).filter(at);
         if (!heirs.length) heirs = home.members.filter(m => m !== c && at(m));
-        if (heirs.length) { const share = Math.floor(c.st.wallet / heirs.length); for (const h of heirs) h.st.wallet += share; c.st.wallet = 0; }
+        if (heirs.length) { const share = Math.floor(c.st.wallet / heirs.length); for (const h of heirs) Money.move(h, share, "warisan", day); Money.set(c, 0, "warisan", day); }
       }
     }
     return log;
@@ -1170,7 +1172,7 @@
       return true;
     }
     if (op === "repay" && b.loan) {
-      const due = Math.round(b.loan.left * 0.97);
+      const due = Math.round(b.loan.left * CFG.EARLY_REPAY);
       if (b.cash < due) return false;
       b.cash -= due; b.loan = null; return true;
     }
