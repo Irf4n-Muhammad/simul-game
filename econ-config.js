@@ -20,6 +20,8 @@
     // pinjaman saat buka bisnis kalau modal kurang
     OPEN_LOAN: { term: 240, rate: 0.15 },
     EARLY_REPAY: 0.97,          // lunas dipercepat: bayar 97% sisa tagihan
+    // rumah (status.js): biaya pegang per tahun (pajak, perawatan, listrik) dari harga beli, dibayar harian oleh anggota dewasa terkaya
+    HOUSE_UPKEEP: { flat: 0.02, house: 0.03, villa: 0.05, mansion: 0.07 },
     // jam (ui/01-save-clock.js): hari yang boleh lewat sekaligus saat app dibuka lagi (jam nyata saja)
     CATCHUP_DAYS: 30,
   };

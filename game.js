@@ -481,7 +481,7 @@
       } else if (P.t === "nikah") {
         if (rel.tipe !== "tunangan") return false;
         const big = P.style === "besar";
-        x.stat("uang", -(big ? 60 : 15));
+        x.stat("uang", -(big ? 25 : 6) * CFG.HK / CFG.STAT_UANG_COINS);  // pesta besar 25 hari kerja, sederhana 6
         Object.assign(rel, { tipe: "suami-istri", sejak: day });
         Object.assign(c.info, { menikah: day, pasangan_id: pid, besan: `the ${fam} family` });
         if (!("menikah_hari" in c.info)) c.info.menikah_hari = x.age;

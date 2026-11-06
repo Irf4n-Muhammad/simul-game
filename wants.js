@@ -135,7 +135,7 @@
       say: n => `${n} wants a crew.`, ok: n => `${n} has a crew now. The kitchen is never quiet.` }),
     // dewasa: hal besar yang sudah ada di permainan (rumah, hewan, usaha, maraton, festival) dan hari-hari kecil
     W("rumah", ["dewasa"], "a place of their own", "🏡", { besar: true, ulang: 400, w: c => 1 + t(c, "ambisius") / 100,
-      cond: c => !c.info.punya_rumah && ((!!c.st && c.st.wallet >= 12000) || c.stats.uang > 200),
+      cond: c => !c.info.punya_rumah && ((!!c.st && c.st.wallet >= 20000) || c.stats.uang > 200),
       measure: c => fired(c, "pindah_rumah") + (c.info.punya_rumah ? 1 : 0) + ((c.info.keinginan || {}).beli_rumah || 0), delta: 1,
       say: n => `${n} keeps browsing Homes late at night.`, ok: n => `${n} has keys of their own.` }),
     W("pet", ["dewasa"], "a pet", "🐾", { besar: true, ulang: 400, w: c => 1 + t(c, "ramah") / 100,

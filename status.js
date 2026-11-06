@@ -7,6 +7,7 @@
   const S = (typeof module !== "undefined") ? require("./storylets.js") : globalThis.Storylets;
   const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
+  const MK = (typeof module !== "undefined") ? require("./makro.js") : globalThis.Makro;
   const { HOOKS, REGISTRY, seed_rng, clamp, FOREVER, phase_of, Ctx } = E;
 
   // ---------------------------------------------------------------- data
@@ -207,7 +208,10 @@
   // perusahaan (career.js) bisa punya nama jabatan dan gaji sendiri
   function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1)); }
   function title(job, level = job.level) { return job.co && EXT.title ? EXT.title(job, level) : JOBS[job.id].ladder[level]; }
-  function reviewReq(job) { return JOBS[job.id].req + 8 * (job.level + 1); }
+  // ekonomi lesu: perusahaan menahan promosi, jadi skor yang dibutuhkan naik (makro.js)
+  function reviewReq(job, day) { return JOBS[job.id].req + 8 * (job.level + 1) + (day == null ? 0 : MK.promoHarder(day)); }
+  // harga rumah hari ini: harga dasar x indeks rumah (makro.js), dibulatkan ke 100
+  const costOf = (it, day) => it.cat === "House" && day != null ? Math.round(it.price * MK.housePrice(day) / 100) * 100 : it.price;
 
   function setJob(x, id, day, m) {
     const c = x.c, st = c.st, prev = st.job;
@@ -492,7 +496,22 @@
       }
     }
     c.stats.uang = Math.min(CFG.STAT_UANG_MAX, st.wallet / CFG.STAT_UANG_COINS);
+    houseUpkeep(x);
     finishBuild(x);
+  }
+  // Biaya pegang rumah: sekali sehari per keluarga, dibayar anggota dewasa terkaya. Rumah besar bukan cuma lambang tapi juga ongkos.
+  // Nggak sanggup bayar penuh: dibayar sebisanya, suasana hati turun, dan tunggakan dihitung (F.arrears).
+  function houseUpkeep(x) {
+    const F = fam(x.home), rate = CFG.HOUSE_UPKEEP[F.house];
+    if (!rate || F.upk === x.day) return;
+    const payer = x.home.members.filter(m => m.st && m.alive(x.day) && !("keluar" in m.info) && ["dewasa", "tua"].includes(phase_of(m.age(x.day))))
+      .sort((a, b) => b.st.wallet - a.st.wallet || (a.id < b.id ? -1 : 1))[0];
+    if (!payer) return;
+    F.upk = x.day;
+    const due = Math.max(1, Math.round((F.lot && F.lot.paid || ITEM[F.house].price) * rate / 365));
+    if (payer.st.wallet < due) { F.arrears = (F.arrears || 0) + 1; if (payer === x.c) x.need("mood", -2); }
+    else F.arrears = 0;
+    Money.move(payer, -due, "rumah", x.day, "floor");
   }
   // Pembangunan selesai: keluarga pindah ke rumah baru
   function finishBuild(x) {
@@ -500,7 +519,7 @@
     if (!b || x.day < b.done) return;
     const by = x.home.get(b.by);
     if (x.c.id !== b.by && by && by.alive(x.day) && !("keluar" in by.info)) return;
-    F.house = b.id; F.lot = { lot: b.lot, model: b.model, paint: b.paint, since: b.done, paid: ITEM[b.id].price }; F.build = null;
+    F.house = b.id; F.lot = { lot: b.lot, model: b.model, paint: b.paint, since: b.done, paid: b.paid ?? ITEM[b.id].price }; F.build = null;
     const it = ITEM[b.id];
     achieve(x, "house_" + b.id, `Moved the family into a new ${it.label} in ${it.hood}.`);
   }
@@ -531,7 +550,7 @@
       }
     }
     if (st.job && st.next_review != null && day >= st.next_review - 3 && st.job.level < 3 && !pend.some(m => m.kind === "review")) {
-      schedule(home, { cid: c.id, kind: "review", day: Math.max(day + 1, st.next_review), req: reviewReq(st.job),
+      schedule(home, { cid: c.id, kind: "review", day: Math.max(day + 1, st.next_review), req: reviewReq(st.job, day),
         w: JOBS[st.job.id].w, job: st.job.id, co: st.job.co, since: st.job.since, by: "work", label: `Promotion review: ${title(st.job, st.job.level + 1)}` });
       st.next_review = FOREVER;
     }
@@ -648,18 +667,19 @@
     }
     if (kind.startsWith("beli:")) {
       const it = ITEM[kind.slice(5).split("@")[0]];
-      if (!it || c.age(day) < 180 || c.st.wallet < it.price) return false;
+      const cost = it ? costOf(it, day) : 0;
+      if (!it || c.age(day) < 180 || c.st.wallet < cost) return false;
       if (it.cat === "House") {
         // "beli:villa@lot,model,paint": beli kavling lalu bangun, keluarga pindah begitu selesai
         if (houseOf(home).price >= it.price || F.build) return false;
         const [lot, model, paint] = (kind.split("@")[1] || "-1,0,0").split(",").map(Number);
         F.build = { id: it.id, lot, model: Math.max(0, Math.min(MODELS[it.id].length - 1, model || 0)),
-          paint: Math.max(0, Math.min(PAINTS.length - 1, paint || 0)), start: day, done: day + BUILD_DAYS[it.id], by: cid };
+          paint: Math.max(0, Math.min(PAINTS.length - 1, paint || 0)), start: day, done: day + BUILD_DAYS[it.id], by: cid, paid: cost };
       } else {
         if (c.st.items.includes(it.id)) return false;
         c.st.items.push(it.id);
       }
-      Money.move(c, -it.price, "barang", day);
+      Money.move(c, -cost, it.cat === "House" ? "rumah" : "barang", day);
       c.stats.uang = Math.min(CFG.STAT_UANG_MAX, c.st.wallet / CFG.STAT_UANG_COINS);
       const x = new Ctx(c, day, seed_rng(cid, day, "beli"), home, true);
       x.drama = "sedang";
@@ -717,7 +737,7 @@
     const have = c && c.st ? c.st.items : [];
     const h = houseOf(home);
     const b = fam(home).build;
-    return ITEMS.map(it => ({ ...it, owned: it.cat === "House" ? h.price >= it.price : have.includes(it.id), building: !!b && b.id === it.id,
+    return ITEMS.map(it => ({ ...it, price: costOf(it, day), base: it.price, owned: it.cat === "House" ? h.price >= it.price : have.includes(it.id), building: !!b && b.id === it.id,
       share: pct(itemShare(it, day)), days: BUILD_DAYS[it.id] || 0 }));
   }
 
@@ -743,7 +763,21 @@
   function bestItem(c, cat) { return c && c.st ? c.st.items.map(id => ITEM[id]).filter(it => it && it.cat === cat).sort((a, b) => b.price - a.price)[0] || null : null; }
 
   const estimateFor = (c, m) => estimate(c, m.w, m);
-  const API = { EXT, achieve, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
+  // Cerita "rumah pertama" (storylets.js pindah_rumah): beli flat beneran lewat aturan yang sama dengan tombol pemain
+  function firstHomeCost(home, c, day) {
+    const F = fam(home), it = ITEM.flat;
+    if (houseOf(home).price > 0 || F.build || !c.st || c.age(day) < 180) return null;
+    const cost = costOf(it, day);
+    return c.st.wallet >= cost ? cost : null;
+  }
+  function buyFirstHome(home, c, day) {
+    const cost = firstHomeCost(home, c, day);
+    if (cost == null) return false;
+    fam(home).build = { id: "flat", lot: -1, model: 0, paint: 0, start: day, done: day + BUILD_DAYS.flat, by: c.id, paid: cost };
+    Money.move(c, -cost, "rumah", day);
+    return true;
+  }
+  const API = { EXT, achieve, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
     familyView, jobList, shop, pct, population, prestige, salary, npcTown, bestItem, RENTED, BUILD_DAYS, MODELS, PAINTS };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Status = API;

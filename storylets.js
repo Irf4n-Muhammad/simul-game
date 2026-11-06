@@ -8,6 +8,8 @@ const { AMBIENT, FORCED, HOOKS, NAMES, YEAR, adult_age: AA, OLD_AGE, FOREVER, Cr
 
 const ALL = ["bayi", "anak", "remaja", "dewasa", "tua"];
 const GROWN = ["dewasa", "tua"];
+// jangkar harga (econ-config.js): 1 HK = satu hari kerja pemula. Biaya cerita ditulis dalam HK, bukan poin "uang" lama
+const HK = ((typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig).HK;
 const FOREVER_ = FOREVER;
 
 function married(x) {
@@ -763,8 +765,8 @@ storylet("pernikahan", GROWN, "besar", { priority: true, cooldown: 7,
   const [, final] = x.ask("What kind of wedding?", { besar: "Big party", kecil: "Simple, save money for a home" },
     { suportif: "SELF", tegas: "kecil" },
     x.t("ramah") > 55 ? "besar" : "kecil", { obey: false });
-  const biaya = final === "besar" ? 120 : 30;
-  x.stat("uang", -biaya);
+  // biaya dalam HK (rencana ekonomi): pesta besar 25 hari kerja, sederhana 6
+  coins(x, -(final === "besar" ? 25 : 6) * HK);
   Object.assign(p, { tipe: "suami-istri", sejak: x.day });
   Object.assign(x.c.info, { menikah: x.day, pasangan_id: nid, besan: `${p.nama}'s guardian` });
   if (!("menikah_hari" in x.c.info)) x.c.info.menikah_hari = x.age;
@@ -914,13 +916,15 @@ storylet("main_sama_cucu", GROWN, "kecil", { cooldown: 20, cond: x => grandkids_
 
 // ---------------------------------------------------------------- hidup dewasa
 
+// rumah pertama: kalau ada status.js, ini membeli flat beneran (harga hari ini, dibangun lalu keluarga pindah), bukan cuma memotong uang
 storylet("pindah_rumah", GROWN, "sedang", { cooldown: 270,
-  cond: x => x.c.stats.uang > 250 && !x.c.info.punya_rumah }, x => {
-  x.say(`${x.n} finds a small house with a yard. Their savings cover the down payment.`);
+  cond: x => x.c.st ? STX().firstHomeCost(x.home, x.c, x.day) != null : (x.c.stats.uang > 250 && !x.c.info.punya_rumah) }, x => {
+  x.say(x.c.st ? `${x.n} finds a small flat for sale in the Suburb. Their savings cover it.` : `${x.n} finds a small house with a yard. Their savings cover the down payment.`);
   const [, final] = x.ask("Buy the house?", { beli: "Buy it", sewa: "Keep renting for now" },
     { suportif: "SELF", tegas: "beli" }, x.t("rajin") > 45 ? "beli" : "sewa");
   if (final === "beli") {
-    x.stat("uang", -200);
+    if (x.c.st) STX().buyFirstHome(x.home, x.c, x.day);
+    else x.stat("uang", -200);
     x.c.info.punya_rumah = true;
     x.say(`${x.n} holds the keys to their very first home. The first thing they hang up: a photo of you.`);
     x.remember("Bought a first home.");
@@ -929,11 +933,12 @@ storylet("pindah_rumah", GROWN, "sedang", { cooldown: 270,
   }
 });
 
-storylet("liburan", GROWN, "kecil", { cooldown: 90, cond: x => x.c.stats.uang > 60 }, x => {
+storylet("liburan", GROWN, "kecil", { cooldown: 90, cond: x => (x.c.st ? wallet(x) >= 6 * HK : x.c.stats.uang > 60) }, x => {
   const tujuan = x.pick(["the east coast beach", "a mountain lake", "an old town full of cafes"]);
   const ikut = x.c.partner() ? ` with ${x.c.partner().nama}` : "";
   x.say(`${x.n} goes on vacation to ${tujuan}${ikut}. Souvenirs: the same keychain for everyone.`);
-  x.stat("uang", -40);
+  // makin kaya, makin mahal liburannya: 4% dompet, antara 3 dan 40 HK
+  coins(x, -Math.max(3 * HK, Math.min(40 * HK, Math.round(wallet(x) * 0.04 / 10) * 10)));
   x.need("mood", 20);
 });
 
@@ -955,10 +960,10 @@ storylet("sahabat_pinjam_uang", GROWN, "sedang", { cooldown: 150,
   const [, final] = x.ask("Lend it?", { pinjam: "Lend it", tolak: "Kindly say no" },
     { suportif: "pinjam", tegas: "tolak" }, x.t("setia") > 45 ? "pinjam" : "tolak");
   if (final === "pinjam") {
-    x.stat("uang", -50);
+    coins(x, -8 * HK);
     if (x.chance(0.7)) {
       x.say(`Three months later ${t.nama} pays it all back, and brings a big box of snacks too.`);
-      x.stat("uang", 50);
+      coins(x, 8 * HK);
     } else {
       x.say(`The money never comes back. ${t.nama} gets harder and harder to reach.`);
       delete x.c.relations[nid];
@@ -1009,7 +1014,7 @@ storylet("usaha_sampingan", ["dewasa"], "sedang", { cooldown: 180,
   const [, final] = x.ask("Support it?", { gas: "Go for it", tahan: "Hold off for now" },
     { suportif: "gas", tegas: "tahan" }, "gas");
   if (final === "gas") {
-    x.stat("uang", -40);
+    coins(x, -10 * HK);
     if (x.chance(0.4 + x.t("rajin") / 300)) {
       x.c.info.gaji = (x.c.info.gaji ?? 3) + 3;
       x.say(`${x.n}'s side business (${ide}) is a hit in the first month!`);
@@ -1182,7 +1187,7 @@ storylet("beli_barang_mahal", ["dewasa"], "kecil", { cooldown: 45, cond: x => x.
     { suportif: "beli", tegas: "nabung" }, x.t("impulsif") > 50 ? "beli" : "nabung",
     { obey: false });
   if (final === "beli") {
-    x.stat("uang", -25);
+    coins(x, -4 * HK);
     x.need("mood", 8);
     x.say(`${x.n} buys the ${barang} and shows it off to everyone for a week.`);
   } else {
