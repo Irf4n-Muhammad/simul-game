@@ -91,7 +91,7 @@ function bkPages(S) {
   return pages;
 }
 function bkPageHTML(S, p, i, n) {
-  const W = 300, H = 440, red = S.read ? "#7A1E14" : "#6A6660", gold = S.read ? "url(#bkGold)" : "#8A8680";
+  const W = 300, H = 440, gold = S.read ? "url(#bkGold)" : "#8A8680";
   const defs = `<defs><linearGradient id="bkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6E4A10"/><stop offset="0.35" stop-color="#E8C46A"/><stop offset="0.55" stop-color="#FFF0B8"/><stop offset="0.75" stop-color="#C9962E"/><stop offset="1" stop-color="#6E4A10"/></linearGradient>
     <filter id="bkGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   const frame = S.read ? `<rect x="22" y="12" width="${W - 34}" height="${H - 24}" fill="none" stroke="url(#bkGold)" stroke-width="1.3"/><rect x="27" y="17" width="${W - 44}" height="${H - 34}" fill="none" stroke="#7A5212" stroke-width="0.5" opacity="0.6"/>`
@@ -99,56 +99,41 @@ function bkPageHTML(S, p, i, n) {
   const wm = S.read ? `<path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="#5A3A18" opacity="0.035"/><path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="none" stroke="#5A3A18" stroke-width="0.9" opacity="0.08"/>` : "";
   const num = `<text x="${W / 2 + 6}" y="${H - 18}" text-anchor="middle" font-family="${S.read ? "Cinzel, serif" : "Caveat, cursive"}" font-size="${S.read ? 10 : 15}" letter-spacing="2" fill="${S.read ? "#6A4512" : "#6A6660"}">${S.read ? Rasi.roman(i + 1) : i + 1}</text>`;
   let body = "", html = "";
-  const age = d => d == null ? "" : (S.read ? Rasi.roman(Math.max(1, d - S.c.born)) : "day " + Math.max(1, d - S.c.born));
   if (p.kind === "star") {
     const s = S.star;
     body = `<circle cx="${W / 2 + 6}" cy="128" r="62" fill="#FFE9A8" opacity="0.5" filter="url(#bkGlow)"/><path d="${bkSpark(W / 2 + 6, 128, 70)}" fill="none" stroke="url(#bkGold)" stroke-width="1.6"/>
       <g transform="translate(${W / 2 + 6 - 42} 86) scale(0.84)">${bkFig(s.fig, "#6A4512", 3.6)}</g>`;
     html = `<div class="bk-t" style="top:28px">BORN UNDER</div>
-      <div class="bk-h" style="top:214px">${esc(s.name)}</div>
-      <div class="bk-i" style="top:250px">${esc(s.figName)}, in ${esc(s.con)}. ${esc(s.fact)}</div>
-      <div class="bk-p" style="top:312px">${esc(Rasi.plain(s))}</div>
-      <div class="bk-r" style="top:362px">Stars like this often become ${esc(s.fits)}.</div>`;
+      <div class="bk-h" style="top:220px">${esc(s.name)}</div>
+      <div class="bk-i" style="top:262px">${esc(s.figName)}, in ${esc(s.con)}</div>
+      <div class="bk-p lead" style="top:310px">${esc(Rasi.plain(s))}</div>`;
   } else if (p.kind === "empty") {
     html = `<div class="bk-i" style="top:180px">${S.read ? "The pages are waiting." : "Nothing written yet."} Pages appear once ${esc(S.c.name)} starts on something.</div>`;
   } else {
     const r = p.r, root = Tree.NODES[r], col = root.color || "#3A2A58";
-    const shown = p.owned.slice(-4);
     const nexts = Tree.ORDER.filter(id => Tree.NODES[id].root === r && p.v.nodes[id].s === "open" && Tree.NODES[id].tier !== "secret").sort((a, b) => p.v.nodes[a].cost - p.v.nodes[b].cost);
     const next = nexts[0] || null;
     const ownedSet = new Set(p.v.have);
     const fields = (p.owned.filter(id => Tree.NODES[id].tier === "field").length ? p.owned.filter(id => Tree.NODES[id].tier === "field") : root.kids.filter(k => Tree.NODES[k].tier === "field"));
     const goals = [];
     for (const f of fields) for (const sp of Tree.NODES[f].kids) if (Tree.NODES[sp].tier === "spec") for (const ni of Tree.NODES[sp].kids) if (Tree.NODES[ni].tier === "niche" && !ownedSet.has(ni) && goals.length < 3 && !goals.includes(ni)) goals.push(ni);
-    // tujuan: satu baris bintang di atas, dipisah garis tipis dari jalur
-    const gx = [W / 2 - 82, W / 2 + 6, W / 2 + 94];
-    if (goals.length) html += `<div class="bk-gt" style="top:100px">${S.read ? "where this ink may lead" : "maybe one day"}</div>`;
-    goals.forEach((id, g) => {
-      body += `<path d="${bkSpark(gx[g], 132, 10, 0.25)}" fill="none" stroke="${S.read ? "#9A6E1C" : "#7A7670"}" stroke-width="1.3"/>`;
-      html += `<div class="bk-g" style="left:${gx[g] - 42}px;top:146px;width:84px">${esc(Tree.NODES[id].label)}</div>`;
-    });
-    body += `<path d="M44 184 H${W - 32}" stroke="${S.read ? "#8A5A12" : "#9A968E"}" stroke-width="0.8" opacity="0.45"/>`;
-    // jalur: satu garis lurus, langkah berikutnya di atas, yang paling lama di bawah
-    const rows = (next ? [next] : []).concat(shown.slice().reverse()), LX = 66, Y0 = 210, DY = 34;
-    if (rows.length > 1) {
-      const yA = Y0, yB = Y0 + DY * (rows.length - 1), y1 = next ? Y0 + DY : Y0;
-      if (next) body += `<path d="M${LX} ${yA} V${y1}" stroke="${red}" stroke-width="1.3" stroke-dasharray="3 4" opacity="0.8"/>`;
-      if (yB > y1) body += `<path d="M${LX} ${y1} V${yB}" stroke="${S.read ? "#B8862A" : "#8A8680"}" stroke-width="2.2"/>`;  // gradien gold tidak tampil di garis lurus (bbox lebar 0)
-    }
-    rows.forEach((id, k) => {
-      const x = LX, y = Y0 + DY * k, isNext = id === next, isCur = !isNext && id === shown[shown.length - 1];
-      if (isNext) body += `<circle cx="${x}" cy="${y}" r="13" fill="none" stroke="${red}" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="${S.read ? "#F4E2B8" : "#F4F0E6"}" stroke="${red}" stroke-width="1.4"/>`;
-      else if (isCur) body += `<path d="M${x} ${y - 10} L${x + 10} ${y} L${x} ${y + 10} L${x - 10} ${y} Z" fill="${gold}" stroke="${S.read ? "#5A3A0E" : "#5A5650"}" stroke-width="1.1"/><path d="M${x} ${y - 4} L${x + 4} ${y} L${x} ${y + 4} L${x - 4} ${y} Z" fill="${S.read ? "#FFF3D0" : "#F4F0E6"}"/>`;
-      else body += `<path d="M${x} ${y - 7} L${x + 7} ${y} L${x} ${y + 7} L${x - 7} ${y} Z" fill="${gold}" stroke="${S.read ? "#4A2E08" : "#5A5650"}" stroke-width="1"/>`;
-      const sub = isNext ? `next · ${p.v.nodes[id].cost} point${p.v.nodes[id].cost === 1 ? "" : "s"} of ink` : age(p.v.nodes[id].day);
-      html += `<div class="bk-n${isNext ? " nx" : ""}" style="left:${LX + 20}px;top:${y - 9}px;width:${W - LX - 52}px"><b>${esc(Tree.NODES[id].label)}</b><i>${esc(sub)}</i></div>`;
-    });
+    // satu poin per halaman: "sekarang dia sudah jadi apa di bidang ini". Sisanya kecil.
+    const now = p.owned[p.owned.length - 1] || null, cx = W / 2 + 6, cy = 156;
+    if (now) body += (S.read ? `<circle cx="${cx}" cy="${cy}" r="34" fill="#FFE9A8" opacity="0.45" filter="url(#bkGlow)"/>` : "")
+      + `<path d="M${cx} ${cy - 26} L${cx + 26} ${cy} L${cx} ${cy + 26} L${cx - 26} ${cy} Z" fill="${gold}" stroke="${S.read ? "#5A3A0E" : "#5A5650"}" stroke-width="1.4"/><path d="M${cx} ${cy - 10} L${cx + 10} ${cy} L${cx} ${cy + 10} L${cx - 10} ${cy} Z" fill="${S.read ? "#FFF3D0" : "#F4F0E6"}"/>`;
+    else body += `<path d="M${cx} ${cy - 22} L${cx + 22} ${cy} L${cx} ${cy + 22} L${cx - 22} ${cy} Z" fill="none" stroke="${S.read ? "#9A6E1C" : "#8A8680"}" stroke-width="1.4" stroke-dasharray="4 4"/>`;
+    // jejak: satu wajik kecil per langkah yang sudah dipelajari, tanpa tulisan
+    const steps = Math.min(p.owned.length, 8);
+    for (let k = 0; k < steps; k++) { const x = cx + (k - (steps - 1) / 2) * 16, y = 274; body += `<path d="M${x} ${y - 4} L${x + 4} ${y} L${x} ${y + 4} L${x - 4} ${y} Z" fill="${S.read ? "#B8862A" : "#8A8680"}"/>`; }
+    html += `<div class="bk-now" style="top:196px"><small>${now ? (S.read ? "Now" : "now") : ""}</small><b>${now ? esc(Tree.NODES[now].label) : (S.read ? "Not begun" : "Not started yet")}</b></div>`;
+    if (steps) html += `<div class="bk-steps" style="top:284px">${p.owned.length} step${p.owned.length === 1 ? "" : "s"} learned</div>`;
+    if (next) html += `<div class="bk-next" style="top:314px"><span>Next</span> <b>${esc(Tree.NODES[next].label)}</b> <i>${p.v.nodes[next].cost} point${p.v.nodes[next].cost === 1 ? "" : "s"}</i></div>`;
+    if (goals.length) html += `<div class="bk-goals" style="top:${S.read ? 352 : 346}px">Could become ${goals.map(id => esc(Tree.NODES[id].label)).join(", ").replace(/, ([^,]*)$/, " or $1")}.</div>`;
     const seal = Rasi.seal(S.c.st, r, S.c.born, S.day);
     html += (S.read ? `<div class="bk-cap" style="--rc:${col}"><span>${esc(root.label[0])}</span></div>` : "") + `
-      <div class="bk-title"><b>${esc(S.read ? root.label.toUpperCase() : root.label)}</b><i>${esc(Rasi.ROOT_PLAIN[r])} · ${p.skill}/100</i></div>`;
-    html += seal === "none" ? `<div class="bk-seal pencil"><i>${S.left ? `The stars read this book in ${S.left} day${S.left === 1 ? "" : "s"}.` : ""}</i></div>`
-      : seal === "warm" ? `<div class="bk-seal"><em class="wax warm">?</em><span><b>THE WAX IS STILL WARM</b><i>not one of ${esc(S.c.name)}'s two stars</i></span></div>`
-      : `<div class="bk-seal"><em class="wax">✦</em><span><b>THE SEAL HAS SPOKEN</b><i>${seal === "first" ? "this ink flows swifter than any other" : "this ink flows swifter than most"}</i></span></div>`;
+      <div class="bk-title"><b>${esc(S.read ? root.label.toUpperCase() : root.label)}</b><i>${esc(Rasi.ROOT_PLAIN[r])}</i></div>`;
+    if (seal === "first" || seal === "second") html += `<div class="bk-star"><em class="wax">✦</em><span>${seal === "first" ? "Strongest gift" : "Second gift"}</span></div>`;
+    if (seal === "none" && S.left) html += `<div class="bk-left" style="top:384px">The stars read this book in ${S.left} day${S.left === 1 ? "" : "s"}.</div>`;
   }
   // koordinat label ditulis dalam satuan viewBox; ubah ke persen supaya ikut skala halaman
   html = html.replace(/(left|top|width):(-?[\d.]+)px/g, (m, k, v) => `${k}:${(+v / (k === "top" ? H : W) * 100).toFixed(2)}%`);
