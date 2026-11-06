@@ -6,6 +6,7 @@
 (function () {
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const ST = (typeof module !== "undefined") ? require("./status.js") : globalThis.Status;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { HOOKS, seed_rng, clamp, YEAR } = E;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const r1 = v => Math.round(v * 10) / 10;
@@ -68,10 +69,10 @@
   // ---------------------------------------------------------------- yang bayar: pemilik, atau orang dewasa terkaya di rumah
   function pay(home, c, day, n) {
     if (n <= 0) return true;
-    if (c.st.wallet >= n) { c.st.wallet -= n; return true; }
+    if (c.st.wallet >= n) { Money.move(c, -n, "hewan", day); return true; }
     if (c.demo) return false;  // mode tes nggak boleh nyentuh dompet keluarga yang asli
     const m = home.members.filter(o => o !== c && o.id !== c.id && o.st && o.alive(day) && !("keluar" in o.info) && grown(o, day)).sort((a, b) => b.st.wallet - a.st.wallet)[0];
-    if (m && m.st.wallet >= n) { m.st.wallet -= n; return true; }
+    if (m && m.st.wallet >= n) { Money.move(m, -n, "hewan", day); return true; }
     return false;
   }
 
@@ -307,7 +308,7 @@
       if (P || !KINDS[k] || !grown(c, day) || !["shelter", "breeder"].includes(src) || (src === "shelter" && !shelter(day).includes(k))) return false;
       const cost = src === "shelter" ? SHELTER_FEE : KINDS[k].price;
       if (c.st.wallet < cost) return false;
-      c.st.wallet -= cost;
+      Money.move(c, -cost, "hewan", day);
       return !!adopt(c, home, day, k, src);
     }
     if (!P) return false;
@@ -332,7 +333,7 @@
     if (!c || !c.st || !KINDS[kind]) return null;
     const cc = Object.create(c);
     Object.assign(cc, { st: JSON.parse(JSON.stringify(c.st)), needs: { ...c.needs }, traits: { ...c.traits }, info: JSON.parse(JSON.stringify(c.info)), stats: { ...c.stats }, memory: [], flags: { ...(c.flags || {}) }, demo: true });
-    cc.st.wallet = Math.max(cc.st.wallet, 3000); cc.st.pet = null; cc.st.petsPast = [];
+    Money.set(cc, Math.max(cc.st.wallet, 3000), "demo", day); cc.st.pet = null; cc.st.petsPast = [];
     const since = day - 50;
     adopt(cc, home, since, kind, "shelter");
     for (let d = since + 1; d <= day && cc.st.pet; d++) demoDay(home, cc, d);

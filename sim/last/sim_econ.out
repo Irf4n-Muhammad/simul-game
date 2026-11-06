@@ -1,0 +1,16 @@
+=== akun-econ0 replay same: true  kekayaan/rumah: 249:0/rented  499:3291/rented  749:16767/rented  999:7793/rented  1249:2571/rented  1499:0/rented
+   cerita +18400 -92604 | gaji +77320 -0 | hidup +0 -31110 | bisnis_jual +13852 -0 | pensiun +13430 -0 | bisnis_ambil +12702 -0 | hewan +0 -5200 | bisnis_modal +0 -4000 | lembur +1244 -0 | mulai +600 -0
+=== akun-econ1 replay same: true  kekayaan/rumah: 249:0/rented  499:2285/rented  749:20030/rented  999:105721/rented  1249:321430/rented  1499:828787/rented
+   bisnis_ambil +866311 -0 | bisnis_jual +790586 -0 | cerita +27800 -185100 | pensiun +195924 -0 | warisan +148364 -0 | hidup +0 -52845 | gaji +34724 -0 | hewan +0 -6360 | bisnis_modal +0 -4000 | mulai +1200 -0 | lembur +434 -0
+=== akun-econ2 replay same: true  kekayaan/rumah: 249:0/rented  499:2066/rented  749:3908/rented  999:2983/rented  1249:2979/rented  1499:11924/rented
+   gaji +132444 -0 | cerita +27400 -96620 | hidup +0 -50640 | pensiun +11462 -0 | bisnis_jual +9308 -0 | kursus +0 -7600 | bisnis_modal +0 -7000 | bisnis_ambil +4543 -0 | hewan +0 -2400 | lembur +2359 -0 | mulai +1200 -0 | warisan +582 -0
+=== akun-econ3 replay same: true  kekayaan/rumah: 249:0/rented  499:1332/rented  749:4745/rented  999:9870/rented  1249:34335/rented  1499:67585/rented
+   gaji +299151 -0 | cerita +62600 -224946 | pensiun +94851 -0 | hidup +0 -73410 | warisan +20788 -0 | hewan +0 -13965 | kursus +0 -10400 | lembur +4146 -0 | mulai +1800 -0
+=== akun-econ4 replay same: true  kekayaan/rumah: 249:0/rented  499:1283/rented  749:4810/rented  999:18427/rented  1249:17477/rented  1499:0/rented
+   cerita +30200 -93154 | gaji +44298 -0 | pensiun +42640 -0 | hidup +0 -34860 | bisnis_ambil +21912 -0 | bisnis_jual +14984 -0 | bisnis_modal +0 -5000 | hewan +0 -4730 | mulai +600 -0
+=== akun-econ5 replay same: true  kekayaan/rumah: 249:0/rented  499:1166/rented  749:1386/rented  999:662/rented  1249:1105/rented  1499:10245/rented
+   gaji +131626 -0 | cerita +14900 -85668 | hidup +0 -37445 | bisnis_modal +0 -6000 | hewan +0 -4854 | bisnis_jual +3518 -0 | pensiun +2280 -0 | lembur +2042 -0 | bisnis_ambil +1242 -0 | mulai +1200 -0
+
+SEMUA AKUN: masuk 3186967, keluar 1139911, rasio masuk/keluar 2.80
+masuk:  bisnis_ambil 28.5%, bisnis_jual 26.1%, gaji 22.6%, pensiun 11.3%, cerita 5.7%, warisan 5.3%, lembur 0.3%, mulai 0.2%
+keluar: cerita 68.3%, hidup 24.6%, hewan 3.3%, bisnis_modal 2.3%, kursus 1.6%
