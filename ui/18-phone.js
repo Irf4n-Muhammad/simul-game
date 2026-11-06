@@ -218,6 +218,7 @@ function phBind(v) {
   v.querySelectorAll("[data-back]").forEach(b => b.onclick = () => phGo(b.dataset.back));
   v.querySelectorAll("[data-tour]").forEach(b => b.onclick = () => tourStart(b.dataset.tour, true));   // v46.1: "?" di app School (tur nutup HP sendiri)
   v.querySelectorAll("[data-lot]").forEach(b => b.onclick = async () => { closePhone(true); await enterTown(); TOWN.focusHood(b.dataset.lot); say("Tap an empty lot to build."); });
+  v.querySelectorAll("[data-bank]").forEach(b => b.onclick = () => { if (game.act(selected, "bank:" + b.dataset.bank)) { save(); refresh(); phGo("wallet"); } else say("Couldn't do that right now."); });
   v.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => { if (game.act(selected, "beli:" + b.dataset.buy)) { save(); refresh(); burst(["★"], 6, "#D4A853"); say("Ooh, fancy!"); phGo("homes"); } });
   const u = v.querySelector(".ph-unlock"); if (u) u.onclick = () => phGo("home");
   v.querySelectorAll("[data-kd]").forEach(b => b.onclick = () => kdDo(b.dataset.kd, b));

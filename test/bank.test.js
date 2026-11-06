@@ -82,3 +82,56 @@ test("persetujuan sama tiap kali dicoba (tanpa acak)", () => {
   const r1 = BK.openCheck(h, a, 2000, 60, []), r2 = BK.openCheck(h, a, 2000, 60, []);
   assert.deepEqual(r1, r2);
 });
+
+test("bunga tabungan selalu minimal 3% di bawah pinjaman termurah", () => {
+  for (let d = 0; d < 3000; d += 7) assert.ok(BK.saveRate(d) <= BK.cheapest(d) - 0.03, `hari ${d}`);
+});
+
+test("tabungan: simpan, bunga harian, ambil; tagihan wajib ambil dari tabungan", () => {
+  const a = mk("a"), h = homeOf(a);
+  a.st.wallet = 1000;
+  assert.ok(BK.deposit(a, 600, 1));
+  assert.equal(a.st.wallet, 400); assert.equal(a.st.tab, 600);
+  for (let d = 1; d <= 365; d++) BK.accrue(a, d);
+  assert.ok(a.st.tab > 600 && a.st.tab < 700);
+  BK.accrue(a, 365); // sekali sehari saja
+  const t = a.st.tab; BK.accrue(a, 365); assert.equal(a.st.tab, t);
+  BK.toPersonal(h, a, 2000, 366);
+  a.st.wallet = 0;
+  BK.payPersonal(h, a, 366);
+  assert.ok(a.st.tab < t, "cicilan utang diambil dari tabungan");
+  assert.equal(a.st.utang.late || 0, 0);
+  // meninggal: tabungan ikut jadi harta
+  const s = BK.settle(h, a, 367);
+  assert.equal(a.st.tab, 0);
+  assert.ok(s.paid > 0);
+});
+
+test("KPR: uang muka 30%, masuk batas rumah tangga, satu pinjaman per keluarga, lunas atau disita", () => {
+  const a = mk("a"), h = homeOf(a);
+  for (let d = 0; d < 90; d++) Money.move(a, 400, "gaji", d);
+  a.st.wallet = 9000;
+  const q = BK.kprCheck(h, a, 30000, 90, []);
+  assert.ok(q.ok, JSON.stringify(q));
+  assert.equal(q.down, 9000);
+  BK.kprOpen(h, a, q, "house", 90);
+  assert.equal(a.st.wallet, 0);
+  assert.equal(BK.kprCheck(h, a, 30000, 90, []).ok, false, "satu rumah satu pinjaman");
+  // ruang cicilan berkurang untuk pinjaman lain
+  assert.ok(BK.room(h, 90, []) < BK.income(h, 90) * CFG.BANK.HOUSEHOLD_SHARE);
+  // nunggak sampai disita
+  let r = null;
+  for (let d = 91; d < 91 + CFG.BANK.KPR_LATE; d++) r = BK.kprPay(h, a, d);
+  assert.ok(r.foreclose);
+  const f = BK.foreclose(h, a, 30000, 91 + CFG.BANK.KPR_LATE);
+  assert.equal(f.sale, 24000);
+  assert.equal(BK.kpr(h), null);
+  assert.ok(BK.blocked(h, 91 + CFG.BANK.KPR_LATE + 1));
+});
+
+test("KPR ditolak kalau pemasukan rutin terlalu kecil", () => {
+  const a = mk("a"), h = homeOf(a);
+  for (let d = 0; d < 90; d++) Money.move(a, 30, "gaji", d);
+  a.st.wallet = 100000;
+  assert.equal(BK.kprCheck(h, a, 200000, 90, []).why, "income");
+});

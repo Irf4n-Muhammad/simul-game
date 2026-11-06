@@ -115,7 +115,7 @@
       say: n => `${n} has a test coming up and keeps glancing at you.`, ok: n => `${n} feels ready for the test now.` }),
     // remaja: uang sendiri, hobi, hati
     W("uang", ["remaja"], "pocket money of their own", "🪙", { ulang: 120, w: c => 1 + t(c, "ambisius") / 80,
-      cond: c => !!c.st, measure: c => c.st ? c.st.wallet : 0, delta: 100,
+      cond: c => !!c.st, measure: c => c.st ? c.st.wallet + (c.st.tab || 0) : 0, delta: 100,
       say: n => `${n} is saving up for something. Won't say what.`, ok: n => `${n} counted the coins twice. Enough.` }),
     W("hobi", ["remaja"], "a hobby of their own", "🎨", { n: 3, w: c => 1 + t(c, "kreatif") / 60,
       prog: (c, A, day, home, out) => agendaIs(c, day, "latihan") || firedToday(out, "hobi_baru", "bakat_ketahuan", "hobi_sendiri"),
@@ -135,7 +135,7 @@
       say: n => `${n} wants a crew.`, ok: n => `${n} has a crew now. The kitchen is never quiet.` }),
     // dewasa: hal besar yang sudah ada di permainan (rumah, hewan, usaha, maraton, festival) dan hari-hari kecil
     W("rumah", ["dewasa"], "a place of their own", "🏡", { besar: true, ulang: 400, w: c => 1 + t(c, "ambisius") / 100,
-      cond: c => !c.info.punya_rumah && ((!!c.st && c.st.wallet >= 20000) || c.stats.uang > 200),
+      cond: c => !c.info.punya_rumah && ((!!c.st && c.st.wallet + (c.st.tab || 0) >= 20000) || c.stats.uang > 200),
       measure: c => fired(c, "pindah_rumah") + (c.info.punya_rumah ? 1 : 0) + ((c.info.keinginan || {}).beli_rumah || 0), delta: 1,
       say: n => `${n} keeps browsing Homes late at night.`, ok: n => `${n} has keys of their own.` }),
     W("pet", ["dewasa"], "a pet", "🐾", { besar: true, ulang: 400, w: c => 1 + t(c, "ramah") / 100,

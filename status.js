@@ -296,7 +296,7 @@
 
   // ---------------------------------------------------------------- gengsi + kekayaan pemain
   function houseOf(home) { return ITEM[fam(home).house] || RENTED; }
-  function netWorth(c, home) { return Math.round(c.st.wallet); }
+  function netWorth(c, home) { return Math.round(c.st.wallet + (c.st.tab || 0)); }
   function prestige(c, home, day) {
     const st = c.st;
     let pts = st.best ? st.best.score : 0;
@@ -496,6 +496,7 @@
         Money.move(c, -LIVING_COST, "hidup", x.day, "floor");
       }
     }
+    BK.accrue(c, x.day);  // bunga tabungan harian
     // utang pribadi (sisa pinjaman bisnis yang tutup rugi) dicicil dari dompet tiap hari
     if (st.utang) {
       const r = BK.payPersonal(x.home, c, x.day);
@@ -510,15 +511,34 @@
   // Nggak sanggup bayar penuh: dibayar sebisanya, suasana hati turun, dan tunggakan dihitung (F.arrears).
   function houseUpkeep(x) {
     const F = fam(x.home), rate = CFG.HOUSE_UPKEEP[F.house];
-    if (!rate || F.upk === x.day) return;
+    if ((!rate && !BK.kpr(x.home)) || F.upk === x.day) return;
     const payer = x.home.members.filter(m => m.st && m.alive(x.day) && !("keluar" in m.info) && ["dewasa", "tua"].includes(phase_of(m.age(x.day))))
-      .sort((a, b) => b.st.wallet - a.st.wallet || (a.id < b.id ? -1 : 1))[0];
+      .sort((a, b) => b.st.wallet + (b.st.tab || 0) - a.st.wallet - (a.st.tab || 0) || (a.id < b.id ? -1 : 1))[0];
     if (!payer) return;
     F.upk = x.day;
+    if (!rate) { kprDay(x, F, payer); return; }
     const due = Math.max(1, Math.round((F.lot && F.lot.paid || ITEM[F.house].price) * rate / 365));
+    BK.cover(payer, due, x.day);
     if (payer.st.wallet < due) { F.arrears = (F.arrears || 0) + 1; if (payer === x.c) x.need("mood", -2); }
     else F.arrears = 0;
     Money.move(payer, -due, "rumah", x.day, "floor");
+    kprDay(x, F, payer);
+  }
+  // cicilan KPR keluarga (bank.js), dibayar orang yang sama dengan biaya pegang rumah
+  function kprDay(x, F, payer) {
+    const r = BK.kprPay(x.home, payer, x.day);
+    if (!r) return;
+    const say = t => { if (payer === x.c) x.say(t); };
+    if (r.done) { say(`The family home is fully paid off. No more mortgage! 🎉`); if (payer === x.c) achieve(x, "kpr_lunas", "Paid off the family mortgage."); }
+    else if (r.late === 30) say(`${payer.name} is a month behind on the mortgage. The bank sends a warning.`);
+    else if (r.foreclose) {
+      const it = ITEM[F.house], value = it ? costOf(it, x.day) : 0, res = BK.foreclose(x.home, payer, value, x.day);
+      F.house = "rented"; F.lot = null; F.build = null;
+      x.drama = "besar";
+      x.say(`The bank takes back the family's ${it ? it.label.toLowerCase() : "home"} after months of missed payments. It sells for ${res.sale.toLocaleString("en")} coins and the family moves into a rented room.`);
+      x.remember(`Lost the family home to the bank.`);
+      if (payer === x.c) x.need("mood", -15);
+    }
   }
   // Pembangunan selesai: keluarga pindah ke rumah baru
   function finishBuild(x) {
@@ -675,13 +695,37 @@
       if (!m && J.capital) Money.move(c, J.capital, "founder", day);
       return !!m;
     }
+    // tabungan: "bank:simpan:<n|all>", "bank:ambil:<n|all>"; KPR: "bank:lunas_kpr"
+    if (kind.startsWith("bank:")) {
+      const [, op, arg] = kind.split(":"), n = arg === "all" ? Infinity : Number(arg);
+      if (op === "simpan") return c.age(day) >= 180 && BK.deposit(c, n, day);
+      if (op === "ambil") return BK.withdraw(c, n, day);
+      if (op === "lunas_kpr") return BK.kprPayoff(home, c, day);
+      return false;
+    }
+    // KPR: "kpr:<rumah>@lot,model,paint". Uang muka dari dompet, sisanya pinjaman keluarga dengan rumah itu sebagai jaminan
+    if (kind.startsWith("kpr:")) {
+      const it = ITEM[kind.slice(4).split("@")[0]];
+      if (!it || it.cat !== "House" || c.age(day) < 270 || houseOf(home).price >= it.price || F.build) return false;
+      const cost = costOf(it, day), ok = BK.kprCheck(home, c, cost, day, (F.biz && F.biz.list) || []);
+      if (!ok.ok) return false;
+      const [lot, model, paint] = (kind.split("@")[1] || "-1,0,0").split(",").map(Number);
+      F.build = { id: it.id, lot, model: Math.max(0, Math.min(MODELS[it.id].length - 1, model || 0)),
+        paint: Math.max(0, Math.min(PAINTS.length - 1, paint || 0)), start: day, done: day + BUILD_DAYS[it.id], by: cid, paid: cost, kpr: true };
+      BK.kprOpen(home, c, ok, it.id, day);
+      c.stats.uang = Math.min(CFG.STAT_UANG_MAX, c.st.wallet / CFG.STAT_UANG_COINS);
+      const x = new Ctx(c, day, seed_rng(cid, day, "kpr"), home, true);
+      x.drama = "sedang";
+      x.remember(`Took a mortgage for a ${it.label} in ${it.hood}. Building starts today.`);
+      return true;
+    }
     if (kind.startsWith("beli:")) {
       const it = ITEM[kind.slice(5).split("@")[0]];
       const cost = it ? costOf(it, day) : 0;
       if (!it || c.age(day) < 180 || c.st.wallet < cost) return false;
       if (it.cat === "House") {
         // "beli:villa@lot,model,paint": beli kavling lalu bangun, keluarga pindah begitu selesai
-        if (houseOf(home).price >= it.price || F.build) return false;
+        if (houseOf(home).price >= it.price || F.build || BK.kpr(home)) return false;
         const [lot, model, paint] = (kind.split("@")[1] || "-1,0,0").split(",").map(Number);
         F.build = { id: it.id, lot, model: Math.max(0, Math.min(MODELS[it.id].length - 1, model || 0)),
           paint: Math.max(0, Math.min(PAINTS.length - 1, paint || 0)), start: day, done: day + BUILD_DAYS[it.id], by: cid, paid: cost };
@@ -717,6 +761,7 @@
       wallet: Math.round(st.wallet),
       debt: st.utang ? { left: Math.round(st.utang.p ?? st.utang.left), pay: BK.due(st.utang, day, home), rate: BK.rate("personal", day, home), late: st.utang.late || 0 } : null,
       credit_bad: BK.blocked(home, day),
+      tab: Math.round((st.tab || 0) * 100) / 100, tab_earn: Math.round((st.tabEarn || 0) * 100) / 100, save_rate: BK.saveRate(day),
       job: st.job ? { id: st.job.id, label: JOBS[st.job.id].label, title: title(st.job), co: st.job.co || null, level: st.job.level, pay: salary(st.job),
         share: pct(jobs[st.job.id].share), payX: jobs[st.job.id].payX.toFixed(1) } : null,
       best: st.best, pension: st.pension,
@@ -733,6 +778,7 @@
     const F = fam(home), r = diceDay(F, day);
     return {
       dice: { today: r ? { rolled: r.v, saved: r.saved, used: r.used } : null, luck: luck(F, day), bank: F.dice.bank.filter(b => b.day > day - BANK_DAYS).map(b => ({ v: b.v, left: b.day + BANK_DAYS - day })), max: BANK_MAX },
+      kpr: BK.kpr(home) ? { left: Math.round(BK.kpr(home).p), pay: BK.due(BK.kpr(home), day, home), rate: BK.rate("kpr", day, home), late: BK.kpr(home).late || 0, ends: BK.kpr(home).from + BK.kpr(home).term, payoff: BK.payoff(BK.kpr(home)) } : null,
       house: houseOf(home), lot: F.lot || null, build: F.build ? { ...F.build, item: ITEM[F.build.id], left: Math.max(0, F.build.done - day) } : null, moments: F.moments.slice().sort((a, b) => a.day - b.day), results: F.results.slice(),
     };
   }
@@ -744,6 +790,13 @@
         skills: Object.keys(J.w).map(k => SKILL_LABEL[k]).join(" + "), capital: J.capital || 0,
         est: e ? e.skill + e.talent + e.cond + e.tree : null };
     });
+  }
+  // perkiraan KPR untuk satu rumah (tampilan): { ok, down, amt, pay, rate, term, why }
+  function kprQuote(c, home, id, day) {
+    const it = ITEM[id], F = fam(home);
+    if (!it || it.cat !== "House" || !c || !c.st) return null;
+    if (c.age(day) < 270) return { ok: false, why: "age" };
+    return BK.kprCheck(home, c, costOf(it, day), day, (F.biz && F.biz.list) || []);
   }
   function shop(c, home, day) {
     const have = c && c.st ? c.st.items : [];
@@ -780,16 +833,17 @@
     const F = fam(home), it = ITEM.flat;
     if (houseOf(home).price > 0 || F.build || !c.st || c.age(day) < 180) return null;
     const cost = costOf(it, day);
-    return c.st.wallet >= cost ? cost : null;
+    return c.st.wallet + (c.st.tab || 0) >= cost ? cost : null;  // tabungan ikut dihitung: memang buat ini orang menabung
   }
   function buyFirstHome(home, c, day) {
     const cost = firstHomeCost(home, c, day);
     if (cost == null) return false;
+    BK.cover(c, cost, day);
     fam(home).build = { id: "flat", lot: -1, model: 0, paint: 0, start: day, done: day + BUILD_DAYS.flat, by: c.id, paid: cost };
     Money.move(c, -cost, "rumah", day);
     return true;
   }
-  const API = { EXT, achieve, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
+  const API = { EXT, achieve, kprQuote, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
     familyView, jobList, shop, pct, population, prestige, salary, npcTown, bestItem, RENTED, BUILD_DAYS, MODELS, PAINTS };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Status = API;
