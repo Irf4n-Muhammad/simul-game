@@ -371,7 +371,7 @@ function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
   if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
-  if (LIAR && LIAR.on) { renderer.shadowMap.autoUpdate = true; LIAR.frame(t); renderer.render(LIAR.scene, LIAR.camera); liarFps(t); return; }
+  if (LIAR && LIAR.on) { renderer.shadowMap.autoUpdate = true; LIAR.frame(t, dt); renderer.render(LIAR.scene, LIAR.camera); liarFps(t); return; }
   if (KONSER && KONSER.on) { KONSER.frame(t, dt); renderer.render(KONSER.scene, KONSER.camera); if (Math.floor(ts * 4) !== Math.floor((ts - dt) * 4)) konserHud(); return; }
   if (GLOBE && GLOBE.on) {
     GLOBE.frame(t, dt); renderer.render(GLOBE.scene, GLOBE.camera);
