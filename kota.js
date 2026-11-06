@@ -129,7 +129,7 @@
     }
     // taman: pohon di pinggir, kolam di tengah (kolamnya digambar town.js)
     const P = PLACE.park, rp = rng("taman");
-    for (let k = 0; k < 26; k++) { const a = k / 26 * Math.PI * 2; trees.push({ x: r1(P.x + Math.cos(a) * (P.w / 2 - 0.9) * (0.8 + rp() * 0.2)), z: r1(P.z + Math.sin(a) * (P.d / 2 - 1) * (0.85 + rp() * 0.15)), s: r1(1 + rp() * 0.6) }); }
+    for (let k = 0; k < 26; k++) { const a = k / 26 * Math.PI * 2, t = { x: r1(P.x + Math.cos(a) * (P.w / 2 - 0.9) * (0.8 + rp() * 0.2)), z: r1(P.z + Math.sin(a) * (P.d / 2 - 1) * (0.85 + rp() * 0.15)), s: r1(1 + rp() * 0.6) }; if (t.z - P.z > -6.4 || Math.abs(t.x - P.x) > 5.2) trees.push(t); }   // v76: selatan taman dikosongin buat lapangan pasar
     // tepi sungai dan hutan di luar kota
     for (let z = 46; z > -100; z -= 3.2) for (const x of [RIVER.x0 - 0.9, RIVER.x1 + 0.9]) if (rp() < 0.55 && !HZ.some(h => Math.abs(h - z) < 2.2)) trees.push({ x: r1(x), z: r1(z), s: r1(0.9 + rp() * 0.5) });
     for (let k = 0; k < 340; k++) {
@@ -190,7 +190,17 @@
     return _people;
   }
   // jadwal sehari satu warga: daftar singgah { at, from, to, mode } (mode: in = di dalam, out = nongkrong di luar, stroll = mondar-mandir)
-  function plan(p, day, dow) {
+  // v77: cuaca. Hujan/badai/salju bikin sebagian orang batal nongkrong di luar (taman, alun-alun, peron); yang tetap pergi bawa payung.
+  // Pakai rng sendiri, jadi rencana dasar nggak geser. Jumat dan Sabtu malam alun-alun lebih ramai.
+  const STAY_HOME = { rain: 0.65, storm: 0.9, snow: 0.45, fog: 0.15 };
+  const OUTSIDE = new Set(["park", "square", "station"]);
+  const WET = new Set(["rain", "storm"]);
+  function plan(p, day, dow, wx = "clear") {
+    const S = plan0(p, day, dow), r = rng(`cuaca${day}:${p.id}`), q = STAY_HOME[wx] || 0;
+    if ((dow === 5 || dow === 6) && !S.some(s => s.from >= H(18.5)) && r() < 0.3) S.push({ at: "square", from: H(19.2 + r()), to: H(21.5 + r() * 1.2), mode: "out" });
+    return q ? S.filter(s => !(s.mode === "out" && OUTSIDE.has(s.at)) || r() >= q) : S;
+  }
+  function plan0(p, day, dow) {
     const r = rng(`hari${day}:${p.id}`), weekend = dow === 0 || dow === 6, S = [];
     const stay = (at, from, to, mode = "in") => { if (to > from) S.push({ at, from: H(from), to: H(to), mode }); };
     const j = s => (r() - 0.5) * s;       // geser sedikit biar nggak semua berangkat di menit yang sama
@@ -322,6 +332,80 @@
     return L;
   }
 
+  // ---------------------------------------------------------------- v74: barang kecil biar kota nggak kayak maket
+  // Mobil parkir, lampu jalan, tong sampah, kotak pos, zebra cross, semak, bunga, cerobong, barang di atap. Semua dari benih
+  // tetap (sama buat semua pemain) dan cuma sampai DETAIL_R dari pusat: lebih jauh dari itu cuma kelihatan dari peta.
+  const DETAIL_R = 115;
+  const onStrip = (x, z) => Math.abs(x) < STRIP && z < PLAZA + 1 && z > ZMIN - 1;
+  const nearCross = (v, pos) => (v ? HZ : VX).some(c => Math.abs(c - pos) < 3.4);
+  const overWater = x => x > RIVER.x0 - 1.2 && x < RIVER.x1 + 1.2;
+  const overRail = x => Math.abs(x - RAIL.x) < 2.6;
+  let _det = null;
+  function details() {
+    if (_det) return _det;
+    const r = rng("kota-detail"), parked = [], lamps = [], bins = [], crossings = [], dashes = [];
+    for (const S of STREETS) {
+      const blocked = u => nearCross(S.v, u) || (!S.v && (overWater(u) || overRail(u))) || (S.v ? onStrip(S.at, u) : false);
+      for (const side of [-1, 1]) {
+        for (let u = -DETAIL_R + r() * 4; u < DETAIL_R; u += 2.3 + r() * 2.6) {
+          if (blocked(u) || r() > 0.5) continue;
+          const o = side * (ROAD_W / 2 - 0.32);
+          parked.push({ x: S.v ? S.at + o : u, z: S.v ? u : S.at + o, ry: S.v ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2), c: Math.floor(r() * 8) });
+        }
+        for (let u = -DETAIL_R + (side > 0 ? 4 : 0); u < DETAIL_R; u += 8) {
+          if (blocked(u)) continue;
+          const o = side * (ROAD_W / 2 + WALK - 0.14), x = S.v ? S.at + o : u, z = S.v ? u : S.at + o;
+          if (onStrip(x, z)) continue;
+          lamps.push({ x: r1(x), z: r1(z) });
+          if (r() < 0.32) bins.push({ x: r1(S.v ? x : x + 1.3), z: r1(S.v ? z + 1.3 : z), kind: r() < 0.6 ? "bin" : "post" });
+        }
+      }
+      // garis putus-putus di tengah jalan (Main Street di deretan kavling sudah punya sendiri)
+      for (let u = -DETAIL_R; u < DETAIL_R; u += 1.4) if (!nearCross(S.v, u) && !(S.v && onStrip(S.at, u))) dashes.push({ x: S.v ? S.at : u, z: S.v ? u : S.at, v: S.v });
+    }
+    // zebra cross di keempat sisi tiap persimpangan dekat kota
+    for (const x of VX) for (const z of HZ) {
+      if (Math.hypot(x, z + 20) > DETAIL_R) continue;
+      const d = ROAD_W / 2 + WALK + 0.55;
+      crossings.push({ x, z: z + d, v: true }, { x, z: z - d, v: true });
+      if (!overWater(x + d)) crossings.push({ x: x + d, z, v: false });
+      if (!overWater(x - d)) crossings.push({ x: x - d, z, v: false });
+    }
+    // semak dan bunga di depan rumah, cerobong di atap rumah, AC dan tandon di atap gedung
+    const bushes = [], flowers = [], chimneys = [], roofbits = [];
+    for (const b of fillers().buildings) {
+      if (Math.hypot(b.x, b.z + 20) > DETAIL_R) continue;
+      if (b.kind === "home" || b.kind === "shop") {
+        for (const sx of [-1, 1]) if (r() < 0.55) bushes.push({ x: r1(b.x + sx * (b.w / 2 + 0.25)), z: r1(b.z + (r() - 0.5) * b.d), s: r1(0.5 + r() * 0.5) });
+        if (b.kind === "home" && r() < 0.45) for (let k = 0; k < 4; k++) flowers.push({ x: r1(b.x + (r() - 0.5) * (b.w + 0.8)), z: r1(b.z + (r() < 0.5 ? -1 : 1) * (b.d / 2 + 0.3)), c: Math.floor(r() * 5) });
+        if (b.kind === "home" && r() < 0.6) chimneys.push({ x: r1(b.x + (r() - 0.5) * b.w * 0.4), z: r1(b.z + (r() - 0.5) * b.d * 0.3), y: r1(b.h + 0.2), h: r1(0.6 + r() * 0.5) });
+      } else {
+        const n = 1 + Math.floor(r() * 3);
+        for (let k = 0; k < n; k++) roofbits.push({ x: r1(b.x + (r() - 0.5) * (b.w - 1)), z: r1(b.z + (r() - 0.5) * (b.d - 1)), y: b.h, kind: b.kind === "tower" && k === 0 ? "tank" : "ac", s: r1(0.5 + r() * 0.4) });
+      }
+    }
+    const P = PLACE.park;
+    for (let k = 0; k < 70; k++) { const f = { x: r1(P.x - P.w / 2 + 1 + r() * (P.w - 2)), z: r1(P.z - P.d / 2 + 1 + r() * (P.d - 2)), c: Math.floor(r() * 5) }; if (f.z - P.z > -6.4) flowers.push(f); }
+    for (let k = 0; k < 24; k++) bushes.push({ x: r1(P.x + (r() < 0.5 ? -1 : 1) * (P.w / 2 - 0.6)), z: r1(P.z + (r() - 0.5) * (P.d - 2)), s: r1(0.6 + r() * 0.5) });
+    _det = { parked, lamps, bins, crossings, dashes, bushes, flowers, chimneys, roofbits };
+    return _det;
+  }
+  // mobil yang jalan: tiap mobil punya jalan dan arah sendiri, posisinya dari jam (sama di semua HP). Malam lebih sepi.
+  const CARS = 26;
+  function carsAt(sec) {
+    const hour = sec / 3600, busy = hour >= 6.5 && hour < 22 ? 1 : 0.35, out = [];
+    for (let i = 0; i < CARS; i++) {
+      if (i / CARS >= busy) break;
+      const S = STREETS[(i * 7) % STREETS.length], dir = i % 2 ? 1 : -1, speed = 3.5 + (i * 37 % 5) * 0.7, L = 2 * DETAIL_R;
+      const t = ((i * 53.7 + sec * speed) % L + L) % L - DETAIL_R, u = dir * t, lane = dir * 0.48;
+      out.push({ x: S.v ? S.at - lane : u, z: S.v ? u : S.at + lane, ry: S.v ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? Math.PI / 2 : -Math.PI / 2), c: i % 8 });
+    }
+    return out;
+  }
+  // perahu di sungai dan burung di atas taman
+  function boatsAt(sec) { return [0, 1, 2].map(k => { const L = 2 * DETAIL_R, dir = k % 2 ? 1 : -1, t = ((sec * (0.9 + k * 0.3) + k * 77) % L) - DETAIL_R; return { x: (RIVER.x0 + RIVER.x1) / 2 + dir * 1.6, z: dir * t, ry: dir > 0 ? 0 : Math.PI }; }); }
+  function birdsAt(sec) { const P = PLACE.park; return Array.from({ length: 7 }, (_, k) => { const a = sec / (9 + k) + k * 0.9; return { x: P.x + Math.cos(a) * (6 + k), y: 7 + (k % 3) * 1.4 + Math.sin(sec / 3 + k) * 0.4, z: P.z + Math.sin(a) * (9 + k * 0.7), ry: -a, flap: Math.sin(sec * 9 + k * 2) }; }); }
+
   // ---------------------------------------------------------------- kereta: tiap 4 menit nyata, berhenti 12 detik di stasiun
   const TRAIN = { every: 240, run: 36, stop: 12 };
   function trainAt(sec) {
@@ -337,14 +421,46 @@
   }
 
   // berapa warga ada di tiap tempat sekarang (buat lembar info tempat)
-  function crowd(day, dow, sec, n) {
+  function crowd(day, dow, sec, n, wx) {
     const c = {};
-    for (const p of people(n)) { const s = seg(timeline(plan(p, day, dow), p.home, p.side), sec); if (s.mode !== "walk" && s.at !== "home") c[s.at] = (c[s.at] || 0) + 1; }
+    for (const p of people(n)) { const s = seg(timeline(plan(p, day, dow, wx), p.home, p.side), sec); if (s.mode !== "walk" && s.at !== "home") c[s.at] = (c[s.at] || 0) + 1; }
     return c;
   }
 
+  // ---------------------------------------------------------------- v76: pasar dan festival di Riverside Park
+  // Bagian selatan taman (jalan pasar motong ujung utaranya, kolam di tengah) jadi lapangan pasar: dua baris lapak saling hadap, panggung kecil, tali lampu.
+  // Kapan buka: festival dunia dari server (jenis "festival", sama buat semua pemain) jam 10 sampai 23,
+  // atau Pasar Akhir Pekan tiap Sabtu dan Minggu jam 8 sampai 14. Koordinat lokal taman (x timur, z utara = +z dunia).
+  const FAIR = {
+    place: "park",
+    stalls: [-4.6, -2.8, -1, 0.8, 2.6].flatMap((x, i) => [{ x, z: -11.8, ry: 0, c: i }, { x: x + 0.4, z: -8.2, ry: Math.PI, c: i + 5 }]),
+    stage: { x: 4.6, z: -10, w: 2, d: 3 },
+    aisle: { x0: -5.2, x1: 3.2, z0: -10.8, z1: -9.2 },
+    poles: [[-5.6, -12.6], [-5.6, -7.4], [3.4, -12.6], [3.4, -7.4], [-1.1, -12.6], [-1.1, -7.4]],
+  };
+  // d = Date (jam lokal pemain); fest = festival dunia yang lagi jalan hari ini ({ nama, ikon } atau null)
+  function fairNow(d, fest) {
+    const h = d.getHours() + d.getMinutes() / 60, dow = d.getDay();
+    const F = fest ? { kind: "festival", name: fest.nama, ikon: fest.ikon || "🎉", from: 10, to: 23, lights: true }
+      : dow === 0 || dow === 6 ? { kind: "market", name: "Weekend Market", ikon: "🧺", from: 8, to: 14, lights: false } : null;
+    if (!F) return null;
+    return Object.assign(F, { on: h >= F.from && h < F.to, soon: h < F.from, place: FAIR.place });
+  }
+  // pengunjung pasar: tiap orang muter dari lapak ke lapak (ganti tiap 40-70 detik), sama di semua HP buat detik yang sama
+  function fairFolk(sec, n = 24) {
+    const P = PLACE[FAIR.place], A = FAIR.aisle, out = [];
+    for (let i = 0; i < n; i++) {
+      const r = rng("fair:" + i), per = 40 + Math.floor(r() * 30), off = r() * per, k = Math.floor((sec + off) / per), ph = ((sec + off) % per) / per;
+      const at = j => { const q = rng("fair:" + i + ":" + j); return { x: A.x0 + q() * (A.x1 - A.x0), z: A.z0 + q() * (A.z1 - A.z0) }; };
+      const a = at(k), b = at(k + 1), walk = ph > 0.8, t = walk ? (ph - 0.8) / 0.2 : 0;
+      const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      out.push({ x: P.x + x, z: P.z + z, dir: walk ? Math.atan2(b.x - a.x, b.z - a.z) : (a.z < (A.z0 + A.z1) / 2 ? Math.PI : 0), walk, tint: i % 8 });
+    }
+    return out;
+  }
+
   const API = { HOODS, BANDS, ZMIN, PLAZA, ROAD_W, WALK, GAP, STRIP, STREETS, VX, HZ, RIVER, RAIL, REACH, BOUNDS, PLACES, PLACE, SCHOOL_OF, TOWERS,
-    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H };
+    WALK_SPEED, TRAIN, doorOf, fillers, snap, route, pathLen, along, rng, people, plan, timeline, seg, locate, creaturePlan, creatureNow, trainAt, crowd, H, DETAIL_R, details, carsAt, boatsAt, birdsAt, FAIR, fairNow, fairFolk, WET, STAY_HOME };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Kota = API;
 })();
