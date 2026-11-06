@@ -409,11 +409,6 @@
       shed: [0xb9b1a6, 0xa8a39a, 0xc2b8a6, 0x9fa6a8, 0xb7a996, 0xaab2b0], tower: [0xbfc8cf, 0xa9b6c0, 0xd2d6d8, 0x9fb0bd, 0xc9c4bc, 0xb4c2c9] };
     const ROOFC = [0x8a5a44, 0x6d6460, 0x9b6b52, 0x5f6b72, 0x7a6a5a, 0x84624e];
     const TREEC = [0x6f8a5a, 0x7f9a62, 0x5f7d55, 0x8aa36a, 0x6a8560];
-    let winTex = null;
-    const windowsTex = () => winTex || (winTex = canvasTex((c, w, h) => {
-      c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
-      for (let y = 8; y < h - 4; y += 16) for (let x = 6; x < w - 4; x += 14) { c.fillStyle = Math.random() < 0.6 ? "#ffd59a" : "#2a2622"; c.fillRect(x, y, 8, 10); }
-    }, 128, 128));
     function mapLabel(text, sub, x, y, z, k = 0.8) { const s = label(text, sub, x, y, z, false, k); s.userData.map = true; s.userData.base = s.scale.clone(); s.userData.y0 = y; mapLabels.push(s); return s; }
     function inst(geo, mat, list, set) {
       if (!list.length) return null;
@@ -421,11 +416,104 @@
       list.forEach((b, i) => { const o = set(b); p.set(o.x, o.y || 0, o.z); s.set(o.sx, o.sy, o.sz); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); m4.compose(p, q, s); im.setMatrixAt(i, m4); col.setHex(o.c).convertSRGBToLinear(); im.setColorAt(i, col); });
       im.castShadow = im.receiveShadow = true; scene.add(im); return im;
     }
+    // ---------------------------------------------------------------- v74: the small stuff, so the city stops looking like a model
+    // Facades with windows and doors (lit unevenly at night), street furniture, parked and moving cars, crossings, bushes,
+    // flowers, chimneys, rooftop units, boats and birds. One draw call per kind (instancing).
+    const CARC = [0xb86f52, 0x6d7790, 0xe9e2d6, 0x3a332d, 0x8fa287, 0xa9adb3, 0xd4a853, 0x7c4a4a];
+    const FLOWC = [0xe36f6f, 0xf2c94c, 0xf7f2ea, 0xb98ad9, 0xf09ab6];
+    const facadeCache = {};
+    function facade(kind) {
+      if (facadeCache[kind]) return facadeCache[kind];
+      const lights = [];   // which windows glow at night: not all of them
+      const draw = glow => (c, w, h) => {
+        const win = (x, y, ww, hh, k) => {
+          if (glow) { c.fillStyle = lights[k] ? "#ffd38c" : "#000"; c.fillRect(x, y, ww, hh); return; }
+          c.fillStyle = "#f4efe6"; c.fillRect(x - 3, y - 3, ww + 6, hh + 6);
+          c.fillStyle = "#56677a"; c.fillRect(x, y, ww, hh); c.fillStyle = "rgba(255,255,255,0.22)"; c.fillRect(x, y, ww * 0.45, hh);
+          c.fillStyle = "#f4efe6"; c.fillRect(x + ww / 2 - 1, y, 2, hh);
+        };
+        if (!glow) {
+          c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
+          for (let k = 0; k < 900; k++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "90,70,50" : "255,255,255"},${0.03 + Math.random() * 0.05})`; c.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 2 + Math.random() * 6); }
+          const g = c.createLinearGradient(0, h * 0.75, 0, h); g.addColorStop(0, "rgba(80,60,40,0)"); g.addColorStop(1, "rgba(80,60,40,0.22)"); c.fillStyle = g; c.fillRect(0, 0, w, h);   // grime at the bottom
+        } else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); }
+        let k = 0;
+        if (kind === "home") {
+          win(18, 22, 30, 28, k++); win(80, 22, 30, 28, k++); win(18, 74, 30, 28, k++);
+          if (!glow) { c.fillStyle = "#6b4f3c"; c.fillRect(82, 70, 26, 58); c.fillStyle = "#d9a06f"; c.fillRect(102, 98, 3, 3); c.fillStyle = "#cfc6b6"; c.fillRect(76, 124, 38, 4); }
+        } else if (kind === "shop") {
+          if (!glow) { const cols = ["#c2704f", "#5f8a6e", "#6d7790", "#d4a853"], col = cols[Math.floor(Math.random() * cols.length)]; for (let x = 0; x < w; x += 16) { c.fillStyle = (x / 16) % 2 ? "#f7f2ea" : col; c.fillRect(x, 58, 16, 12); } }
+          win(16, 18, 26, 24, k++); win(86, 18, 26, 24, k++);
+          if (glow) { c.fillStyle = "#ffc98a"; c.fillRect(8, 76, 80, 46); } else { c.fillStyle = "#3e4c5a"; c.fillRect(8, 76, 80, 46); c.fillStyle = "rgba(255,255,255,0.18)"; c.fillRect(8, 76, 30, 46); c.fillStyle = "#6b4f3c"; c.fillRect(96, 76, 24, 52); }
+        } else if (kind === "shed") {
+          if (!glow) { c.fillStyle = "#8d877f"; c.fillRect(20, 52, 88, 76); for (let y = 56; y < 128; y += 6) { c.fillStyle = "#7a746c"; c.fillRect(20, y, 88, 2); } }
+          for (let x = 14; x < 114; x += 26) win(x, 16, 18, 14, k++);
+        } else {   // tower
+          for (let y = 8; y < h - 8; y += 18) for (let x = 8; x < w - 8; x += 20) win(x, y, 13, 12, k++);
+        }
+      };
+      for (let k = 0; k < 64; k++) lights.push(Math.random() < 0.55);
+      const map = canvasTex(draw(false), 128, 128), emi = canvasTex(draw(true), 128, 128);
+      const side = M(0xffffff, { map, roughness: 0.88, emissive: 0xffc98a, emissiveMap: emi, emissiveIntensity: 0 }); lit.push(side);
+      const top = M(0xcfc8bc, { roughness: 0.95 });
+      return (facadeCache[kind] = [side, side, top, top, side, side]);
+    }
+    let movers = null;   // instanced moving cars, boats and birds, updated from the clock
+    function instAt(geo, mat, n) { const im = new THREE.InstancedMesh(geo, mat, n); im.count = 0; im.castShadow = true; im.frustumCulled = false; scene.add(im); return im; }
+    function buildDetails() {
+      const D = Kota.details(), box = (w, h, d, y = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2 + y, 0); return g; };
+      // street furniture
+      inst(box(0.75, 0.3, 1.5, 0.12), M(0xffffff, { roughness: 0.45, metalness: 0 }), D.parked, c => ({ x: c.x, z: c.z, ry: c.ry, sx: 1, sy: 1, sz: 1, c: CARC[c.c] }));
+      inst(box(0.62, 0.26, 0.78, 0.42), M(0x7d8a96, { roughness: 0.2, metalness: 0 }), D.parked, c => ({ x: c.x, z: c.z, ry: c.ry, sx: 1, sy: 1, sz: 1, c: 0x9aa4ae }));
+      const lampM = M(0x3a332d, { roughness: 0.5 }), headM = M(0xfff1d6, { emissive: 0xffc98a, emissiveIntensity: 0 }); lit.push(headM);
+      inst(new THREE.CylinderGeometry(0.035, 0.05, 1.6, 6).translate(0, 0.8, 0), lampM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      inst(new THREE.SphereGeometry(0.1, 10, 8).translate(0, 1.62, 0), headM, D.lamps, l => ({ x: l.x, z: l.z, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      inst(new THREE.CylinderGeometry(0.13, 0.11, 0.4, 10).translate(0, 0.2, 0), M(0xffffff, { roughness: 0.6 }), D.bins, b => ({ x: b.x, z: b.z, sx: b.kind === "bin" ? 1 : 0.7, sy: b.kind === "bin" ? 1 : 1.6, sz: b.kind === "bin" ? 1 : 0.7, c: b.kind === "bin" ? 0x4f6b55 : 0xc2503f }));
+      // road paint
+      const paint = M(0xf2ede4, { roughness: 0.9 });
+      inst(new THREE.BoxGeometry(0.08, 0.012, 0.62), paint, D.dashes, d => ({ x: d.x, y: 0.066, z: d.z, ry: d.v ? 0 : Math.PI / 2, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      const stripes = []; for (const c of D.crossings) for (let k = -2; k <= 2; k++) stripes.push({ x: c.v ? c.x + k * 0.38 : c.x, z: c.v ? c.z : c.z + k * 0.38, v: c.v });
+      inst(new THREE.BoxGeometry(0.22, 0.012, 0.85), paint, stripes, s => ({ x: s.x, y: 0.067, z: s.z, ry: s.v ? 0 : Math.PI / 2, sx: 1, sy: 1, sz: 1, c: 0xffffff }));
+      // gardens and roofs
+      inst(new THREE.IcosahedronGeometry(0.45, 0).translate(0, 0.3, 0), M(0xffffff, { roughness: 1, flatShading: true }), D.bushes, b => ({ x: b.x, z: b.z, sx: b.s, sy: b.s * 0.8, sz: b.s, ry: b.x * 3, c: TREEC[Math.abs(Math.round(b.x * 7 + b.z)) % TREEC.length] }));
+      inst(new THREE.SphereGeometry(0.08, 6, 5).translate(0, 0.1, 0), M(0xffffff, { roughness: 0.8 }), D.flowers, f => ({ x: f.x, z: f.z, sx: 1, sy: 1, sz: 1, c: FLOWC[f.c] }));
+      inst(box(0.32, 1, 0.32), M(0xffffff, { roughness: 0.9 }), D.chimneys, c => ({ x: c.x, y: c.y, z: c.z, sx: 1, sy: c.h, sz: 1, c: 0x8a6a5a }));
+      const acs = D.roofbits.filter(b => b.kind === "ac"), tanks = D.roofbits.filter(b => b.kind === "tank");
+      inst(box(0.9, 0.5, 0.7), M(0xffffff, { roughness: 0.6 }), acs, b => ({ x: b.x, y: b.y, z: b.z, sx: b.s * 1.4, sy: b.s * 1.4, sz: b.s * 1.4, c: 0xb9bec2 }));
+      inst(new THREE.CylinderGeometry(0.5, 0.5, 1, 12).translate(0, 0.9, 0), M(0xffffff, { roughness: 0.7 }), tanks, b => ({ x: b.x, y: b.y, z: b.z, sx: 1, sy: 1, sz: 1, c: 0x8a7a6a }));
+      // things that move: cars on the road, boats on the river, birds over the park
+      const carB = instAt(box(0.75, 0.3, 1.5, 0.12), M(0xffffff, { roughness: 0.45, metalness: 0 }), 30), carC = instAt(box(0.62, 0.26, 0.78, 0.42), M(0x7d8a96, { roughness: 0.2, metalness: 0 }), 30);
+      const boat = instAt(box(0.9, 0.3, 2.2, -0.05), M(0xffffff, { roughness: 0.6 }), 3);
+      const birdG = new THREE.BufferGeometry(); birdG.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0.25, -0.45, 0.1, -0.05, 0, 0, -0.1, 0, 0, 0.25, 0.45, 0.1, -0.05, 0, 0, -0.1], 3)); birdG.computeVertexNormals();
+      const birds = instAt(birdG, F(0x3a332d, { side: THREE.DoubleSide }), 8);
+      movers = { carB, carC, boat, birds };
+    }
+    const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1), _up = new THREE.Vector3(0, 1, 0), _c = new THREE.Color();
+    function place4(im, k, x, y, z, ry, sy = 1) { _p.set(x, y, z); _q.setFromAxisAngle(_up, ry); _s.set(1, sy, 1); _m4.compose(_p, _q, _s); im.setMatrixAt(k, _m4); }
+    function updateMovers(sec, show) {
+      if (!movers) return;
+      const { carB, carC, boat, birds } = movers;
+      for (const im of [carB, carC, boat, birds]) im.visible = show;
+      if (!show) return;
+      const cars = Kota.carsAt(sec);
+      cars.forEach((c, k) => { place4(carB, k, c.x, 0, c.z, c.ry); place4(carC, k, c.x, 0, c.z, c.ry); _c.setHex(CARC[c.c]).convertSRGBToLinear(); carB.setColorAt(k, _c); });
+      carB.count = carC.count = cars.length; carB.instanceMatrix.needsUpdate = carC.instanceMatrix.needsUpdate = true; if (carB.instanceColor) carB.instanceColor.needsUpdate = true;
+      Kota.boatsAt(sec).forEach((b, k) => { place4(boat, k, b.x, 0.03, b.z, b.ry); _c.setHex([0xc2704f, 0xf7f2ea, 0x6d7790][k]).convertSRGBToLinear(); boat.setColorAt(k, _c); });
+      boat.count = 3; boat.instanceMatrix.needsUpdate = true; if (boat.instanceColor) boat.instanceColor.needsUpdate = true;
+      const bs = Kota.birdsAt(sec); bs.forEach((b, k) => place4(birds, k, b.x, b.y, b.z, b.ry, 0.4 + 0.6 * Math.abs(b.flap))); birds.count = bs.length; birds.instanceMatrix.needsUpdate = true;
+    }
+    let groundTex = null;
+    const groundMap = () => groundTex || (groundTex = canvasTex((c, w, h) => {
+      c.fillStyle = "#b7b397"; c.fillRect(0, 0, w, h);
+      const blob = (x, y, r, col) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { c.save(); c.translate(dx, dy); c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore(); } };
+      for (let k = 0; k < 70; k++) blob(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, Math.random() < 0.55 ? "rgba(140,168,104,0.34)" : Math.random() < 0.5 ? "rgba(196,176,138,0.3)" : "rgba(120,140,96,0.3)");
+      for (let k = 0; k < 2500; k++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "90,110,70" : "220,210,180"},0.25)`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    }, 512, 512, 60, 60));
     const unitBox = () => { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return g; };
     function buildCity() {
       const roadM = M(0x6a6460, { roughness: 0.95 }), walkM = M(0xddd3c4, { roughness: 1 }), R = Kota.REACH;
       // ground everywhere, a touch under the Main Street blocks
-      const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xb7b397, { roughness: 1 })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
+      const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), M(0xffffff, { roughness: 1, map: groundMap() })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; scene.add(gnd);
       const strip = (x, z, w, d, mat, y, h) => { const m = mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z); m.castShadow = false; return m; };
       for (const S of Kota.STREETS) {
         if (S.v) {
@@ -449,15 +537,15 @@
       // filler blocks: one draw call per kind
       const F = Kota.fillers(), bl = F.buildings;
       const plain = bl.filter(b => b.kind !== "tower"), towers = bl.filter(b => b.kind === "tower"), roofed = bl.filter(b => b.kind === "home" || b.kind === "shop");
-      inst(unitBox(), M(0xffffff, { roughness: 0.9 }), plain, b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS[b.kind][b.tint] }));
-      const tm = M(0xffffff, { roughness: 0.6, emissive: 0xffc98a, emissiveMap: windowsTex(), emissiveIntensity: 0 }); lit.push(tm);
-      inst(unitBox(), tm, towers, b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS.tower[b.tint] }));
+      for (const kind of ["home", "shop", "shed"]) inst(unitBox(), facade(kind), plain.filter(b => b.kind === kind), b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS[b.kind][b.tint] }));
+      inst(unitBox(), facade("tower"), towers, b => ({ x: b.x, z: b.z, sx: b.w, sy: b.h, sz: b.d, c: TINTS.tower[b.tint] }));
       const pyr = new THREE.ConeGeometry(0.71, 1, 4); pyr.rotateY(Math.PI / 4); pyr.translate(0, 0.5, 0);
       inst(pyr, M(0xffffff, { roughness: 0.8 }), roofed, b => ({ x: b.x, y: b.h, z: b.z, sx: b.w, sy: 0.4 + Math.min(b.w, b.d) * 0.22, sz: b.d, c: ROOFC[b.tint] }));
       const trunk = new THREE.CylinderGeometry(0.07, 0.1, 0.6, 5); trunk.translate(0, 0.3, 0);
       const crown = new THREE.IcosahedronGeometry(0.55, 0); crown.translate(0, 1.05, 0);
       inst(trunk, M(0xffffff), F.trees, t => ({ x: t.x, z: t.z, sx: t.s, sy: t.s, sz: t.s, c: 0x7a5a44 }));
       inst(crown, M(0xffffff, { roughness: 1, flatShading: true }), F.trees, t => ({ x: t.x, z: t.z, sx: t.s, sy: t.s * 1.1, sz: t.s, ry: t.x * 7, c: TREEC[Math.abs(Math.round(t.x * 3 + t.z)) % TREEC.length] }));
+      buildDetails();
       // street names at the edge of town, district names for the map
       for (const S of Kota.STREETS) { if (S.id === "main") continue; const s = mapLabel(S.name, "", S.v ? S.at + 3 : -54, 0.9, S.v ? 36 : S.at - 1.4, 0.55); s.userData.street = true; }
       for (const B of Kota.BANDS) { const s = mapLabel(HOODS.find(h => h.id === B.id).name, "", 0, 4.2, B.zc, 0.7); s.userData.hood = true; }
@@ -478,8 +566,8 @@
       // gable roof with the ridge along the street; depth = how deep the building is, z = where its middle sits
       const roofOn = (len, h, depth, y, col, z = 0) => { const rf = gable(depth, h, len, M(col, { roughness: 0.7 })); rf.rotation.y = Math.PI / 2; rf.position.set(0, y, z); front.add(rf); return rf; };
       if (P.kind === "office") {
-        const m = M(0xffffff, { roughness: 0.5, emissive: 0xffc98a, emissiveMap: windowsTex(), emissiveIntensity: 0 }); m.color.setHex(0xc9d2d8).convertSRGBToLinear(); lit.push(m);
-        mesh(new THREE.BoxGeometry(W, P.h, D), m, 0, P.h / 2, 0, front);
+        const fm = facade("tower"), side = fm[0].clone(); side.color.setHex(P.id === "tower2" ? 0xb4c2c9 : P.id === "tower3" ? 0xc9c4bc : 0xc9d2d8).convertSRGBToLinear(); lit.push(side);
+        mesh(new THREE.BoxGeometry(W, P.h, D), [side, side, fm[2], fm[2], side, side], 0, P.h / 2, 0, front);
         mesh(new THREE.BoxGeometry(W + 0.3, 0.35, D + 0.3), M(0x7d858c), 0, P.h + 0.17, 0, front);
         const sg = board(P.name.toUpperCase(), W * 0.8, 0.5, "#2E2A26", "#F2D3B3"); sg.position.set(0, 1.4, D / 2 + 0.02); front.add(sg);
       } else if (P.kind === "school") {
@@ -578,6 +666,7 @@
         vis.forEach((L, k) => { m4.makeScale(s, s, s); m4.setPosition(L.x, 0.4 * s, L.z); dots.setMatrixAt(k, m4); });
         dots.count = vis.length; dots.instanceMatrix.needsUpdate = true;
       }
+      updateMovers(c.sec, d < 260);
       // the train
       if (train) {
         const tr = Kota.trainAt(c.sec);
@@ -613,7 +702,7 @@
     function build(data) {
       // clear old content but keep lights
       for (const o of scene.children.slice()) if (o !== hemi && o !== sun && o !== sun.target) scene.remove(o);
-      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
+      lots.length = 0; walkers.length = 0; signs.length = 0; mapLabels.length = 0; train = null; movers = null; T.homeDoor = undefined; T.homeX = undefined; T.youX = undefined; lit.length = 0; sites.length = 0; T.homeMarker = null; T.homeZ = undefined; T.buildZ = undefined; previewG = null;
       const { npcs, player, prices } = data;
       let z = 0;
       const tierCount = {}; for (const n of npcs) tierCount[n.house] = (tierCount[n.house] || 0) + 1;

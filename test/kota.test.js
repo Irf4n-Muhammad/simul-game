@@ -105,3 +105,15 @@ test("bumi: 5 benua, tiap kota di daratan benuanya sendiri, cuma satu kota hidup
   assert.ok(land / n > 0.15 && land / n < 0.4, `darat ${(land / n).toFixed(2)}`);
   const p = B.toXYZ(0, 90); assert.ok(Math.abs(p.x - 1) < 1e-9 && Math.abs(p.z) < 1e-9);
 });
+
+test("v74 barang kecil: mobil parkir, lampu, dan perahu nggak di tempat yang salah; mobil jalan di jalur", () => {
+  const D = K.details();
+  for (const k of ["parked", "lamps", "bins", "crossings", "dashes", "bushes", "flowers", "chimneys", "roofbits"]) assert.ok(D[k].length > 10, k);
+  const onRoad = (x, z) => K.VX.some(v => Math.abs(x - v) <= K.ROAD_W / 2 + 0.01) || K.HZ.some(h => Math.abs(z - h) <= K.ROAD_W / 2 + 0.01);
+  for (const c of D.parked) { assert.ok(onRoad(c.x, c.z), `mobil parkir di luar jalan ${c.x},${c.z}`); assert.ok(c.x < K.RIVER.x0 - 1 || c.x > K.RIVER.x1 + 1 || K.VX.includes(Math.round(c.x)), `mobil parkir di jembatan ${c.x}`); }
+  for (const l of D.lamps) assert.ok(!onRoad(l.x, l.z), `lampu di tengah jalan ${l.x},${l.z}`);
+  for (const sec of [3600 * 3, 3600 * 9, 3600 * 18]) for (const c of K.carsAt(sec)) assert.ok(onRoad(c.x, c.z), `mobil jalan keluar jalan ${c.x},${c.z}`);
+  assert.ok(K.carsAt(3600 * 3).length < K.carsAt(3600 * 12).length, "malam lebih sepi");
+  for (const b of K.boatsAt(1234)) assert.ok(b.x > K.RIVER.x0 && b.x < K.RIVER.x1);
+  assert.equal(JSON.stringify(K.carsAt(5000)), JSON.stringify(K.carsAt(5000)));
+});
