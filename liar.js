@@ -268,7 +268,70 @@
       const spots = { giant: { x: GX, z: GZ, y: gy }, ruins: { x: RX, z: RZ }, bridge: { x: lx, z: LZ } };
       return { group: g, height: H, spots, update, setNight, flies, shafts };
     }
-    return { pasir, duneH, hutan, forestH };
+
+    // ================= panggung (v80): satu wilayah liar siap digambar di game. Lampu, langit, kabut, sudut kamera tetap,
+    // siang/malam, dan grup `crit` tempat game menaruh makhluknya. Kamera nggak bebas (lebih ringan dan nggak bikin pusing di HP).
+    function stage(kind, o = {}) {
+      const forest = kind === "hutan", scene = new THREE.Scene(), Z = forest ? hutan({}) : pasir({});
+      scene.add(Z.group);
+      const hemi = new THREE.HemisphereLight(0xfff4e6, 0x8a6a48, 0.5), sun = new THREE.DirectionalLight(0xffe6c4, 1.6);
+      sun.castShadow = true; sun.shadow.mapSize.set(o.shadow || 2048, o.shadow || 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
+      Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 }); sun.shadow.camera.updateProjectionMatrix();
+      scene.add(hemi, sun, sun.target);
+      const sky = c => canvasTex((g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, c[0]); gr.addColorStop(0.55, c[1]); gr.addColorStop(1, c[2]); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 16, 256);
+      const SKY = forest ? [sky(["#8fc0d8", "#cfe4dc", "#b8d4a6"]), sky(["#060d18", "#14232c", "#1c2c2c"])] : [sky(["#8fb9de", "#cfe0ec", "#f6dfb6"]), sky(["#0e1630", "#2a3358", "#5a4a5e"])];
+      const FOG = forest ? [[0xa9c7a4, 18, 150], [0x14232a, 18, 150]] : [[0xf3dcb4, 70, 300], [0x5a4a5e, 70, 300]];
+      const moon = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xf6f0dc, fog: false })); moon.position.set(-120, 150, -300); moon.lookAt(0, 0, 0); scene.add(moon);
+      const lan = new THREE.PointLight(0xffc98a, 1.4, 8), lanB = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }));
+      scene.add(lan, lanB);
+      const crit = new THREE.Group(); scene.add(crit);
+      // sudut kamera: [nama, posisi kamera, titik lihat, tempat makhluk, arah makhluk, arah matahari dari makhluk]
+      const VIEWS = forest ? [
+        { name: "The path", cam: [1.2, 2.0, 14], look: [0, 9, -38], crit: [0.4, 7.5], cr: 0.3, sun: [-30, 80, 20] },
+        { name: "The giant tree", cam: [6, 3.4, -6], look: [0, 7, -40], crit: [-2.4, -30], cr: 2.2, sun: [-30, 80, 10] },
+        { name: "Over the canopy", cam: [-34, 62, 44], look: [2, 0, -30], crit: [0.4, 7.5], cr: 2.6, sun: [-60, 70, 20] },
+      ] : [
+        { name: "The dunes", cam: [3.2, 2.0, 9.5], look: [6, 2.6, -30], crit: [1.6, 4.2], cr: 0.5, sun: [-40, 80, 30] },
+        { name: "The buried temple", cam: [12, 6, -20], look: [22, 5, -46], crit: [16, -27], cr: 0.2, sun: [-50, 40, 20] },
+        { name: "From the ridge", cam: [-40, 34, 70], look: [5, 2, -30], crit: [1.6, 4.2], cr: 2.6, sun: [-80, 60, 30] },
+      ];
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.3, 900);
+      const look = o.Look ? o.Look.create(THREE) : null;
+      let night = false, vi = 0, V = VIEWS[0];
+      const lk = new THREE.Vector3(), cp = new THREE.Vector3(), dv = new THREE.Vector3();
+      function setNight(on) {
+        night = !!on; scene.background = SKY[+night]; const f = FOG[+night]; scene.fog = new THREE.Fog(f[0], f[1], f[2]);
+        sun.color.setHex(night ? 0x9fb4e8 : 0xffe6c4); sun.intensity = night ? 0.35 : 1.6; hemi.color.setHex(0xfff4e6); hemi.groundColor.setHex(0x8a6a48); hemi.intensity = 0.5;
+        if (look) look.apply(night ? "night" : "day", "clear", hemi, sun);
+        if (night) { hemi.color.setHex(forest ? 0x3d5a66 : 0x5d6d9e); hemi.groundColor.setHex(forest ? 0x1a2420 : 0x3a3440); hemi.intensity = forest ? 0.5 : 0.55; }
+        if (Z.storm) Z.storm.visible = !night; if (Z.stars) Z.stars.visible = night; if (Z.setNight) Z.setNight(night);
+        moon.visible = night && !forest; lan.visible = lanB.visible = night;
+      }
+      function setView(i) {
+        vi = (i + VIEWS.length) % VIEWS.length; V = VIEWS[vi];
+        crit.position.set(V.crit[0], Z.height(V.crit[0], V.crit[1]), V.crit[1]); crit.rotation.y = V.cr;
+        sun.position.set(V.crit[0] + V.sun[0], V.sun[1], V.crit[1] + V.sun[2]); sun.target.position.set(V.crit[0], 0, V.crit[1] - 15);
+        lan.position.set(V.crit[0] + 0.6, crit.position.y + 1.3, V.crit[1]); lanB.position.copy(lan.position);
+        return V.name;
+      }
+      // makhluk jalan pelan bolak-balik di tempatnya; kamera goyang dikit biar hidup
+      function frame(t) {
+        Z.update(t);
+        const k = Math.sin(t / 2600), x = V.crit[0] + k * 1.1, z = V.crit[1] + Math.sin(t / 5200) * 0.4;
+        crit.position.set(x, Z.height(x, z) + Math.abs(Math.sin(t / 180)) * 0.05, z); crit.rotation.y = Math.cos(t / 2600) > 0 ? Math.PI / 2 : -Math.PI / 2;
+        lan.position.set(x + 0.6, crit.position.y + 1.3, z); lanB.position.copy(lan.position);
+        // HP tegak: kamera mundur sedikit dan titik lihat ditarik ke arah makhluk, biar makhluk dan landmark sama-sama masuk
+        const tall = camera.aspect < 1 ? 1 : 0;
+        lk.set(...V.look).lerp(cp.set(x, crit.position.y + 0.6, z), tall * 0.3);
+        dv.set(V.cam[0] - V.look[0], 0, V.cam[2] - V.look[2]).normalize().multiplyScalar(tall * 3);
+        camera.position.set(V.cam[0] + dv.x + Math.sin(t / 4100) * 0.5, V.cam[1] + tall * 0.8 + Math.sin(t / 5300) * 0.15, V.cam[2] + dv.z); camera.lookAt(lk);
+      }
+      function resize(w, h) { camera.aspect = w / h; camera.fov = w < h ? 58 : 40; camera.updateProjectionMatrix(); }
+      function dispose() { scene.traverse(m => { if (m.geometry) m.geometry.dispose(); for (const mt of [].concat(m.material || [])) { for (const k of ["map", "emissiveMap"]) if (mt[k]) mt[k].dispose(); mt.dispose(); } }); for (const t of SKY) t.dispose(); }
+      setNight(false); setView(0);
+      return { kind, scene, camera, crit, views: VIEWS.map(v => v.name), get view() { return vi; }, get night() { return night; }, setNight, setView, frame, resize, dispose, patch: () => { if (look) look.patchScene(scene); }, zone: Z };
+    }
+    return { pasir, duneH, hutan, forestH, stage };
   }
   const Liar = { create };
   if (typeof module !== "undefined") module.exports = Liar; else globalThis.Liar = Liar;
