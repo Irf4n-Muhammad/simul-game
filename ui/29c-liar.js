@@ -60,3 +60,23 @@ function liarFps(t) {
 $("lExit").onclick = () => liarLeave();
 $("lNext").onclick = () => liarView(LIAR.view + 1);
 $("lNight").onclick = () => { LIAR.setNight(!LIAR.night); liarNightBtn(); };
+// v80: tombol "Wild areas" di peta benua: daftar wilayah liar benua ini (+ yang sudah bisa dikunjungi di benua lain)
+function wildList() {
+  if (!CONT || !CONT.on) return;
+  const here = Region.region(CONT.id), C = here.C;
+  const all = Object.keys(Bumi.CONT).flatMap(id => Region.region(id).wilds);
+  const row = w => `<button class="big" data-wild="${w.cont}:${w.id}"${w.live ? "" : ' style="opacity:.6"'}>${w.live ? "" : "🔒 "}${esc(w.name)}${w.cont !== C.id ? ` · ${esc(Bumi.CONT[w.cont].name)}` : ""}</button>`;
+  const away = all.filter(w => w.live && w.cont !== C.id);
+  sheet.classList.add("clear");
+  openSheet("lot", `<span class="ribbon">${esc(C.name)}</span><h2>Wild areas</h2>
+    <p>Empty, quiet places far from the towns.${here.wilds.some(w => w.live) ? "" : ` None here is open yet.`}</p>${here.wilds.map(row).join("")}
+    ${away.length ? `<p class="muted">Open now on other continents:</p>${away.map(row).join("")}` : ""}<button class="close" data-close="1">Close</button>`);
+  sheet.querySelector("[data-close]").onclick = closeSheet;
+  for (const b of sheet.querySelectorAll("[data-wild]")) b.onclick = async () => {
+    const [cid, wid] = b.dataset.wild.split(":"), w = Region.region(cid).wilds.find(x => x.id === wid);
+    closeSheet();
+    if (cid !== CONT.id) { await veil(true); CONT.enter(cid, "globe"); CONT.resize(app.clientWidth, app.clientHeight); veil(false); }
+    setTimeout(() => showWild(w, Bumi.CONT[cid]), cid !== CONT.id ? 900 : 0);
+  };
+}
+$("findWild").onclick = () => wildList();

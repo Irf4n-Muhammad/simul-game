@@ -155,7 +155,10 @@
       entering = false; ptr.clear(); drag = pinch = null;
       const live = R.towns.find(t => t.live) || R.towns[0];
       if (from === "city") { focusX = live.x; focusZ = live.z; zoom = 0.06; tgt = { x: live.x + 6, z: live.z + 10, zoom: 0.42 }; }
-      else { focusX = 0; focusZ = 0; zoom = 1.0; tgt = { x: live.x * 0.5, z: live.z * 0.5 + 10, zoom: 0.68 }; }
+      else {   // v80: dari globe, bingkai seluruh benua (kota + wilayah liar) biar wilayah liar langsung kelihatan
+        const P = R.towns.concat(R.wilds || []), cx = P.reduce((a, p) => a + p.x, 0) / P.length, cz = P.reduce((a, p) => a + p.z, 0) / P.length;
+        focusX = 0; focusZ = 0; zoom = 1.0; tgt = { x: cx, z: cz + 10, zoom: 0.84 };
+      }
       T.on = true; place();
     };
     T.exit = () => { T.on = false; };

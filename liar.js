@@ -322,7 +322,7 @@
         lan.position.set(x + 0.6, crit.position.y + 1.3, z); lanB.position.copy(lan.position);
         // HP tegak: kamera mundur sedikit dan titik lihat ditarik ke arah makhluk, biar makhluk dan landmark sama-sama masuk
         const tall = camera.aspect < 1 ? 1 : 0;
-        lk.set(...V.look).lerp(cp.set(x, crit.position.y + 0.6, z), tall * 0.3);
+        lk.set(...V.look).lerp(cp.set(x, crit.position.y + 0.6, z), tall * 0.45);
         dv.set(V.cam[0] - V.look[0], 0, V.cam[2] - V.look[2]).normalize().multiplyScalar(tall * 3);
         camera.position.set(V.cam[0] + dv.x + Math.sin(t / 4100) * 0.5, V.cam[1] + tall * 0.8 + Math.sin(t / 5300) * 0.15, V.cam[2] + dv.z); camera.lookAt(lk);
       }
