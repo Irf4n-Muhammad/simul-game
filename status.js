@@ -8,6 +8,7 @@
   const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const MK = (typeof module !== "undefined") ? require("./makro.js") : globalThis.Makro;
+  const BK = (typeof module !== "undefined") ? require("./bank.js") : globalThis.Bank;
   const { HOOKS, REGISTRY, seed_rng, clamp, FOREVER, phase_of, Ctx } = E;
 
   // ---------------------------------------------------------------- data
@@ -495,6 +496,12 @@
         Money.move(c, -LIVING_COST, "hidup", x.day, "floor");
       }
     }
+    // utang pribadi (sisa pinjaman bisnis yang tutup rugi) dicicil dari dompet tiap hari
+    if (st.utang) {
+      const r = BK.payPersonal(x.home, c, x.day);
+      if (r && r.done) x.say(`${c.name} has paid off the last of the old business debt. 🎉`);
+      else if (r && r.late) { x.need("mood", -1); if (st.utang && st.utang.late === CFG.BANK.LATE_BAD) x.say(`${c.name} has fallen far behind on debt payments. The bank marks the family's credit as bad.`); }
+    }
     c.stats.uang = Math.min(CFG.STAT_UANG_MAX, st.wallet / CFG.STAT_UANG_COINS);
     houseUpkeep(x);
     finishBuild(x);
@@ -614,6 +621,9 @@
   const _farewell = HOOKS.akhir_hidup;
   HOOKS.akhir_hidup = (c, day, home) => {
     const log = _farewell(c, day, home);
+    // utang dibayar dulu dari harta; yang tak tertutup dihapus, tapi riwayat kredit keluarga jadi jelek
+    const debt = BK.settle(home, c, day);
+    if (debt && debt.lost > 0) log.lines.push(`${c.name}'s estate could not cover ${debt.lost.toLocaleString("en")} coins of debt. The bank writes it off and marks the family's credit.`);
     if (c.st && c.st.wallet > 0) {
       const at = m => m.alive(day + 1) && !("keluar" in m.info) && m.st;
       let heirs = home.children_of(c).filter(at);
@@ -705,6 +715,8 @@
       rares: R.rare ? st.genes.rares.map(id => ({ id, label: RARES[id].label, share: pct(RARES[id].p), desc: RARES[id].desc })) : [],
       rare_hidden: !R.rare,
       wallet: Math.round(st.wallet),
+      debt: st.utang ? { left: Math.round(st.utang.p ?? st.utang.left), pay: BK.due(st.utang, day, home), rate: BK.rate("personal", day, home), late: st.utang.late || 0 } : null,
+      credit_bad: BK.blocked(home, day),
       job: st.job ? { id: st.job.id, label: JOBS[st.job.id].label, title: title(st.job), co: st.job.co || null, level: st.job.level, pay: salary(st.job),
         share: pct(jobs[st.job.id].share), payX: jobs[st.job.id].payX.toFixed(1) } : null,
       best: st.best, pension: st.pension,

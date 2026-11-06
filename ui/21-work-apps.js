@@ -194,9 +194,11 @@ function baMoney(c, b, v, T, owner) {
   return `${inv}${baKpis([["Cash", vnCoins(b.cash)], ["Today", (Td.profit >= 0 ? "+" : "") + vnCoins(Td.profit || 0), Td.profit >= 0 ? "up" : "down"], ["30 days", (v.profit30 >= 0 ? "+" : "") + vnCoins(v.profit30), v.profit30 >= 0 ? "up" : "down"]])}
     ${baTrack(b, v)}<h4 class="pa-h">Today's money</h4><div class="pa-list">${flow.map(([l, n, cls]) => `<div class="pa-row"><span class="pa-grow">${l}</span><span class="pa-val ${n > 0 ? "plus" : ""}">${n > 0 ? "+" : "−"}${vnCoins(Math.abs(n))}</span></div>`).join("")}</div>
     <h4 class="pa-h">Who owns it</h4><div class="vn-card"><div class="vn-row"><span>${esc(v.owner)}</span><b>${baPct(v.equity)}</b></div>${(b.investors || []).map(i => `<div class="vn-row"><span>${esc(i.who)}</span><small>${baPct(i.pct)} · put in ${vnCoins(i.amt)}</small></div>`).join("")}</div>
-    <h4 class="pa-h">Bank</h4>${L ? `<div class="vn-card"><div class="vn-row"><span>Loan left</span><b>${vnCoins(L.left)}</b></div><div class="vn-row"><span>Paid back</span><b>${vnCoins(L.pay)} a day</b></div>
-      ${owner ? `<span class="vn-btns"><button data-ba="repay" ${b.cash < Math.round(L.left * 0.97) ? "disabled" : ""}>Pay it all off · ${vnCoins(Math.round(L.left * 0.97))}</button></span>` : ""}</div>`
-    : `<div class="pa-list">${bank.offers.map(o => `<div class="pa-row"><span class="pa-grow"><b>${vnCoins(o.amt)} over ${o.label}</b><small>Pay back ${vnCoins(o.total)} · ${vnCoins(o.pay)} a day</small></span>${owner ? `<button class="kd-btn" data-ba="borrow:${o.i}">Suggest</button>` : ""}</div>`).join("")}</div>`}
+    <h4 class="pa-h">Bank</h4>${L ? `<div class="vn-card"><div class="vn-row"><span>Loan left</span><b>${vnCoins(L.left)}</b></div><div class="vn-row"><span>Paid back</span><b>${vnCoins(L.pay)} a day</b></div><div class="vn-row"><span>Interest now</span><b>${baPct(v.loanRate)} a year</b></div>
+      <p class="vn-fact">The rate floats with the world economy, so the daily payment moves a little.</p>
+      ${owner ? `<span class="vn-btns"><button data-ba="repay" ${b.cash < v.payoff ? "disabled" : ""}>Pay it all off · ${vnCoins(v.payoff)}</button></span>` : ""}</div>`
+    : bank.why ? `<p class="vn-fact">${{ credit: "The bank won't lend to this family for now. An old debt went unpaid.", cooldown: `The loan was just paid off early. The bank will talk again in ${Math.max(1, (bank.until || 0) - today())} days.` }[bank.why] || ""}</p>`
+    : `<div class="pa-list">${bank.offers.map(o => `<div class="pa-row"><span class="pa-grow"><b>${vnCoins(o.amt)} over ${o.label}</b><small>About ${vnCoins(o.total)} back · ${vnCoins(o.pay)} a day · ${baPct(o.rate)} a year, floating</small></span>${owner ? `<button class="kd-btn" data-ba="borrow:${o.i}">Suggest</button>` : ""}</div>`).join("")}</div>`}
     ${owner && b.cash < t.cap * 0.15 ? `<span class="vn-btns"><button data-ba="bail:1000">Family puts in 1,000</button></span>` : ""}${owner ? baNote(c, b) : ""}`;
 }
 

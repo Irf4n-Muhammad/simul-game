@@ -10,6 +10,7 @@
   const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const MK = (typeof module !== "undefined") ? require("./makro.js") : globalThis.Makro;
+  const BK = (typeof module !== "undefined") ? require("./bank.js") : globalThis.Bank;
   const { HOOKS, seed_rng, phase_of, clamp, Ctx } = E;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const r2 = v => Math.round(v * 100) / 100;
@@ -643,7 +644,11 @@
       if (!b.demo) for (const s of sup) s.side = (s.side || 0) + Math.round(rev * t.mat * matF * 0.3);
     }
     if (b.side) { rev += b.side; b.side = 0; }
-    if (b.loan && b.loan.left > 0 && !(t.hits && b.ship && day < b.ship.at + 60)) { const p = Math.min(b.loan.left, b.loan.pay); cost += p; loanC = p; b.loan.left -= p; if (b.loan.left <= 0) { b.loan = null; line = line || `${b.name} pays off its bank loan. 🎉`; } }
+    // cicilan bank: bunga mengambang dari sisa pokok (bank.js). Studio game yang belum rilis ditenggang, tapi bunganya ditambahkan ke pokok
+    if (b.loan && BK.upgrade(b.loan).p > 0) {
+      if (t.hits && b.ship && day < b.ship.at + 60) { b.loan.p += Math.round(b.loan.p * BK.rate(b.loan.kind, day, home) / 365); b.loan.left = b.loan.p; b.loan.from += 1; }
+      else { const p = BK.due(b.loan, day, home); cost += p; loanC = p; if (BK.applyPay(b.loan, p, day, home)) { b.loan = null; line = line || `${b.name} pays off its bank loan. 🎉`; } }
+    }
     // keunggulan (Edge): numpuk pelan dari pengalaman, skill pemilik, staf jago, dan budget riset
     const rnd = rndOf(x, b), rndC = Math.round(rent * RND[rnd].cost);
     cost += rndC;
@@ -795,11 +800,8 @@
     (b.investors ||= []).push({ who: o.who, amt: o.amt, pct: o.pct, d: day });
     return true;
   }
-  function bank(b, day) {
-    const t = TPL[b.tpl], h = (b.hist || []).slice(-30), rev30 = h.reduce((s2, r) => s2 + r[1], 0), p30 = h.reduce((s2, r) => s2 + r[2], 0);
-    const max = Math.round(Math.max(t.cap * 0.5, rev30 * 1.2 + Math.max(0, p30)) * clamp((b.rep || 30) / 55, 0.4, 1.4) / 100) * 100;
-    return { max: t.fund ? 0 : max, offers: LOANS.map((L, i) => ({ i, ...L, amt: max, total: Math.round(max * (1 + L.rate)), pay: Math.max(1, Math.round(max * (1 + L.rate) / L.term)) })) };
-  }
+  // tawaran bank untuk bisnis yang sudah jalan (bank.js): plafon dari riwayat 90 hari, bunga mengambang
+  function bank(home, b, day) { return BK.bizOffers(home, b, TPL[b.tpl], day, home.get(b.owner)); }
   function pickTemplate(c, home, day) {
     const opts = TPLS.map(t => ({ t, f: fit(c, t.id), s: fit(c, t.id) * (0.85 + hash(c.id + t.id + Math.floor(day / 60)) * 0.3) * (t.b2b ? 1 : 1.05) }))
       .filter(o => !active(home).some(b => b.tpl === o.t.id) && isOpen(c, home, o.t.id)).sort((a, b) => b.s - a.s);
@@ -835,7 +837,12 @@
     const own = Math.min(c.st.wallet, t.cap), short = t.cap - own;
     let loan = null;
     if (short > 0 && via === "loan" && t.fund) return null;
-    if (short > 0 && via === "loan") { const L = CFG.OPEN_LOAN; loan = { left: Math.round(short * (1 + L.rate)), pay: Math.max(1, Math.round(short * (1 + L.rate) / L.term)), from: day, amt: short, term: L.term, rate: L.rate }; }
+    if (short > 0 && via === "loan") {
+      // dijamin rumah tangga: cicilannya harus muat di 40% pemasukan rutin keluarga, dan riwayat kredit harus bersih
+      const ok = BK.openCheck(home, c, short, day, B(home).list);
+      if (!ok.ok) return null;
+      loan = BK.make("open", short, day, ok.term, home);
+    }
     else if (short > 0 && !(via === "fund" && familyChip(home, c, short, day))) return null;
     Money.move(c, -own, "bisnis_modal", day);
     const S = B(home), id = "b" + (++S.seq);
@@ -861,9 +868,11 @@
   }
   function close(home, b, day, why) {
     const c = home.get(b.owner), t = TPL[b.tpl];
-    // utang bank dilunasi dulu dari hasil jual; sisanya baru ke pemilik
-    let sale = Math.max(0, Math.round((t.fund ? b.mine : b.cash + t.cap * LEVELS[b.level].up * 0.25 * (b.rep / 100)) - (b.loan && !t.fund ? b.loan.left : 0)));
+    // utang bank dilunasi dulu dari hasil jual; sisanya baru ke pemilik. Kalau hasil jual nggak cukup, sisa utang pindah ke pemilik (bank.js)
+    const owed = b.loan && !t.fund ? (BK.upgrade(b.loan).p || 0) : 0, gross = Math.round(t.fund ? b.mine : b.cash + t.cap * LEVELS[b.level].up * 0.25 * (b.rep / 100));
+    let sale = Math.max(0, gross - owed);
     b.loan = null;
+    if (owed > gross && c) BK.toPersonal(home, c, owed - Math.max(0, gross), day);
     b.closed = day; b.why = why; b.post = null; b.offer = null;
     for (const s of (b.staff || []).slice()) if (s.fam) dropStaff(home, b, s, day, why === "sold" ? "Business sold" : "Business closed");
     if (c) leaveWork(c, b, day, "Owner", why);
@@ -1022,19 +1031,11 @@
     if (H && H.length && st.job && st.job.biz) { const h = H[H.length - 1], b = B(x.home).list.find(o => o.id === st.job.biz); if (h.to == null && b && !h.bizName) { h.bizName = b.name; h.role = st.job.role || "Owner"; } }
   };
   const _farewell = HOOKS.akhir_hidup;
+  // bisnis diurus dulu (diwariskan atau dijual), baru harta dibagi di status.js: hasil jual dan sisa utangnya ikut masuk harta
   HOOKS.akhir_hidup = (c, day, home) => {
+    const b = ownerBiz(home, c.id), r = b ? passOn(home, b, day, c) : null;
     const log = _farewell(c, day, home);
-    const b = ownerBiz(home, c.id);
-    if (b) {
-      const r = passOn(home, b, day, c);
-      log.lines.push(r.heir ? `${b.name} passes to ${r.heir.name}.` : `${b.name} is sold. The money goes to the family.`);
-      if (!r.heir && r.sold) {
-        const at = m => m.alive(day + 1) && !("keluar" in m.info) && m.st;
-        let heirs = home.children_of(c).filter(at);
-        if (!heirs.length) heirs = home.members.filter(m => m !== c && at(m));
-        if (heirs.length) { const share = Math.floor(c.st.wallet / heirs.length); for (const h of heirs) Money.move(h, share, "warisan", day); Money.set(c, 0, "warisan", day); }
-      }
-    }
+    if (b) log.lines.push(r.heir ? `${b.name} passes to ${r.heir.name}.` : `${b.name} is sold. The money goes to the family.`);
     return log;
   };
 
@@ -1150,15 +1151,15 @@
       b.cash -= cost; S.skill = r2(Math.min(0.98, S.skill + 0.07)); S.mood = Math.min(100, S.mood + 6); S.trained = day; return true;
     }
     if (op === "borrow" && !b.loan && !t.fund) {
-      const O = bank(b, day).offers[Number(arg) || 0];
+      const O = bank(home, b, day).offers.find(o => o.i === (Number(arg) || 0));
       if (!O || !O.amt) return false;
-      b.cash += O.amt; b.loan = { left: O.total, pay: O.pay, from: day, amt: O.amt, term: O.term, rate: O.rate };
+      b.cash += O.amt; b.loan = BK.make("biz", O.amt, day, O.term, home);
       return true;
     }
     if (op === "repay" && b.loan) {
-      const due = Math.round(b.loan.left * CFG.EARLY_REPAY);
+      const due = BK.payoff(BK.upgrade(b.loan));
       if (b.cash < due) return false;
-      b.cash -= due; b.loan = null; return true;
+      b.cash -= due; b.loan = null; b.repaid = day; return true;
     }
     if (op === "invest" && b.offer) return invest(home, b, arg === "yes", day);
     if (op === "supplier" && SUPPLY[arg] && b.supply !== arg) { b.supply = arg; return true; }
@@ -1244,7 +1245,7 @@
       rev30: sum(w30, 1), profit30: sum(w30, 2), cust30: Math.round(sum(w30, 3) / Math.max(1, w30.length)), spark: w30.map(r => r[2]),
       next: !t.fund && LEVELS[b.level + 1] ? { label: LEVELS[b.level + 1].label, cost: Math.round(Math.max(3000, t.cap) * LEVELS[b.level + 1].up) } : null,
       suppliers: famSupplier(home, t).map(s => s.name), clients: t.b2b ? Math.round(clients(home, t, day)) : null,
-      slots: SLOTS[b.level], roles: roles(t), staffV: (b.staff || []).map(s => ({ ...s, payNow: payOf(home, s), fair: fairPay(t, s.skill) })), bank: bank(b, day),
+      slots: SLOTS[b.level], roles: roles(t), staffV: (b.staff || []).map(s => ({ ...s, payNow: payOf(home, s), fair: fairPay(t, s.skill) })), bank: bank(home, b, day), payoff: b.loan ? BK.payoff(BK.upgrade({ ...b.loan })) : 0, loanRate: b.loan ? BK.rate(b.loan.kind || "biz", day, home) : 0,
       supplyList: supplyList(home, b), clientList: t.b2b ? clientList(home, t, day) : [], promoCost: Math.round(t.cap * 0.06 * LEVELS[b.level].cap), labCost: Math.round(t.cap * 0.05),
       trainCost: Math.round(150 + t.cap * 0.03), equity: b.equity ?? 1,
       bakeProds: PREP.includes(t.id) ? bakeProds(t, b).map(o => o.p) : null, cardOpts: b.card && CARDED(t.id) ? prepCards(t)[b.card.k].o : null,
