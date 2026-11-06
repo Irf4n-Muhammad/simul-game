@@ -43,7 +43,8 @@ function outMode(m) {
   app.classList.toggle("in-konser", m === "konser"); $("konserUI").hidden = m !== "konser";
   app.classList.toggle("in-region", m === "region");
   app.classList.toggle("in-liar", m === "liar"); $("liarUI").hidden = m !== "liar";
-  $("townHint").textContent = m === "globe" ? "Drag to spin · pinch to zoom in · tap a continent" : m === "region" ? "Drag to move · zoom in on Old Town · tap a town" : "Drag to move · pinch to zoom · tap a place";
+  $("findWild").hidden = m !== "region" || !globalThis.Liar;
+  $("townHint").textContent = m === "globe" ? "Drag to spin · pinch to zoom in · tap a continent" : m === "region" ? "Drag to move · tap a town or a wild area · zoom in on Old Town" : "Drag to move · pinch to zoom · tap a place";
   paintBg();
 }
 // tombol kota: mulai dari globe
