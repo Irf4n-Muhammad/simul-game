@@ -77,6 +77,7 @@
     let s = 0;
     for (const m of home.members) if (m.st && m.st.utang && m.alive(day)) s += due(m.st.utang, day, home);
     for (const b of bizList || []) if (b.loan && !b.closed && b.loan.kind === "open") s += due(b.loan, day, home);
+    if (home.world.kpr) s += due(home.world.kpr, day, home);
     return s;
   }
   // sisa ruang cicilan harian rumah tangga
@@ -122,7 +123,9 @@
     const U = c.st && c.st.utang;
     if (!U || U.last === day) return null;
     U.last = day;
-    const want = due(U, day, home), got = Math.max(0, Math.min(want, Math.floor(c.st.wallet)));
+    const want = due(U, day, home);
+    cover(c, want, day);
+    const got = Math.max(0, Math.min(want, Math.floor(c.st.wallet)));
     if (got > 0) Money.move(c, -got, "utang", day);
     if (got < want) {
       U.late = (U.late || 0) + 1;
@@ -140,6 +143,7 @@
   }
   // meninggal: utang dibayar dari harta dulu; sisanya dihapus dan riwayat kredit keluarga jadi jelek
   function settle(home, c, day) {
+    if (c.st && c.st.tab > 0) { Money.move(c, c.st.tab, "tabungan", day); c.st.tab = 0; }
     const U = c.st && c.st.utang;
     if (!U) return null;
     const p = U.p ?? U.left, pay = Math.min(p, Math.max(0, Math.floor(c.st.wallet)));
@@ -149,7 +153,98 @@
     return { paid: pay, lost: p - pay };
   }
 
-  const Bank = { credit, blocked, rate, due, applyPay, upgrade, make, estTotal, income, burden, room, openCheck, bizOffers, payoff, toPersonal, payPersonal, settle, markBad };
+  // ---------------------------------------------------------------- tabungan (tahap 5)
+  // Bunga tabungan mengambang juga, selalu jauh di bawah pinjaman termurah (celah #1): 40% suku bunga acuan, 1–10%.
+  // Inilah pengganti inflasi: uang yang diam di dompet tidak tumbuh, yang ditabung tumbuh pelan.
+  const saveRate = day => r2(Math.max(0.01, Math.min(0.1, MK.rate(day) * K.SAVE_SHARE)) * 10000) / 10000;
+  const cheapest = day => MK.rate(day) + Math.min(...Object.values(K.SPREAD));
+  function accrue(c, day) {
+    const st = c.st;
+    if (!st || !(st.tab > 0) || st.tabD === day) return 0;
+    st.tabD = day;
+    const i = r2(st.tab * saveRate(day) / 365);
+    st.tab = r2(st.tab + i); st.tabEarn = r2((st.tabEarn || 0) + i);
+    return i;
+  }
+  function deposit(c, n, day) {
+    n = Math.floor(Math.min(n, c.st.wallet));
+    if (!(n > 0) || !Money.move(c, -n, "tabungan", day, "need")) return false;
+    c.st.tab = r2((c.st.tab || 0) + n);
+    return true;
+  }
+  function withdraw(c, n, day) {
+    n = Math.min(n, c.st.tab || 0);
+    if (!(n > 0)) return false;
+    c.st.tab = r2(c.st.tab - n); Money.move(c, n, "tabungan", day);
+    return true;
+  }
+  // dompet kurang untuk tagihan wajib: ambil dari tabungan dulu
+  function cover(c, need, day) { const gap = need - Math.max(0, c.st.wallet); if (gap > 0 && c.st.tab > 0) withdraw(c, Math.ceil(gap), day); }
+
+  // ---------------------------------------------------------------- KPR (tahap 5)
+  // Pinjaman rumah milik keluarga (home.world.kpr), dijamin rumahnya sendiri: satu rumah satu pinjaman, dan selama masih ada
+  // KPR keluarga tidak bisa beli rumah lain (celah #6). Uang muka 30%, cicilan masuk batas 40% rumah tangga.
+  // Dibayar harian oleh anggota dewasa terkaya (dompet lalu tabungan). Menunggak terlalu lama: rumah disita (status.js).
+  // Pembayar meninggal tidak menghapusnya, karena utangnya milik keluarga, bukan makhluk.
+  const kpr = home => home.world.kpr || null;
+  function kprCheck(home, c, cost, day, bizList) {
+    if (kpr(home)) return { ok: false, why: "kpr" };
+    if (blocked(home, day)) return { ok: false, why: "credit" };
+    const down = Math.ceil(cost * K.KPR_DOWN / 100) * 100, amt = cost - down;
+    if (c.st.wallet + (c.st.tab || 0) < down) return { ok: false, why: "down", down, amt };  // uang muka boleh dari tabungan
+    const term = isOld(c, day) ? K.OLD_TERM : K.KPR_TERM;
+    const max = maxFor(room(home, day, bizList), "kpr", term, day, home) * (isOld(c, day) ? 0.5 : 1);
+    const pay = due({ p: amt, from: day, term, kind: "kpr" }, day, home);
+    return amt <= max ? { ok: true, down, amt, term, pay, rate: rate("kpr", day, home), max } : { ok: false, why: "income", down, amt, term, pay, max };
+  }
+  function kprOpen(home, c, ok, houseId, day) {
+    cover(c, ok.down, day);
+    Money.move(c, -ok.down, "rumah", day);
+    const L = make("kpr", ok.amt, day, ok.term, home);
+    L.house = houseId; L.by = c.id;
+    home.world.kpr = L;
+    return L;
+  }
+  // cicilan harian; hasil: { paid } | { done } | { late, foreclose? }
+  function kprPay(home, payer, day) {
+    const L = kpr(home);
+    if (!L || L.last === day || !payer) return null;
+    L.last = day;
+    const want = due(L, day, home);
+    cover(payer, want, day);
+    const got = Math.max(0, Math.min(want, Math.floor(payer.st.wallet)));
+    if (got > 0) Money.move(payer, -got, "kpr", day);
+    if (got < want) {
+      const interest = Math.round(L.p * rate("kpr", day, home) / 365);
+      L.p = Math.max(0, Math.round(L.p - (got - interest))); L.left = L.p; L.pay = due(L, day + 1, home);
+      L.late = (L.late || 0) + 1;
+      return { late: L.late, foreclose: L.late >= K.KPR_LATE };
+    }
+    L.late = 0;
+    if (applyPay(L, got, day, home)) { home.world.kpr = null; return { done: true }; }
+    return { paid: got };
+  }
+  // rumah disita: dijual murah, hasilnya melunasi KPR; lebihnya ke pembayar, kurangnya jadi utang pribadi pembayar. Kredit keluarga jelek.
+  function foreclose(home, payer, value, day) {
+    const L = kpr(home);
+    if (!L) return null;
+    const sale = Math.round(value * K.KPR_FIRE_SALE), rest = sale - L.p;
+    home.world.kpr = null;
+    if (rest > 0) Money.move(payer, rest, "rumah", day);
+    else toPersonal(home, payer, -rest, day);
+    markBad(home, day, Math.max(0, -rest));
+    return { sale, rest };
+  }
+  function kprPayoff(home, c, day) {
+    const L = kpr(home);
+    if (!L) return false;
+    const n = payoff(L);
+    if (!Money.move(c, -n, "kpr", day, "need")) return false;
+    home.world.kpr = null;
+    return true;
+  }
+
+  const Bank = { saveRate, cheapest, accrue, deposit, withdraw, cover, kpr, kprCheck, kprOpen, kprPay, foreclose, kprPayoff, credit, blocked, rate, due, applyPay, upgrade, make, estTotal, income, burden, room, openCheck, bizOffers, payoff, toPersonal, payPersonal, settle, markBad };
   if (typeof module !== "undefined") module.exports = Bank;
   else globalThis.Bank = Bank;
 })();

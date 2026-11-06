@@ -305,26 +305,34 @@ function pickLot(l, house) {
     : cur.umur < 180 ? `${cur.nama} can buy land in the teen years.`
     : fv.build ? `Your ${fv.build.item.label.toLowerCase()} in ${fv.build.item.hood} is still being built.`
     : it.owned ? "Your family already lives in a home this nice or nicer."
+    : fv.kpr ? "The family is still paying off a mortgage. Pay it off first."
     : s.wallet < house.price ? `${cur.nama} has ${coins(s.wallet)}. This lot and home cost ${coins(house.price)}.`
     : !canCare() ? (game.pending ? "Answer the question that's waiting first." : "Not right now.") : "";
+  // KPR: uang muka 30%, sisanya pinjaman keluarga (bank.js); cuma ditawarkan kalau uang tunainya kurang
+  const q = cur && s && !fv.build && !it.owned && !fv.kpr && s.wallet < house.price && canCare() ? Status.kprQuote(game.home.get(cur.id), game.home, H.id, today()) : null;
+  const qNote = !q ? "" : q.ok ? `Or take a mortgage: ${coins(q.down)} down, then about ${coins(q.pay)} a day for ${Math.round(q.term / 30)} months at ${(q.rate * 100).toFixed(1)}% a year (floating). Miss 60 days of payments and the bank takes the house.`
+    : q.why === "down" ? `A mortgage needs ${coins(q.down)} down.` : q.why === "income" ? `The bank says the family's steady income is too low for a mortgage this size.` : q.why === "credit" ? "The bank won't lend to this family for now." : q.why === "age" ? `${cur.nama} can take a mortgage as an adult.` : "";
   const draw = () => {
     openSheet("lot", `<span class="ribbon">${esc(H.name)} · Lot ${l.i + 1}</span><h2>Empty lot</h2>
       <p>Pick a ${esc(house.label.toLowerCase())} and it gets built here in real time: ${Status.BUILD_DAYS[H.id]} days. ${it && parseFloat(it.share) > 0 ? `${it.share} of creatures can afford one.` : "No other creature in the world can afford one yet."}</p>
       <div class="fieldset"><span class="lbl">Model</span><div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap">${MODELS.map((m, k) => `<button class="chip" data-model="${k}" aria-pressed="${k === model}">${esc(m)}</button>`).join("")}</div></div>
       <div class="fieldset"><span class="lbl">Colour</span><div class="swatches">${Status.PAINTS.map(([n, c], k) => `<button class="swatch" data-paint="${k}" aria-label="${n}" aria-pressed="${k === paint}" style="background:#${c.toString(16).padStart(6, "0")}"></button>`).join("")}</div></div>
       ${why ? `<p class="muted">${esc(why)}</p>` : ""}
-      <button class="big" id="buildIt" ${why ? "disabled" : ""}>Build here · ${coins(house.price)}</button>
+      ${qNote ? `<p class="muted">${esc(qNote)}</p>` : ""}
+      ${q && q.ok ? `<button class="big" id="kprIt">Build with a mortgage · ${coins(q.down)} down</button>` : `<button class="big" id="buildIt" ${why ? "disabled" : ""}>Build here · ${coins(house.price)}</button>`}
       <button class="close" data-close="1">Close</button>`);
     sheet.querySelectorAll("[data-model]").forEach(b => b.onclick = () => { model = +b.dataset.model; draw(); });
     sheet.querySelectorAll("[data-paint]").forEach(b => b.onclick = () => { paint = +b.dataset.paint; draw(); });
     sheet.querySelector("[data-close]").onclick = closeSheet;
-    $("buildIt").onclick = async () => {
-      if (!game.act(cur.id, `beli:${H.id}@${l.i},${model},${paint}`)) return say("Couldn't buy it.");
+    const go = async kind => {
+      if (!game.act(cur.id, `${kind}:${H.id}@${l.i},${model},${paint}`)) return say("Couldn't buy it.");
       save(); refresh(); closeSheet();
       await TOWN.enter(townData(), true);
       const nl = TOWN.lots.find(x => x.who && x.who.you && x.build); if (nl) TOWN.focusLot(nl);
       burst(["★"], 6, "#D4A853"); say("Construction starts today!");
     };
+    if ($("buildIt")) $("buildIt").onclick = () => go("beli");
+    if ($("kprIt")) $("kprIt").onclick = () => go("kpr");
     sheet.classList.add("clear");
     TOWN.preview(l, model, paint);
   };

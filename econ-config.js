@@ -19,7 +19,7 @@
     LOANS: [{ term: 120, label: "4 months" }, { term: 240, label: "8 months" }, { term: 480, label: "16 months" }],
     // bank.js (tahap 4): bunga mengambang = Makro.rate(hari) + spread per jenis
     BANK: {
-      SPREAD: { biz: 0.10, open: 0.12, personal: 0.14 },
+      SPREAD: { kpr: 0.04, biz: 0.10, open: 0.12, personal: 0.14 },
       BAD_SPREAD: 0.03,         // tambahan bunga selama riwayat kredit keluarga jelek
       BAD_BLOCK: 180,           // hari tidak bisa pinjam setelah gagal bayar
       BAD_PEN: 365,             // hari bunga lebih mahal setelah gagal bayar
@@ -30,6 +30,12 @@
       EARLY_FEE: 1.02,          // lunas dipercepat bayar 102% sisa pokok
       COOLDOWN: 30,             // jeda pinjam lagi setelah lunas dipercepat
       LATE_BAD: 60,             // hari menunggak utang pribadi sebelum dianggap gagal bayar
+      // tahap 5: tabungan dan KPR
+      SAVE_SHARE: 0.4,          // bunga tabungan = 40% suku bunga acuan (1–10%), selalu di bawah pinjaman termurah
+      KPR_DOWN: 0.3,            // uang muka KPR
+      KPR_TERM: 1080,           // tenor KPR (3 tahun; makhluk tua: OLD_TERM). Utangnya milik keluarga, jadi boleh melewati umur pembayar
+      KPR_LATE: 60,             // hari menunggak sebelum rumah disita
+      KPR_FIRE_SALE: 0.8,       // rumah sitaan dijual 80% harga pasar
     },
     // rumah (status.js): biaya pegang per tahun (pajak, perawatan, listrik) dari harga beli, dibayar harian oleh anggota dewasa terkaya
     HOUSE_UPKEEP: { flat: 0.02, house: 0.03, villa: 0.05, mansion: 0.07 },

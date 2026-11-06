@@ -149,8 +149,21 @@ function phWallet(c) {
     <h4 class="pa-h">What ${esc(c.name)} owns</h4><div class="pa-list">
       <div class="pa-row"><span class="pa-grow"><b>Things</b><small>${o.goods.length} item${o.goods.length === 1 ? "" : "s"} · the dealer would pay</small></span><span class="pa-val">${coins(worth)}</span></div>
       <div class="pa-row"><span class="pa-grow"><b>Family home</b><small>${esc(famStatus().house.label)} · ${esc(famStatus().house.hood)}</small></span><span class="pa-val">Shared</span></div>
-      <div class="pa-row"><span class="pa-grow"><b>Net worth</b></span><span class="pa-val"><b>${coins(s.wallet + worth)}</b></span></div></div>
+      ${s.tab ? `<div class="pa-row"><span class="pa-grow"><b>Savings</b></span><span class="pa-val">${coins(Math.floor(s.tab))}</span></div>` : ""}
+      <div class="pa-row"><span class="pa-grow"><b>Net worth</b></span><span class="pa-val"><b>${coins(Math.floor(s.wallet + (s.tab || 0) + worth))}</b></span></div></div>
+    ${phSavings(c, s)}
     <p class="pa-note">Coins come from work, prizes and inheritance.</p>`;
+}
+// tabungan dan KPR (bank.js): bunga tabungan mengambang, selalu di bawah bunga pinjaman; KPR milik keluarga
+function phSavings(c, s) {
+  const K = famStatus().kpr, old = c.age(today()) >= 180, pctS = v => `${(v * 100).toFixed(1).replace(/\.0$/, "")}%`;
+  return `<h4 class="pa-h">Savings</h4><div class="vn-card"><div class="vn-row"><span>In savings</span><b>${coins(Math.floor(s.tab || 0))}</b></div>
+      <div class="vn-row"><span>Interest now</span><b>${pctS(s.save_rate)} a year</b></div>${s.tab_earn ? `<div class="vn-row"><span>Earned so far</span><b>${coins(Math.floor(s.tab_earn))}</b></div>` : ""}
+      <p class="vn-fact">Coins in the wallet stay the same. Coins in savings grow a little every day. The rate moves with the world economy. Bills are paid from savings when the wallet runs short.</p>
+      ${old && canCare() ? `<span class="vn-btns"><button data-bank="simpan:${Math.floor(s.wallet / 2)}" ${s.wallet < 2 ? "disabled" : ""}>Save half · ${coins(Math.floor(s.wallet / 2))}</button><button data-bank="ambil:all" ${!(s.tab >= 1) ? "disabled" : ""}>Take it all out</button></span>` : ""}</div>
+    ${K ? `<h4 class="pa-h">Family mortgage</h4><div class="vn-card"><div class="vn-row"><span>Left to pay</span><b>${coins(K.left)}</b></div><div class="vn-row"><span>Paid back</span><b>${coins(K.pay)} a day</b></div>
+      <div class="vn-row"><span>Interest now</span><b>${pctS(K.rate)} a year, floating</b></div>${K.late ? `<p class="vn-fact">Behind for ${K.late} day${K.late > 1 ? "s" : ""}. After 60 days the bank takes the house back.</p>` : ""}
+      ${canCare() ? `<span class="vn-btns"><button data-bank="lunas_kpr" ${s.wallet < K.payoff ? "disabled" : ""}>Pay it all off · ${coins(K.payoff)}</button></span>` : ""}</div>` : ""}`;
 }
 // Calendar, in the style of Google Calendar: a schedule list with a big illustrated banner for each month,
 // a week label above each week, the date on the left and coloured event chips on the right.
