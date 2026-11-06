@@ -3,7 +3,7 @@
 // `claude` = runtime Artifact claude.ai (window.claude), dipakai ui.js dengan penjagaan globalThis.claude.
 // Skrip UI diperiksa sebagai satu bundel (ui.js hasil tools/build_ui.py), karena fragmen ui/*.js hidup dalam satu lingkup.
 const globals = require("globals");
-const MODULES = Object.fromEntries(["Engine", "Storylets", "Agenda", "Status", "Tree", "Cosmetics", "Career", "Market", "Venture", "Work", "Pets",
+const MODULES = Object.fromEntries(["Engine", "EconConfig", "Money", "Storylets", "Agenda", "Status", "Tree", "Cosmetics", "Career", "Market", "Venture", "Work", "Pets",
   "Mag", "Wants", "Tonggak", "Anak", "Remaja", "Today", "Soon", "Weather", "Balik", "Obrolan", "Kabar", "Dapur", "GameLayer", "Net", "Moments", "Brands", "Tele", "Town", "Look", "Rumah", "Liar", "Kota", "Bumi", "Globe", "Region", "Continent", "Suara", "Konser", "Konser3D", "TOWN_ASSETS", "THREE"].map(k => [k, "readonly"]));
 const RULES = { "no-undef": "error", "no-unused-vars": ["warn", { args: "none", caughtErrors: "none" }] };
 module.exports = [

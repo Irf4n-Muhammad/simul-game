@@ -7,6 +7,7 @@
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const ST = (typeof module !== "undefined") ? require("./status.js") : globalThis.Status;
   const B = (typeof module !== "undefined") ? require("./brands.js") : globalThis.Brands;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { HOOKS, seed_rng, Ctx, YEAR } = E;
   const CITY = "old-town";
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -207,16 +208,16 @@
 
   // ---------------------------------------------------------------- tindakan pemain
   function ctx(home, c, day, tag) { const x = new Ctx(c, day, seed_rng(c.id, day, tag), home, true); x.drama = "sedang"; return x; }
-  function pay(c, n) { if (c.st.wallet < n) return false; c.st.wallet -= n; return true; }
+  function pay(c, n, day) { return Money.move(c, -n, "pasar_beli", day, "need"); }
   function buyNew(home, c, day, L) {
     const M = mk(c);
     if (L.cat === "Classes") {
-      if ((M.pass[L.skill] || 0) > day + 7 || !pay(c, L.price)) return false;
+      if ((M.pass[L.skill] || 0) > day + 7 || !pay(c, L.price, day)) return false;
       M.pass[L.skill] = Math.max(M.pass[L.skill] || day, day) + L.pass;
       ctx(home, c, day, "kelas").remember(`Signed up for ${L.label.toLowerCase()}.`);
       return true;
     }
-    if (!canBuyNew(c, L, day) || !pay(c, L.price)) return false;
+    if (!canBuyNew(c, L, day) || !pay(c, L.price, day)) return false;
     // barang yang nggak bisa dijual dan sudah usang diganti; yang lama disumbangkan
     if (!L.trade) M.goods = M.goods.filter(g => g.id !== L.id);
     M.goods.push(newGood(M, L, { rel: day, got: day, made: L.made, price: L.price }));
@@ -246,7 +247,7 @@
       if (verb === "beli" && LINE[arg]) ok = buyNew(home, c, day, LINE[arg]);
       else if (verb === "drop") {
         const D = findDrop(arg);
-        if (D && D.start <= day && dropLeft(D, day) > 0 && !M.drops.includes(D.key) && pay(c, D.price)) {
+        if (D && D.start <= day && dropLeft(D, day) > 0 && !M.drops.includes(D.key) && pay(c, D.price, day)) {
           M.drops.push(D.key);
           M.goods.push(newGood(M, LINE[D.line], { rel: D.start, got: day, made: D.made, price: D.price, label: D.label, ed: D.key }));
           ST.achieve(ctx(home, c, day, "drop"), "limited", `Got the ${D.label}, one of only ${D.made} made.`);
@@ -254,7 +255,7 @@
         }
       } else if (verb === "bekas") {
         const l = usedListings(day, c).find(u => u.lid === arg);
-        if (l && pay(c, l.ask)) {
+        if (l && pay(c, l.ask, day)) {
           M.boughtUsed.push(l.lid); if (M.boughtUsed.length > 60) M.boughtUsed.splice(0, 20);
           M.goods.push(newGood(M, LINE[l.it.id], { ...l.it, got: day, paid: l.ask }));
           M.goods[M.goods.length - 1].paid = l.ask;
@@ -267,12 +268,12 @@
         if (verb === "jual" && LINE[g.id].trade) {
           const n = sellPrice(g, day);
           M.goods = M.goods.filter(o => o !== g);
-          c.st.wallet += n;
+          Money.move(c, n, "pasar_jual", day);
           const x = ctx(home, c, day, "jual");
           x.remember(`Sold the ${g.label} for ${n.toLocaleString("en")} coins.`);
           if (n >= 2 * (g.paid || g.price) && n >= 500) ST.achieve(x, "flip", `Sold a ${g.label} for more than twice what it cost.`);
           ok = true;
-        } else if (verb === "servis" && g.cond < 95 && pay(c, serviceCost(g, day))) { g.orig = Math.min(g.orig ?? 100, g.cond); g.cond = 95; ok = true; }
+        } else if (verb === "servis" && g.cond < 95 && pay(c, serviceCost(g, day), day)) { g.orig = Math.min(g.orig ?? 100, g.cond); g.cond = 95; ok = true; }
         else if (verb === "buang" && !LINE[g.id].trade) { M.goods = M.goods.filter(o => o !== g); ok = true; }
         else if (verb === "simpan" && LINE[g.id].cat !== "Classes") { g.boxed = !g.boxed; ok = true; }
       }

@@ -9,6 +9,7 @@
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const ST = (typeof module !== "undefined") ? require("./status.js") : globalThis.Status;
   const CR = (typeof module !== "undefined") ? require("./career.js") : globalThis.Career;
+  const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
   const { HOOKS, seed_rng, clamp, YEAR } = E;
   const hash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   const r1 = v => Math.round(v * 10) / 10;
@@ -312,7 +313,7 @@
     const dS = stressDelta(c, W) + inc * 5;
     W.stress = clamp(W.stress + dS, 0, 100);
     const pay = ST.salary(c.st.job), extra = Math.round(pay * (sh.pay + { never: 0, some: 0.2, always: 0.45 }[W.ot]));
-    c.st.wallet += extra;
+    Money.move(c, extra, "lembur", x.day);
     const w = (ST.JOBS[W.job || "nurse"] || {}).w || { logic: 0.4, charm: 0.3, fitness: 0.3 };
     for (const [s, v] of Object.entries(w)) c.st.skills[s] = Math.min(100, Math.round((c.st.skills[s] + 0.05 * v * (W.style === "extra" ? 1.3 : 1) * Math.max(0.1, 1 - c.st.skills[s] / 120)) * 1000) / 1000);
     if (W.stress > 70) x.need("mood", -2);
@@ -439,7 +440,7 @@
       else { const m = W.mates[0]; up(m, 5); s.logic = Math.min(100, s.logic + 0.4); if (it) it.hp = clamp(it.hp + 8, 0, 100); t = fill(T.mentor, V); good = true; }
     }
     if (C.k === "double") {
-      if (opt === "yes") { const n = Math.round(ST.salary(c.st.job) * 0.6); c.st.wallet += n; up(W.boss, 6); W.stress = clamp(W.stress + 15, 0, 100); t = `Stayed late. +${n} coins and a grateful ${W.boss.name}, but exhausted.`; good = true; }
+      if (opt === "yes") { const n = Math.round(ST.salary(c.st.job) * 0.6); Money.move(c, n, "lembur", day); up(W.boss, 6); W.stress = clamp(W.stress + 15, 0, 100); t = `Stayed late. +${n} coins and a grateful ${W.boss.name}, but exhausted.`; good = true; }
       else { up(W.boss, -3); t = `Went home after the normal shift. ${W.boss.name} found someone else.`; good = null; }
     }
     if (C.k === "error") {
@@ -462,7 +463,7 @@
     }
     if (C.k === "course") {
       const K = p.certs[C.cert] || Object.values(p.certs)[0];
-      if (opt === "yes") { if (c.st.wallet < K.cost) { t = `Not enough coins for the course.`; good = false; } else { c.st.wallet -= K.cost; W.study = { cert: C.cert, left: K.days }; t = `Signed up for ${K.label}. ${K.days} evenings of study ahead.`; good = true; } }
+      if (opt === "yes") { if (c.st.wallet < K.cost) { t = `Not enough coins for the course.`; good = false; } else { Money.move(c, -K.cost, "kursus", day); W.study = { cert: C.cert, left: K.days }; t = `Signed up for ${K.label}. ${K.days} evenings of study ahead.`; good = true; } }
       else t = "Skipped the course for now.";
     }
     W.cardLast = { d: day, t, by, good };
@@ -557,7 +558,7 @@
     Object.assign(cc, { st: JSON.parse(JSON.stringify(c.st)), needs: { ...c.needs }, traits: { ...c.traits }, info: JSON.parse(JSON.stringify(c.info)), stats: { ...c.stats }, memory: [], demo: true });
     const since = day - 40, co = (CR.companiesAt(since, job)[0] || {}).id || null;
     cc.st.job = { id: job, level: 0, since, co };
-    cc.st.ward = null; cc.st.wallet = Math.max(cc.st.wallet, 2000);
+    cc.st.ward = null; Money.set(cc, Math.max(cc.st.wallet, 2000), "demo", day);
     const W = init(cc, home, since);
     for (let d = since; d <= day; d++) {
       const x = new E.Ctx(cc, d, seed_rng(c.id, d, "wdemo"), home, true);
