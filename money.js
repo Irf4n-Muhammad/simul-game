@@ -58,6 +58,16 @@
     }
     return out;
   }
+  // rata-rata pemasukan harian dari alasan tertentu (mis. gaji, pensiun, ambilan bisnis) selama periode yang disimpan.
+  // Penyebutnya hari sejak periode tertua (min 30), jadi makhluk yang baru mulai kerja tidak terlihat berpenghasilan tinggi.
+  function daily(c, whys, day) {
+    const L = c && c.st && c.st.led;
+    if (!L || !L.b.length) return 0;
+    let sum = 0;
+    for (const [, R] of L.b) for (const w of whys) if (R[w]) sum += R[w][0];
+    const span = Math.max(BUCKET, Math.min(BUCKET * KEEP, day - L.b[0][0] * BUCKET + 1));
+    return sum / span;
+  }
   // ringkasan satu rumah (semua anggota yang punya dompet)
   function household(home) {
     const out = {};
@@ -67,7 +77,7 @@
     return out;
   }
 
-  const Money = { move, set, ledger, household, WHY, BUCKET, KEEP };
+  const Money = { move, set, ledger, household, daily, WHY, BUCKET, KEEP };
   if (typeof module !== "undefined") module.exports = Money;
   else globalThis.Money = Money;
 })();

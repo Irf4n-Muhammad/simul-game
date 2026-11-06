@@ -107,26 +107,33 @@ test("tabungan: simpan, bunga harian, ambil; tagihan wajib ambil dari tabungan",
   assert.ok(s.paid > 0);
 });
 
-test("KPR: uang muka 30%, masuk batas rumah tangga, satu pinjaman per keluarga, lunas atau disita", () => {
+test("KPR: uang muka 20%, masuk batas rumah tangga, satu pinjaman per keluarga, lunas atau disita", () => {
   const a = mk("a"), h = homeOf(a);
   for (let d = 0; d < 90; d++) Money.move(a, 400, "gaji", d);
   a.st.wallet = 9000;
   const q = BK.kprCheck(h, a, 30000, 90, []);
   assert.ok(q.ok, JSON.stringify(q));
-  assert.equal(q.down, 9000);
+  assert.equal(q.down, 30000 * CFG.BANK.KPR_DOWN);
   BK.kprOpen(h, a, q, "house", 90);
-  assert.equal(a.st.wallet, 0);
+  assert.equal(a.st.wallet, 9000 - q.down);
+  a.st.wallet = 0;
   assert.equal(BK.kprCheck(h, a, 30000, 90, []).ok, false, "satu rumah satu pinjaman");
   // ruang cicilan berkurang untuk pinjaman lain
   assert.ok(BK.room(h, 90, []) < BK.income(h, 90) * CFG.BANK.HOUSEHOLD_SHARE);
   // nunggak sampai disita
-  let r = null;
-  for (let d = 91; d < 91 + CFG.BANK.KPR_LATE; d++) r = BK.kprPay(h, a, d);
+  // nunggak: sekali dijadwal ulang (cicilan turun), lalu kalau tetap nunggak, disita
+  let r = null, d = 91, restr = null;
+  const pay0 = BK.due(BK.kpr(h), 91, h);
+  for (; d < 91 + CFG.BANK.KPR_RESTRUCTURE; d++) r = BK.kprPay(h, a, d);
+  assert.ok(r.restructured);
+  restr = BK.due(BK.kpr(h), d, h);
+  assert.ok(restr < pay0, `cicilan turun: ${pay0} -> ${restr}`);
+  for (const end = d + CFG.BANK.KPR_LATE; d < end; d++) r = BK.kprPay(h, a, d);
   assert.ok(r.foreclose);
-  const f = BK.foreclose(h, a, 30000, 91 + CFG.BANK.KPR_LATE);
+  const f = BK.foreclose(h, a, 30000, d);
   assert.equal(f.sale, 24000);
   assert.equal(BK.kpr(h), null);
-  assert.ok(BK.blocked(h, 91 + CFG.BANK.KPR_LATE + 1));
+  assert.ok(BK.blocked(h, d + 1));
 });
 
 test("KPR ditolak kalau pemasukan rutin terlalu kecil", () => {
@@ -134,4 +141,15 @@ test("KPR ditolak kalau pemasukan rutin terlalu kecil", () => {
   for (let d = 0; d < 90; d++) Money.move(a, 30, "gaji", d);
   a.st.wallet = 100000;
   assert.equal(BK.kprCheck(h, a, 200000, 90, []).why, "income");
+});
+
+test("KPR: anggota keluarga lain ikut bayar kalau dompet pembayar utama kurang", () => {
+  const a = mk("a"), b = mk("b"), h = homeOf(a, b);
+  for (let d = 0; d < 90; d++) Money.move(a, 400, "gaji", d);
+  a.st.wallet = 9000;
+  BK.kprOpen(h, a, BK.kprCheck(h, a, 30000, 90, []), "house", 90);
+  a.st.wallet = 0; b.st.wallet = 5000;
+  const r = BK.kprPay(h, [a, b], 91);
+  assert.ok(r.paid > 0);
+  assert.ok(b.st.wallet < 5000);
 });

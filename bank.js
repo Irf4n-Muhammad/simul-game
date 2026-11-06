@@ -63,14 +63,9 @@
 
   // ---- pemasukan rutin rumah tangga per hari, rata-rata dari buku besar (maks 90 hari)
   function income(home, day) {
-    let sum = 0, first = Infinity;
-    for (const m of home.members) {
-      if (!m.st || !m.st.led || ("keluar" in m.info) || !m.alive(day)) continue;
-      for (const [k, R] of m.st.led.b) { first = Math.min(first, k); for (const w of ROUTINE) if (R[w]) sum += R[w][0]; }
-    }
-    if (!isFinite(first)) return 0;
-    const span = Math.max(30, Math.min(Money.BUCKET * Money.KEEP, day - first * Money.BUCKET + 1));
-    return sum / span;
+    let sum = 0;
+    for (const m of home.members) if (m.st && !("keluar" in m.info) && m.alive(day)) sum += Money.daily(m, ROUTINE, day);
+    return sum;
   }
   // semua cicilan yang ditanggung rumah tangga hari ini: utang pribadi + pinjaman buka usaha yang dijamin keluarga
   function burden(home, day, bizList) {
@@ -192,7 +187,8 @@
     if (blocked(home, day)) return { ok: false, why: "credit" };
     const down = Math.ceil(cost * K.KPR_DOWN / 100) * 100, amt = cost - down;
     if (c.st.wallet + (c.st.tab || 0) < down) return { ok: false, why: "down", down, amt };  // uang muka boleh dari tabungan
-    const term = isOld(c, day) ? K.OLD_TERM : K.KPR_TERM;
+    // tenor selesai paling lambat KPR_PAST_OLD hari setelah peminjam tua (celah #2): hampir semua cicilan dibayar dari gaji, bukan pensiun
+    const term = isOld(c, day) ? K.OLD_TERM : Math.max(K.OLD_TERM, Math.min(K.KPR_TERM, E.OLD_AGE + K.KPR_PAST_OLD - c.age(day)));
     const max = maxFor(room(home, day, bizList), "kpr", term, day, home) * (isOld(c, day) ? 0.5 : 1);
     const pay = due({ p: amt, from: day, term, kind: "kpr" }, day, home);
     return amt <= max ? { ok: true, down, amt, term, pay, rate: rate("kpr", day, home), max } : { ok: false, why: "income", down, amt, term, pay, max };
@@ -205,19 +201,30 @@
     home.world.kpr = L;
     return L;
   }
-  // cicilan harian; hasil: { paid } | { done } | { late, foreclose? }
-  function kprPay(home, payer, day) {
-    const L = kpr(home);
-    if (!L || L.last === day || !payer) return null;
+  // cicilan harian; hasil: { paid } | { done } | { late, restructured?, foreclose? }
+  // payers: anggota dewasa, yang paling kaya duluan. Rumah milik keluarga, jadi kalau satu dompet kurang, yang lain ikut urun.
+  function kprPay(home, payers, day) {
+    const L = kpr(home), list = (Array.isArray(payers) ? payers : [payers]).filter(Boolean);
+    if (!L || L.last === day || !list.length) return null;
     L.last = day;
     const want = due(L, day, home);
-    cover(payer, want, day);
-    const got = Math.max(0, Math.min(want, Math.floor(payer.st.wallet)));
-    if (got > 0) Money.move(payer, -got, "kpr", day);
+    let got = 0;
+    for (const m of list) {
+      if (got >= want) break;
+      cover(m, want - got, day);
+      const k = Math.max(0, Math.min(want - got, Math.floor(m.st.wallet)));
+      if (k > 0) { Money.move(m, -k, "kpr", day); got += k; }
+    }
     if (got < want) {
       const interest = Math.round(L.p * rate("kpr", day, home) / 365);
-      L.p = Math.max(0, Math.round(L.p - (got - interest))); L.left = L.p; L.pay = due(L, day + 1, home);
+      L.p = Math.max(0, Math.round(L.p - (got - interest))); L.left = L.p;
       L.late = (L.late || 0) + 1;
+      // sekali seumur pinjaman: bank menjadwal ulang (sisa tenor diperpanjang separuh + 180 hari), cicilan turun, tunggakan dimulai lagi
+      if (L.late === K.KPR_RESTRUCTURE && !L.restr) {
+        L.restr = day; L.term += Math.round((L.from + L.term - day) * 0.5) + 180; L.late = 0; L.pay = due(L, day + 1, home);
+        return { late: K.KPR_RESTRUCTURE, restructured: true };
+      }
+      L.pay = due(L, day + 1, home);
       return { late: L.late, foreclose: L.late >= K.KPR_LATE };
     }
     L.late = 0;
