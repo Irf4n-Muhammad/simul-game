@@ -96,7 +96,7 @@ function bkPageHTML(S, p, i, n) {
     <filter id="bkGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   const frame = S.read ? `<rect x="22" y="12" width="${W - 34}" height="${H - 24}" fill="none" stroke="url(#bkGold)" stroke-width="1.3"/><rect x="27" y="17" width="${W - 44}" height="${H - 34}" fill="none" stroke="#7A5212" stroke-width="0.5" opacity="0.6"/>`
     : `<path d="M24 ${H - 30} H${W - 14}" stroke="#B8B0A0" stroke-width="0.6"/>${Array.from({ length: 15 }, (_, k) => `<path d="M24 ${70 + k * 24} H${W - 14}" stroke="#C9C2B4" stroke-width="0.5"/>`).join("")}`;
-  const wm = S.read ? `<path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="#5A3A18" opacity="0.06"/><path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="none" stroke="#5A3A18" stroke-width="0.9" opacity="0.14"/>` : "";
+  const wm = S.read ? `<path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="#5A3A18" opacity="0.035"/><path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="none" stroke="#5A3A18" stroke-width="0.9" opacity="0.08"/>` : "";
   const num = `<text x="${W / 2 + 6}" y="${H - 18}" text-anchor="middle" font-family="${S.read ? "Cinzel, serif" : "Caveat, cursive"}" font-size="${S.read ? 10 : 15}" letter-spacing="2" fill="${S.read ? "#6A4512" : "#6A6660"}">${S.read ? Rasi.roman(i + 1) : i + 1}</text>`;
   let body = "", html = "";
   const age = d => d == null ? "" : (S.read ? Rasi.roman(Math.max(1, d - S.c.born)) : "day " + Math.max(1, d - S.c.born));
@@ -120,29 +120,29 @@ function bkPageHTML(S, p, i, n) {
     const fields = (p.owned.filter(id => Tree.NODES[id].tier === "field").length ? p.owned.filter(id => Tree.NODES[id].tier === "field") : root.kids.filter(k => Tree.NODES[k].tier === "field"));
     const goals = [];
     for (const f of fields) for (const sp of Tree.NODES[f].kids) if (Tree.NODES[sp].tier === "spec") for (const ni of Tree.NODES[sp].kids) if (Tree.NODES[ni].tier === "niche" && !ownedSet.has(ni) && goals.length < 3 && !goals.includes(ni)) goals.push(ni);
-    const chain = shown.concat(next ? [next] : []), nC = chain.length;
-    const yTop = 198, yBot = S.read ? 330 : 352, X = [W / 2 + 6, W / 2 - 28, W / 2 + 38, W / 2 - 18, W / 2 + 28];
-    const pts = chain.map((id, k) => [X[k % X.length], nC === 1 ? yBot : yBot - (yBot - yTop) * k / (nC - 1)]);
-    for (let k = 0; k < nC - 1; k++) {
-      const done = k < shown.length - 1;
-      body += `<path d="M${pts[k][0]} ${pts[k][1]} L${pts[k + 1][0]} ${pts[k + 1][1]}" stroke="${done ? gold : "#8A5A12"}" stroke-width="${done ? 2.4 : 1.4}" ${done ? "" : 'stroke-dasharray="5 6" opacity="0.75"'}/>`;
-    }
+    // tujuan: satu baris bintang di atas, dipisah garis tipis dari jalur
     const gx = [W / 2 - 82, W / 2 + 6, W / 2 + 94];
-    if (nC) for (let g = 0; g < goals.length; g++) body += `<path d="M${pts[nC - 1][0]} ${pts[nC - 1][1]} L${gx[g]} 112" stroke="#8A5A12" stroke-width="1" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.4"/>`;
-    chain.forEach((id, k) => {
-      const [x, y] = pts[k], isNext = id === next, isCur = !isNext && k === shown.length - 1;
-      if (isNext) body += `<circle cx="${x}" cy="${y}" r="17" fill="none" stroke="${red}" stroke-width="0.9" stroke-dasharray="2 4"/><path d="M${x} ${y - 10} L${x + 10} ${y} L${x} ${y + 10} L${x - 10} ${y} Z" fill="none" stroke="${red}" stroke-width="1.5"/><circle cx="${x}" cy="${y}" r="2" fill="${red}"/>`;
-      else if (isCur && S.read) body += `<circle cx="${x}" cy="${y}" r="26" fill="#FFD877" opacity="0.3" filter="url(#bkGlow)"/><path d="M${x} ${y - 13} L${x + 13} ${y} L${x} ${y + 13} L${x - 13} ${y} Z" fill="url(#bkGold)" stroke="#5A3A0E" stroke-width="1.2"/><path d="M${x} ${y - 6} L${x + 6} ${y} L${x} ${y + 6} L${x - 6} ${y} Z" fill="#FFF3D0"/>`;
-      else body += `<path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="${gold}" stroke="${S.read ? "#4A2E08" : "#5A5650"}" stroke-width="1"/>`;
-      const right = x <= W / 2 + 6, lx = right ? x + 20 : 20, w = right ? W - x - 34 : x - 40;
-      const sub = isNext ? `next · ${p.v.nodes[id].cost} point${p.v.nodes[id].cost === 1 ? "" : "s"} of ink` : age(p.v.nodes[id].day);
-      html += `<div class="bk-n${isNext ? " nx" : ""}" style="left:${lx}px;top:${y - 14}px;width:${w}px;text-align:${right ? "left" : "right"}"><b>${esc(Tree.NODES[id].label)}</b><i>${esc(sub)}</i></div>`;
-    });
+    if (goals.length) html += `<div class="bk-gt" style="top:100px">${S.read ? "where this ink may lead" : "maybe one day"}</div>`;
     goals.forEach((id, g) => {
-      body += `<path d="${bkSpark(gx[g], 112, 11, 0.25)}" fill="none" stroke="${S.read ? "#9A6E1C" : "#7A7670"}" stroke-width="1.3"/>`;
-      html += `<div class="bk-g" style="left:${gx[g] - 42}px;top:128px;width:84px">${esc(Tree.NODES[id].label)}</div>`;
+      body += `<path d="${bkSpark(gx[g], 132, 10, 0.25)}" fill="none" stroke="${S.read ? "#9A6E1C" : "#7A7670"}" stroke-width="1.3"/>`;
+      html += `<div class="bk-g" style="left:${gx[g] - 42}px;top:146px;width:84px">${esc(Tree.NODES[id].label)}</div>`;
     });
-    if (nC > 1 && goals.length) html += `<div class="bk-fog" style="top:157px">${S.read ? "the ink here is not yet dry" : "not written yet"}</div>`;
+    body += `<path d="M44 184 H${W - 32}" stroke="${S.read ? "#8A5A12" : "#9A968E"}" stroke-width="0.8" opacity="0.45"/>`;
+    // jalur: satu garis lurus, langkah berikutnya di atas, yang paling lama di bawah
+    const rows = (next ? [next] : []).concat(shown.slice().reverse()), LX = 66, Y0 = 210, DY = 34;
+    if (rows.length > 1) {
+      const yA = Y0, yB = Y0 + DY * (rows.length - 1), y1 = next ? Y0 + DY : Y0;
+      if (next) body += `<path d="M${LX} ${yA} V${y1}" stroke="${red}" stroke-width="1.3" stroke-dasharray="3 4" opacity="0.8"/>`;
+      if (yB > y1) body += `<path d="M${LX} ${y1} V${yB}" stroke="${S.read ? "#B8862A" : "#8A8680"}" stroke-width="2.2"/>`;  // gradien gold tidak tampil di garis lurus (bbox lebar 0)
+    }
+    rows.forEach((id, k) => {
+      const x = LX, y = Y0 + DY * k, isNext = id === next, isCur = !isNext && id === shown[shown.length - 1];
+      if (isNext) body += `<circle cx="${x}" cy="${y}" r="13" fill="none" stroke="${red}" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="${S.read ? "#F4E2B8" : "#F4F0E6"}" stroke="${red}" stroke-width="1.4"/>`;
+      else if (isCur) body += `<path d="M${x} ${y - 10} L${x + 10} ${y} L${x} ${y + 10} L${x - 10} ${y} Z" fill="${gold}" stroke="${S.read ? "#5A3A0E" : "#5A5650"}" stroke-width="1.1"/><path d="M${x} ${y - 4} L${x + 4} ${y} L${x} ${y + 4} L${x - 4} ${y} Z" fill="${S.read ? "#FFF3D0" : "#F4F0E6"}"/>`;
+      else body += `<path d="M${x} ${y - 7} L${x + 7} ${y} L${x} ${y + 7} L${x - 7} ${y} Z" fill="${gold}" stroke="${S.read ? "#4A2E08" : "#5A5650"}" stroke-width="1"/>`;
+      const sub = isNext ? `next · ${p.v.nodes[id].cost} point${p.v.nodes[id].cost === 1 ? "" : "s"} of ink` : age(p.v.nodes[id].day);
+      html += `<div class="bk-n${isNext ? " nx" : ""}" style="left:${LX + 20}px;top:${y - 9}px;width:${W - LX - 52}px"><b>${esc(Tree.NODES[id].label)}</b><i>${esc(sub)}</i></div>`;
+    });
     const seal = Rasi.seal(S.c.st, r, S.c.born, S.day);
     html += (S.read ? `<div class="bk-cap" style="--rc:${col}"><span>${esc(root.label[0])}</span></div>` : "") + `
       <div class="bk-title"><b>${esc(S.read ? root.label.toUpperCase() : root.label)}</b><i>${esc(Rasi.ROOT_PLAIN[r])} · ${p.skill}/100</i></div>`;

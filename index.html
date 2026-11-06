@@ -1263,9 +1263,12 @@ svg { stroke: currentColor; }
 .bk-page .bk-i, .bk-page .bk-p, .bk-page .bk-r { left: 11%; right: 7%; text-align: center; font-style: italic; }
 .bk-page .bk-p { font-size: 5.2cqw; color: #3E2A12; }
 .bk-page .bk-r { color: #7A1E14; font-size: 4.3cqw; }
-.bk-page .bk-n b { display: block; font-family: Cinzel, serif; font-size: 4.2cqw; font-weight: 700; }
+.bk-page .bk-n { display: flex; align-items: baseline; gap: 2.4cqw; white-space: nowrap; }
+.bk-page .bk-n b { font-family: Cinzel, serif; font-size: 4.2cqw; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.bk-page .bk-gt { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 3cqw; letter-spacing: .18em; text-transform: uppercase; color: rgba(110,70,20,.7); }
+.bk-page.pencil .bk-gt { font-family: Caveat, cursive; font-size: 4.6cqw; letter-spacing: 0; text-transform: none; color: #7A7670; }
 .bk-page.pencil .bk-n b, .bk-page.pencil .bk-g, .bk-page.pencil .bk-title b, .bk-page.pencil .bk-seal b { font-family: Caveat, cursive; font-size: 5.6cqw; font-weight: 600; letter-spacing: 0; }
-.bk-page .bk-n i { font-size: 4.2cqw; }
+.bk-page .bk-n i { font-size: 3.8cqw; opacity: .8; flex: none; }
 .bk-page .bk-n.nx { color: #7A1E14; }
 .bk-page.pencil .bk-n.nx { color: #5A5650; }
 .bk-page .bk-g { text-align: center; font-family: Cinzel, serif; font-size: 3.3cqw; line-height: 1.15; font-weight: 700; color: #6A4512; }
