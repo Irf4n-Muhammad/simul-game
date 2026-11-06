@@ -41,11 +41,11 @@
       const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
       return tex;
     }
-    function tag(text, sub, accent, k = 1) {
+    function tag(text, sub, accent, k = 1, ink) {
       const tex = env.canvasTex((c, w, h) => {
-        c.fillStyle = accent ? "rgba(255,248,240,0.97)" : "rgba(255,255,255,0.9)";
+        c.fillStyle = ink ? "rgba(250,247,238,0.95)" : accent ? "rgba(255,248,240,0.97)" : "rgba(255,255,255,0.9)";
         const r = 44; c.beginPath(); c.moveTo(r, 4); c.arcTo(w - 4, 4, w - 4, h - 4, r); c.arcTo(w - 4, h - 4, 4, h - 4, r); c.arcTo(4, h - 4, 4, 4, r); c.arcTo(4, 4, w - 4, 4, r); c.fill();
-        c.textAlign = "center"; c.fillStyle = accent ? "#B35A36" : "#4B453F"; c.font = "800 40px Manrope, sans-serif"; c.fillText(text, w / 2, sub ? 50 : 62);
+        c.textAlign = "center"; c.fillStyle = ink || (accent ? "#B35A36" : "#4B453F"); c.font = "800 40px Manrope, sans-serif"; c.fillText(text, w / 2, sub ? 50 : 62);
         if (sub) { c.fillStyle = "#7A7168"; c.font = "600 24px Manrope, sans-serif"; c.fillText(sub, w / 2, 80); }
       }, 320, 96);
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, depthTest: false, transparent: true }));
@@ -57,6 +57,9 @@
       list.forEach((b, i) => { const o = set(b, i); p.set(o.x, o.y || 0, o.z); s.set(o.sx, o.sy, o.sz); q.setFromAxisAngle(up, o.ry || 0); m4.compose(p, q, s); im.setMatrixAt(i, m4); if (o.c !== undefined) { col.setHex(o.c).convertSRGBToLinear(); im.setColorAt(i, col); } });
       root.add(im); return im;
     }
+    const WILDK = { sand: { c: 0xe8c27a, i: "🏜", ink: "#9a6a2a" }, forest: { c: 0x2f6a36, i: "🌳", ink: "#2f6a36" }, plain: { c: 0x9cc46a, i: "🌾", ink: "#5f7a35" }, marsh: { c: 0x6f8a78, i: "🌫", ink: "#4f6a5a" },
+      canyon: { c: 0xc0603a, i: "🪨", ink: "#a04a2a" }, savanna: { c: 0xd2b25a, i: "🦒", ink: "#8a6a2a" }, ice: { c: 0xe6f2f8, i: "🧊", ink: "#4a7a9a" }, tundra: { c: 0xb8c4a8, i: "❄", ink: "#5a6a7a" },
+      volcano: { c: 0x5a3a34, i: "🌋", ink: "#a0402a" }, peak: { c: 0xf2f4f6, i: "☁", ink: "#5a6a8a" } };
     function build(id) {
       if (root) scene.remove(root);
       root = new THREE.Group(); scene.add(root); labels = []; ring = null;
@@ -80,6 +83,14 @@
         const L = tag(t.name, t.main ? (t.live ? "Your home · zoom in" : "Coming soon") : "Small town", t.main && t.live, t.main ? 1.25 : 0.85);
         L.position.set(t.x, t.main ? 9 : 5, t.z); root.add(L); labels.push({ s: L, t });
       }
+      // v80: wilayah liar: bercak warna di tanah + label (yang sudah bisa dikunjungi lebih terang)
+      for (const w of R.wilds || []) {
+        const k = WILDK[w.kind] || WILDK.plain;
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(9, 32), env.F(k.c, { transparent: true, opacity: w.live ? 0.55 : 0.32, depthWrite: false }));
+        spot.rotation.x = -Math.PI / 2; spot.position.set(w.x, 0.12, w.z); root.add(spot);
+        const L = tag(`${k.i} ${w.name}`, w.live ? "Wild area · tap to look" : "Wild area · coming soon", false, w.live ? 1.05 : 0.85, k.ink);
+        L.position.set(w.x, 6, w.z); root.add(L); labels.push({ s: L, t: w, wild: true });
+      }
       inst(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }), houses, h => ({ x: h.x, z: h.z, sx: h.w, sy: h.h, sz: h.w, ry: h.ry, c: h.c }));
       inst(new THREE.ConeGeometry(0.8, 0.6, 4).translate(0, 0.3, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, flatShading: true }), houses.filter(h => h.h < 2), (h, i) => ({ x: h.x, y: h.h, z: h.z, sx: h.w, sy: 1, sz: h.w, ry: h.ry + Math.PI / 4, c: [0xa8624a, 0x7a6a5a, 0xc2704f][i % 3] }));
       const live = R.towns.find(t => t.live);
@@ -94,7 +105,7 @@
       const d = distNow(), p = pitch();
       camera.position.set(focusX, d * Math.sin(p), focusZ + d * Math.cos(p)); camera.lookAt(focusX, 0, focusZ);
       scene.fog.near = d * 1.2; scene.fog.far = d * 3.2 + 100;
-      for (const L of labels) { const k = Math.max(1.1, d * 0.026) * L.s.userData.k; L.s.scale.set(k * 3.33, k, 1); L.s.position.y = (L.t.main ? 6 : 3.5) + k * 0.6; L.s.material.opacity = L.t.main ? 1 : Math.max(0, Math.min(1, (0.95 - zoom) * 5)); L.s.visible = L.s.material.opacity > 0.02; }
+      for (const L of labels) { const k = Math.max(1.1, d * 0.026) * L.s.userData.k; L.s.scale.set(k * 3.33, k, 1); L.s.position.y = (L.t.main || L.wild ? 6 : 3.5) + k * 0.6; L.s.material.opacity = L.t.main || (L.wild && L.t.live) ? 1 : L.wild ? Math.max(0.55, Math.min(1, (0.95 - zoom) * 5)) : Math.max(0, Math.min(1, (0.95 - zoom) * 5)); L.s.visible = L.s.material.opacity > 0.02; }
     }
     function setZoom(z) {
       zoom = Math.max(0, Math.min(Z_OUT + 0.02, z));
@@ -121,7 +132,8 @@
       const r = env.canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera);
       // kota yang paling dekat ke ketukan (label atau rumahnya)
       let best = null;
-      for (const L of labels) { if (!L.s.visible) continue; for (const w of [L.s.position, new THREE.Vector3(L.t.x, 0, L.t.z)]) { const s = w.clone().project(camera), d = Math.hypot((s.x + 1) / 2 * r.width - (e.clientX - r.left), (1 - s.y) / 2 * r.height - (e.clientY - r.top)); if (d < 44 && (!best || d < best.d)) best = { d, t: L.t }; } }
+      for (const L of labels) { if (!L.s.visible) continue; for (const w of [L.s.position, new THREE.Vector3(L.t.x, 0, L.t.z)]) { const s = w.clone().project(camera), d = Math.hypot((s.x + 1) / 2 * r.width - (e.clientX - r.left), (1 - s.y) / 2 * r.height - (e.clientY - r.top)); if (d < 44 && (!best || d < best.d)) best = { d, t: L.t, wild: L.wild }; } }
+      if (best && best.wild) { if (env.showWild) env.showWild(best.t, R.C); return; }
       if (best) { env.showTown(best.t, R.C); return; }
       const v = new THREE.Vector3(); if (ray.ray.intersectPlane(plane, v)) tgt = { x: v.x, z: v.z, zoom: Math.max(0.15, zoom - 0.15) };
     };
@@ -147,6 +159,7 @@
       T.on = true; place();
     };
     T.exit = () => { T.on = false; };
+    T.resume = () => { T.on = true; ptr.clear(); drag = pinch = null; tgt = null; };   // v80: balik dari wilayah liar, peta tetap di tempat yang sama
     T.frame = (t, dt) => {
       if (tgt) {
         const k = 1 - Math.pow(0.03, dt);

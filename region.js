@@ -16,6 +16,16 @@
     ventara: ["Highcairn", "Windmere", "Stonereach", "Eaglecrest", "Cloudrest", "Pinegap", "Talon", "Summit", "Ridgeway", "Gustholm", "Cragmoor", "Aeris"],
   };
 
+  // v80: wilayah liar per benua (konsep: konsep/05-wilayah-liar). live = adegan 3D-nya sudah ada di liar.js.
+  // kind dipakai continent.js buat warna tanda di peta. Laut Lepas (Thalassa) menyusul, karena tempatnya di laut.
+  const WILD = {
+    meridia: [{ id: "angin", name: "Windy Plains", kind: "plain" }, { id: "kabut", name: "Mist Marsh", kind: "marsh" }],
+    solenne: [{ id: "pasir", name: "Sea of Sand", kind: "sand", live: true }, { id: "ngarai", name: "Red Canyon", kind: "canyon" }, { id: "sabana", name: "Savanna", kind: "savanna" }],
+    frostholm: [{ id: "es", name: "Polar Ice", kind: "ice" }, { id: "tundra", name: "Tundra", kind: "tundra" }],
+    thalassa: [{ id: "hutan", name: "Deepwood", kind: "forest", live: true }, { id: "apigunung", name: "Fire Mountain", kind: "volcano" }],
+    ventara: [{ id: "awan", name: "Cloud Peak", kind: "peak" }],
+  };
+
   function rng(seed) {
     let a = 0; for (const ch of String(seed)) a = (Math.imul(a, 31) + ch.charCodeAt(0)) | 0;
     return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -84,10 +94,23 @@
       for (let k = 0; k <= n; k++) { const t = k / n, w = Math.sin(t * Math.PI) * bend, x = A.x + (Bt.x - A.x) * t + nx * w, z = A.z + (Bt.z - A.z) * t + nz * w; pts.push({ x, z }); if (at(x, z).h < 0.01) sea++; }
       roads.push({ a: A.id, b: Bt.id, pts, ferry: sea > 1 });
     }
-    return (cache[id] = { C, half, towns, peaks: peaks.slice(0, 140), forests: forests.filter((f, i) => i % Math.ceil(forests.length / 260) === 0), rivers, roads, at });
+    // v80: wilayah liar: titik daratan yang paling jauh dari kota dan dari wilayah liar lain (benih tetap, sama di semua HP)
+    const wilds = [], WR = rng("liar:" + id);
+    for (const w of WILD[id] || []) {
+      let best = null;
+      for (let z = -half; z <= half; z += 5) for (let x = -half; x <= half; x += 5) {
+        const A = at(x, z); if (!A.mine || A.h < 0.1 || A.h > 0.7) continue;
+        const dT = Math.min(...towns.map(t => Math.hypot(t.x - x, t.z - z))), dW = wilds.length ? Math.min(...wilds.map(o => Math.hypot(o.x - x, o.z - z))) : 1e9;
+        if (dT < 12) continue;
+        const sc = Math.min(dT, 40) + Math.min(dW, 60) * 0.8 + WR() * 6;
+        if (!best || sc > best.sc) best = { x, z, sc };
+      }
+      if (best) wilds.push({ id: w.id, name: w.name, kind: w.kind, live: !!w.live, cont: id, x: best.x, z: best.z });
+    }
+    return (cache[id] = { C, half, towns, wilds, peaks: peaks.slice(0, 140), forests: forests.filter((f, i) => i % Math.ceil(forests.length / 260) === 0), rivers, roads, at });
   }
 
-  const API = { U, NAMES, region, toMap, toLatLon };
+  const API = { U, NAMES, WILD, region, toMap, toLatLon };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Region = API;
 })();

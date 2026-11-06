@@ -843,6 +843,11 @@ svg { stroke: currentColor; }
 .find-you span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .38s ease; z-index: 30; background: radial-gradient(ellipse at 50% 45%, #ffffff 0%, #f3f1ee 45%, #dfe8ef 100%); }
 .veil.on { opacity: 1; }
+/* v80: wilayah liar (pakai gaya bar atas konser) */
+#app.in-liar #floats, #app.in-liar .hud-top { display: none !important; }
+#lNight { margin-left: auto; font-size: 16px; }
+.l-next { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); padding: 12px 22px; border-radius: 999px; background: rgba(0,0,0,.36); color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .06em; backdrop-filter: blur(6px); }
+.l-fps { position: absolute; left: 12px; top: calc(env(safe-area-inset-top, 0px) + 60px); padding: 3px 8px; border-radius: 8px; background: rgba(0,0,0,.35); font: 600 11px ui-monospace, monospace; color: #fff; }
 /* v78: konser orang ketiga */
 #app.in-konser #floats, #app.in-konser .hud-top { display: none !important; }
 #app.in-konser { max-width: none; }   /* konser pakai seluruh layar (desktop dan HP miring) */
@@ -1293,6 +1298,15 @@ svg { stroke: currentColor; }
       <button id="kJump">Jump</button>
     </div>
   </div>
+  <div class="konser-ui liar-ui" id="liarUI" hidden>
+    <div class="k-top">
+      <div class="k-info"><b id="lTitle">Wild area</b><span id="lView"></span></div>
+      <button class="k-round" id="lNight" aria-label="Show it at night">🌙</button>
+      <button class="k-round" id="lExit" aria-label="Back to the map"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <button class="l-next" id="lNext">Next view</button>
+    <div class="l-fps" id="lFps"></div>
+  </div>
   <div class="town-ui" id="townUI" hidden>
     <div class="hood-chip" id="hoodName">Old Town</div>
     <button class="town-q" id="townQ" aria-label="How the town works">?</button>
@@ -1354,6 +1368,7 @@ svg { stroke: currentColor; }
 <script src="globe.js"></script>
 <script src="region.js"></script>
 <script src="continent.js"></script>
+<script src="liar.js"></script>
 <script src="suara.js"></script>
 <script src="konser.js"></script>
 <script src="konser3d.js"></script>

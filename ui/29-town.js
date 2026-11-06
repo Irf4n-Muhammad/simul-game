@@ -1,7 +1,7 @@
 // ================================================================ the town
 // v73: tampilan luar bertingkat. Tombol kota buka globe (5 benua); zoom ke Old Town = masuk peta kota; zoom terus = jalan.
 // Dari peta kota zoom keluar = balik ke globe. Pindah lapisan pakai tirai awan (#veil) biar kerasa satu gerakan.
-let TOWN = null, GLOBE = null, CONT = null, KONSER = null;   // v78: KONSER = arena konser orang ketiga (ui/29b-konser.js)   // v75: CONT = peta benua di antara globe dan kota
+let TOWN = null, GLOBE = null, CONT = null, KONSER = null, LIAR = null;   // v80: LIAR = wilayah liar (ui/29c-liar.js)   // v78: KONSER = arena konser orang ketiga (ui/29b-konser.js)   // v75: CONT = peta benua di antara globe dan kota
 function townData() {
   const day = today(), fv = famStatus();
   const members = game.home.members.filter(m => m.st && m.alive(day) && !("keluar" in m.info));
@@ -34,14 +34,15 @@ function globeInit() {
 }
 function contInit() {
   if (!CONT && globalThis.Continent) CONT = Continent.create({ THREE, renderer, canvas, canvasTex, F, reduce,
-    enterCity: () => cityFromRegion(), toGlobe: () => toGlobe(CONT.id), showTown });
+    enterCity: () => cityFromRegion(), toGlobe: () => toGlobe(CONT.id), showTown, showWild: (w, C) => showWild(w, C) });
   return CONT;
 }
 const veil = (on) => new Promise(res => { const v = $("veil"); v.classList.toggle("on", on); setTimeout(res, on ? 380 : 0); });
 function outMode(m) {
-  app.classList.toggle("in-town", !!m); app.classList.toggle("in-globe", m === "globe"); $("townUI").hidden = !m || m === "konser";
+  app.classList.toggle("in-town", !!m); app.classList.toggle("in-globe", m === "globe"); $("townUI").hidden = !m || m === "konser" || m === "liar";
   app.classList.toggle("in-konser", m === "konser"); $("konserUI").hidden = m !== "konser";
   app.classList.toggle("in-region", m === "region");
+  app.classList.toggle("in-liar", m === "liar"); $("liarUI").hidden = m !== "liar";
   $("townHint").textContent = m === "globe" ? "Drag to spin · pinch to zoom in · tap a continent" : m === "region" ? "Drag to move · zoom in on Old Town · tap a town" : "Drag to move · pinch to zoom · tap a place";
   paintBg();
 }
@@ -236,7 +237,7 @@ async function enterTown() {
   TOWN.resize(app.clientWidth, app.clientHeight);
   if (GLOBE) GLOBE.exit(); outMode("town"); fairHint();
 }
-function exitTown() { if (KONSER && KONSER.on) konserLeave(); if (SND) SND.silence(); if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
+function exitTown() { if (LIAR && LIAR.on) liarOff(); if (KONSER && KONSER.on) konserLeave(); if (SND) SND.silence(); if (TOWN) TOWN.exit(); if (GLOBE) GLOBE.exit(); if (CONT) CONT.exit(); outMode(null); $("veil").classList.remove("on"); closeSheet(); }
 const daysLeft = n => n > 0 ? `${n} day${n > 1 ? "s" : ""} left` : "Moving in today";
 const liveLeft = b => Math.max(0, b.done - today());
 const buildFrac = b => Math.max(0.04, Math.min(1, (dayFloat() - b.start) / Math.max(0.01, b.done - b.start)));
@@ -347,7 +348,7 @@ function townChips() {
 
 function resize() {
   const w = app.clientWidth, h = app.clientHeight;
-  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h); if (KONSER) KONSER.resize(w, h);
+  renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h); if (KONSER) KONSER.resize(w, h); if (LIAR) LIAR.resize(w, h);
   // face the creature straight on; fit about 5 units of width at the creature
   camera.fov = 44;
   const half = 2.75, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
@@ -361,6 +362,7 @@ function frame(t) {
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
   if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
+  if (LIAR && LIAR.on) { renderer.shadowMap.autoUpdate = true; LIAR.frame(t); renderer.render(LIAR.scene, LIAR.camera); liarFps(t); return; }
   if (KONSER && KONSER.on) { KONSER.frame(t, dt); renderer.render(KONSER.scene, KONSER.camera); if (Math.floor(ts * 4) !== Math.floor((ts - dt) * 4)) konserHud(); return; }
   if (GLOBE && GLOBE.on) {
     GLOBE.frame(t, dt); renderer.render(GLOBE.scene, GLOBE.camera);
