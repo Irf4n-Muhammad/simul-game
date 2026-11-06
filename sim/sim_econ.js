@@ -15,14 +15,17 @@ for (let i = 0; i < N; i++) {
   for (let d = 0; d < DAYS; d++) {
     g.advance(d, d); while (g.pending) { g.answer(g.pending.key, Object.keys(g.pending.options)[0], 0); g.advance(d, d); }
     if (POLICY === "fund") { for (const m of g.home.members) if (m.st && m.st.bizWish && m.alive(d)) g.act(m.id, "biz:fund") || g.act(m.id, "biz:loan"); for (const b of V.active(g.home)) if (b.wish) g.act(b.owner, "biz:go"); }
-    if (d % 250 === 249) snap.push(`${d}:${Math.round(g.home.members.filter(m => m.st && m.alive(d)).reduce((s, m) => s + m.st.wallet, 0))}/${ST.fam(g.home).house}`);
+    if (d % 250 === 249) snap.push(`${d}:${Math.round(g.home.members.filter(m => m.st && m.alive(d)).reduce((s, m) => s + m.st.wallet + (m.st.tab || 0), 0))}/${ST.fam(g.home).house}`);
   }
   const g2 = new G.Game(JSON.parse(JSON.stringify(g.state))); g2.advance(g.home.last_day, null);
   console.log(`=== akun-econ${i} replay same: ${g2.home.snapshot() === g.home.snapshot()}  kekayaan/rumah: ${snap.join("  ")}`);
   console.log("   " + Object.entries(tot).sort((a, b) => (b[1][0] + b[1][1]) - (a[1][0] + a[1][1])).map(([k, [a, b]]) => `${k} +${Math.round(a)} -${Math.round(b)}`).join(" | "));
   for (const [k, [a, b]] of Object.entries(tot)) { const e = all[k] || (all[k] = [0, 0]); e[0] += a; e[1] += b; }
 }
+// pindahan antar makhluk (warisan, urunan, tabungan) bukan uang baru: tidak ikut rasio
+const TRANSFER = new Set(["warisan", "urunan", "tabungan"]);
+for (const k of TRANSFER) delete all[k];
 const IN = Object.values(all).reduce((s, e) => s + e[0], 0), OUT = Object.values(all).reduce((s, e) => s + e[1], 0);
-console.log(`\nSEMUA AKUN: masuk ${Math.round(IN)}, keluar ${Math.round(OUT)}, rasio masuk/keluar ${(IN / Math.max(1, OUT)).toFixed(2)}`);
+console.log(`\nSEMUA AKUN: masuk ${Math.round(IN)}, keluar ${Math.round(OUT)}, rasio masuk/keluar ${(IN / Math.max(1, OUT)).toFixed(2)} (tanpa warisan, urunan, tabungan)`);
 console.log("masuk:  " + Object.entries(all).filter(e => e[1][0] > 0).sort((a, b) => b[1][0] - a[1][0]).map(([k, [a]]) => `${k} ${(100 * a / IN).toFixed(1)}%`).join(", "));
 console.log("keluar: " + Object.entries(all).filter(e => e[1][1] > 0).sort((a, b) => b[1][1] - a[1][1]).map(([k, [, b]]) => `${k} ${(100 * b / OUT).toFixed(1)}%`).join(", "));

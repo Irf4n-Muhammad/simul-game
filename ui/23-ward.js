@@ -138,14 +138,14 @@ function baDo(cmd) {
 
 function phWallet(c) {
   const s = statusOf(c.id), day = today(), o = Market.owned(c, day), worth = o.goods.reduce((a, g) => a + g.sell, 0);
-  const pay = s.job ? s.job.pay : 0, pen = c.st.pension && c.info.pensiun ? c.st.pension : 0, live = Career.canWork(c, day) || pay || pen ? 15 : 0;
+  const pay = s.job ? s.job.pay : 0, pen = c.st.pension && c.info.pensiun ? c.st.pension : 0, live = Career.canWork(c, day) || pay || pen ? Status.livingCost(c, day) : 0;
   const net = pay + pen - live;
   return `${phHead("Wallet")}
     <div class="pa-card"><small>${esc(c.name.toUpperCase())} · OLD TOWN BANK</small><b>${coins(s.wallet)}</b><span>${net >= 0 ? "+" : "−"}${coins(Math.abs(net))} a day</span></div>
     <h4 class="pa-h">Every day</h4><div class="pa-list">
       ${pay ? `<div class="pa-row"><span class="pa-grow"><b>Salary</b><small>${esc(s.job.title)}${s.job.co ? " at " + esc(Career.coName(s.job.co)) : ""}</small></span><span class="pa-val plus">+${coins(pay)}</span></div>` : ""}
       ${pen ? `<div class="pa-row"><span class="pa-grow"><b>Pension</b></span><span class="pa-val plus">+${coins(pen)}</span></div>` : ""}
-      ${live ? `<div class="pa-row"><span class="pa-grow"><b>Living costs</b><small>Food, bills, the usual</small></span><span class="pa-val">−${coins(live)}</span></div>` : `<div class="pa-row"><span class="pa-grow"><b>No income yet</b><small>${c.info.kuliah_aktif ? "At university. The family covers living costs." : "Money starts with the first job."}</small></span></div>`}</div>
+      ${live ? `<div class="pa-row"><span class="pa-grow"><b>Living costs</b><small>Food, bills, the usual. Grows with income.</small></span><span class="pa-val">−${coins(live)}</span></div>` : `<div class="pa-row"><span class="pa-grow"><b>No income yet</b><small>${c.info.kuliah_aktif ? "At university. The family covers living costs." : "Money starts with the first job."}</small></span></div>`}</div>
     <h4 class="pa-h">What ${esc(c.name)} owns</h4><div class="pa-list">
       <div class="pa-row"><span class="pa-grow"><b>Things</b><small>${o.goods.length} item${o.goods.length === 1 ? "" : "s"} · the dealer would pay</small></span><span class="pa-val">${coins(worth)}</span></div>
       <div class="pa-row"><span class="pa-grow"><b>Family home</b><small>${esc(famStatus().house.label)} · ${esc(famStatus().house.hood)}</small></span><span class="pa-val">Shared</span></div>

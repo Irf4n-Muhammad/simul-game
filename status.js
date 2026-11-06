@@ -492,8 +492,10 @@
       if (st.job) Money.move(c, salary(st.job), "gaji", x.day);
       else if (c.info.pensiun) Money.move(c, st.pension, "pensiun", x.day);
       if (!c.info.kuliah_aktif) {  // selama kuliah biaya hidup ditanggung keluarga
-        if (st.wallet < LIVING_COST) x.need("mood", -1);
-        Money.move(c, -LIVING_COST, "hidup", x.day, "floor");
+        const cost = livingCost(c, x.day);
+        BK.cover(c, cost, x.day);
+        if (st.wallet < cost) x.need("mood", -1);
+        Money.move(c, -cost, "hidup", x.day, "floor");
       }
     }
     BK.accrue(c, x.day);  // bunga tabungan harian
@@ -507,30 +509,39 @@
     houseUpkeep(x);
     finishBuild(x);
   }
+  // Biaya hidup harian (tahap 6): bagian tetap + sebagian pemasukan rutin. Gaya hidup ikut naik dengan penghasilan,
+  // jadi yang kaya tetap menabung lebih banyak, tapi tidak semua kenaikan gaji jadi tumpukan koin.
+  const ROUTINE = ["gaji", "pensiun", "bisnis_ambil"];
+  function livingCost(c, day) {
+    const inc = Money.daily(c, ROUTINE, day);
+    const [cut, extra] = CFG.LIFESTYLE_RICH;
+    return Math.round(LIVING_COST + CFG.LIFESTYLE * Math.max(0, inc - LIVING_COST) + extra * Math.max(0, inc - cut));
+  }
   // Biaya pegang rumah: sekali sehari per keluarga, dibayar anggota dewasa terkaya. Rumah besar bukan cuma lambang tapi juga ongkos.
   // Nggak sanggup bayar penuh: dibayar sebisanya, suasana hati turun, dan tunggakan dihitung (F.arrears).
   function houseUpkeep(x) {
     const F = fam(x.home), rate = CFG.HOUSE_UPKEEP[F.house];
     if ((!rate && !BK.kpr(x.home)) || F.upk === x.day) return;
-    const payer = x.home.members.filter(m => m.st && m.alive(x.day) && !("keluar" in m.info) && ["dewasa", "tua"].includes(phase_of(m.age(x.day))))
-      .sort((a, b) => b.st.wallet + (b.st.tab || 0) - a.st.wallet - (a.st.tab || 0) || (a.id < b.id ? -1 : 1))[0];
+    const adults = x.home.members.filter(m => m.st && m.alive(x.day) && !("keluar" in m.info) && ["dewasa", "tua"].includes(phase_of(m.age(x.day))))
+      .sort((a, b) => b.st.wallet + (b.st.tab || 0) - a.st.wallet - (a.st.tab || 0) || (a.id < b.id ? -1 : 1)), payer = adults[0];
     if (!payer) return;
     F.upk = x.day;
-    if (!rate) { kprDay(x, F, payer); return; }
+    if (!rate) { kprDay(x, F, adults); return; }
     const due = Math.max(1, Math.round((F.lot && F.lot.paid || ITEM[F.house].price) * rate / 365));
     BK.cover(payer, due, x.day);
     if (payer.st.wallet < due) { F.arrears = (F.arrears || 0) + 1; if (payer === x.c) x.need("mood", -2); }
     else F.arrears = 0;
     Money.move(payer, -due, "rumah", x.day, "floor");
-    kprDay(x, F, payer);
+    kprDay(x, F, adults);
   }
   // cicilan KPR keluarga (bank.js), dibayar orang yang sama dengan biaya pegang rumah
-  function kprDay(x, F, payer) {
-    const r = BK.kprPay(x.home, payer, x.day);
+  function kprDay(x, F, adults) {
+    const r = BK.kprPay(x.home, adults, x.day), payer = adults[0];
     if (!r) return;
     const say = t => { if (payer === x.c) x.say(t); };
     if (r.done) { say(`The family home is fully paid off. No more mortgage! 🎉`); if (payer === x.c) achieve(x, "kpr_lunas", "Paid off the family mortgage."); }
-    else if (r.late === 30) say(`${payer.name} is a month behind on the mortgage. The bank sends a warning.`);
+    else if (r.restructured) say(`The family is a month behind on the mortgage. The bank stretches the loan out so the daily payment is smaller. It only does this once.`);
+    else if (r.late === 30) say(`The family is a month behind on the mortgage again. The bank warns it will take the house in another month.`);
     else if (r.foreclose) {
       const it = ITEM[F.house], value = it ? costOf(it, x.day) : 0, res = BK.foreclose(x.home, payer, value, x.day);
       F.house = "rented"; F.lot = null; F.build = null;
@@ -829,21 +840,25 @@
 
   const estimateFor = (c, m) => estimate(c, m.w, m);
   // Cerita "rumah pertama" (storylets.js pindah_rumah): beli flat beneran lewat aturan yang sama dengan tombol pemain
+  // rumah pertama (storylet pindah_rumah): flat dibeli tunai kalau dompet + tabungan cukup, kalau tidak lewat KPR (tahap 6)
   function firstHomeCost(home, c, day) {
     const F = fam(home), it = ITEM.flat;
     if (houseOf(home).price > 0 || F.build || !c.st || c.age(day) < 180) return null;
     const cost = costOf(it, day);
-    return c.st.wallet + (c.st.tab || 0) >= cost ? cost : null;  // tabungan ikut dihitung: memang buat ini orang menabung
+    if (c.st.wallet + (c.st.tab || 0) >= cost) return cost;  // tabungan ikut dihitung: memang buat ini orang menabung
+    return c.age(day) >= 270 && BK.kprCheck(home, c, cost, day, (F.biz && F.biz.list) || []).ok ? cost : null;
   }
+  // hasil: "cash" | "kpr" | false
   function buyFirstHome(home, c, day) {
-    const cost = firstHomeCost(home, c, day);
+    const cost = firstHomeCost(home, c, day), F = fam(home);
     if (cost == null) return false;
-    BK.cover(c, cost, day);
-    fam(home).build = { id: "flat", lot: -1, model: 0, paint: 0, start: day, done: day + BUILD_DAYS.flat, by: c.id, paid: cost };
-    Money.move(c, -cost, "rumah", day);
-    return true;
+    F.build = { id: "flat", lot: -1, model: 0, paint: 0, start: day, done: day + BUILD_DAYS.flat, by: c.id, paid: cost };
+    if (c.st.wallet + (c.st.tab || 0) >= cost) { BK.cover(c, cost, day); Money.move(c, -cost, "rumah", day); return "cash"; }
+    BK.kprOpen(home, c, BK.kprCheck(home, c, cost, day, (F.biz && F.biz.list) || []), "flat", day);
+    F.build.kpr = true;
+    return "kpr";
   }
-  const API = { EXT, achieve, kprQuote, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
+  const API = { EXT, achieve, kprQuote, livingCost, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
     familyView, jobList, shop, pct, population, prestige, salary, npcTown, bestItem, RENTED, BUILD_DAYS, MODELS, PAINTS };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Status = API;

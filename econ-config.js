@@ -8,7 +8,9 @@
   const EconConfig = {
     HK,
     // hidup sehari-hari (status.js)
-    LIVING_COST: 15,            // koin per hari untuk makhluk dewasa/tua yang tidak sedang kuliah
+    LIVING_COST: 15,            // koin per hari untuk makhluk dewasa/tua yang tidak sedang kuliah (bagian tetap)
+    LIFESTYLE: 0.4,             // tahap 6: tambahan biaya hidup = 40% dari pemasukan rutin di atas LIVING_COST (makin kaya, makin boros)
+    LIFESTYLE_RICH: [300, 0.25], // ditambah 25% lagi dari pemasukan di atas 300/hari (5 HK): orang kaya hidupnya jauh lebih mahal
     START_BONUS: 300,           // sekali, saat pertama kali dewasa
     PENSION_RATE: 0.4,          // pensiun = 40% gaji terakhir (pemilik bisnis: 40% rata-rata ambilan)
     STAT_UANG_COINS: 50,        // storylet lama: 1 poin stat "uang" = 50 koin
@@ -32,9 +34,11 @@
       LATE_BAD: 60,             // hari menunggak utang pribadi sebelum dianggap gagal bayar
       // tahap 5: tabungan dan KPR
       SAVE_SHARE: 0.4,          // bunga tabungan = 40% suku bunga acuan (1–10%), selalu di bawah pinjaman termurah
-      KPR_DOWN: 0.3,            // uang muka KPR
-      KPR_TERM: 1080,           // tenor KPR (3 tahun; makhluk tua: OLD_TERM). Utangnya milik keluarga, jadi boleh melewati umur pembayar
-      KPR_LATE: 60,             // hari menunggak sebelum rumah disita
+      KPR_DOWN: 0.2,            // uang muka KPR (tahap 6: 30% -> 20%)
+      KPR_TERM: 720,            // tenor KPR maks (2 tahun); makhluk tua: OLD_TERM
+      KPR_PAST_OLD: 180,        // KPR harus lunas paling lambat 180 hari setelah peminjam masuk umur tua
+      KPR_RESTRUCTURE: 30,      // menunggak 30 hari pertama kali: tenor diperpanjang sekali, cicilan turun (tahap 6)
+      KPR_LATE: 60,             // hari menunggak (setelah jadwal ulang) sebelum rumah disita
       KPR_FIRE_SALE: 0.8,       // rumah sitaan dijual 80% harga pasar
     },
     // rumah (status.js): biaya pegang per tahun (pajak, perawatan, listrik) dari harga beli, dibayar harian oleh anggota dewasa terkaya

@@ -919,7 +919,9 @@ storylet("main_sama_cucu", GROWN, "kecil", { cooldown: 20, cond: x => grandkids_
 // rumah pertama: kalau ada status.js, ini membeli flat beneran (harga hari ini, dibangun lalu keluarga pindah), bukan cuma memotong uang
 storylet("pindah_rumah", GROWN, "sedang", { cooldown: 270,
   cond: x => x.c.st ? STX().firstHomeCost(x.home, x.c, x.day) != null : (x.c.stats.uang > 250 && !x.c.info.punya_rumah) }, x => {
-  x.say(x.c.st ? `${x.n} finds a small flat for sale in the Suburb. Their savings cover it.` : `${x.n} finds a small house with a yard. Their savings cover the down payment.`);
+  const cash = !x.c.st || x.c.st.wallet + (x.c.st.tab || 0) >= STX().firstHomeCost(x.home, x.c, x.day);
+  x.say(!x.c.st ? `${x.n} finds a small house with a yard. Their savings cover the down payment.` : cash ? `${x.n} finds a small flat for sale in the Suburb. Their savings cover it.`
+    : `${x.n} finds a small flat for sale in the Suburb. Their savings cover the down payment, and the bank offers a mortgage for the rest.`);
   const [, final] = x.ask("Buy the house?", { beli: "Buy it", sewa: "Keep renting for now" },
     { suportif: "SELF", tegas: "beli" }, x.t("rajin") > 45 ? "beli" : "sewa");
   if (final === "beli") {
