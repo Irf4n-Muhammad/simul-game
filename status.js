@@ -207,7 +207,7 @@
 
   // ---------------------------------------------------------------- karier
   // perusahaan (career.js) bisa punya nama jabatan dan gaji sendiri
-  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1)); }
+  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1) * (job.crowd || 1)); }
   function title(job, level = job.level) { return job.co && EXT.title ? EXT.title(job, level) : JOBS[job.id].ladder[level]; }
   // ekonomi lesu: perusahaan menahan promosi, jadi skor yang dibutuhkan naik (makro.js)
   function reviewReq(job, day) { return JOBS[job.id].req + 8 * (job.level + 1) + (day == null ? 0 : MK.promoHarder(day)); }
@@ -217,6 +217,8 @@
   function setJob(x, id, day, m) {
     const c = x.c, st = c.st, prev = st.job;
     st.job = { id, level: (m && m.level) || 0, since: day, co: (m && m.co) || (EXT.pick ? EXT.pick(id, day, x.home.id + c.id) : null) };
+    // gaji awal ikut keramaian bidang saat diterima, lalu dikunci selama tetap di pekerjaan ini (career.js)
+    if (m && m.crowd && m.crowd !== 1) st.job.crowd = m.crowd;
     st.next_review = day + 75;
     st.next_comp = JOBS[id].prize ? day + 100 : null;
     Object.assign(c.info, { kerja: title(st.job), level: 1, gaji: 0, mulai_kerja: day });

@@ -215,7 +215,7 @@
     const I = {
       k, no: k + 1, day, month: monthName(k), yearly: yearly(k), cover, story, lines: lines.slice(0, 3),
       society: famSoc.map(e => ({ kind: e.kind, text: e.text, fam: true, cid: e.c.id })).concat(townSociety(k, a, b)),
-      careers: famCar.map(e => ({ text: `${e.c.name}: ${e.text}`, fam: true, cid: e.c.id })).concat(k > 0 ? townCareers(k, a, b) : []),
+      careers: famCar.map(e => ({ text: `${e.c.name}: ${e.text}`, fam: true, cid: e.c.id })).concat(k > 0 ? crowdNews(a, b) : [], k > 0 ? townCareers(k, a, b) : []),
       companies: companyNews(k > 0 ? a : -30, b),
       property: famProp.map(e => ({ text: `${e.c.name}: ${e.text}`, fam: true, cid: e.c.id })).concat(townProperty(k > 0 ? a : -30, b)),
       market: mk, list,
@@ -224,6 +224,26 @@
     _cache.set(sig, I);
     if (_cache.size > 40) _cache.delete(_cache.keys().next().value);
     return I;
+  }
+
+  // keramaian bidang (career.js) sebagai berita kota: hanya bidang yang tingkatnya berubah bulan ini, dan yang dilaporkan
+  // adalah yang sudah terjadi (siapa yang masuk), bukan ramalan
+  const CROWD_NEWS = {
+    needed: { nurse: "The clinics are short of nurses", teacher: "Schools can't find enough teachers", doctor: "The clinic has waited weeks for a new doctor",
+      fastfood: "Burger counters are begging for crew", office: "Offices can't fill their desks", designer: "Studios are looking everywhere for designers",
+      software: "Tech firms can't hire fast enough", athlete: "The teams are short on players", influencer: "Brands can't find enough faces", quant: "The trading floors are short of quants" },
+    crowded: { athlete: "Every kid wants to go pro this year", influencer: "Everyone has a channel now", designer: "A wave of new designers hit town",
+      office: "Office jobs drew a crowd this month", software: "Coding is the new dream job", fastfood: "More crew than shifts at the burger counters",
+      teacher: "A big class of new teachers", nurse: "Nursing school's biggest class in years", doctor: "A crowd of young doctors", quant: "Finance is packed with newcomers" },
+  };
+  function crowdNews(a, b) {
+    if (!CR.crowdLevel) return [];
+    return Object.keys(CR.IND).map(ind => {
+      const now = CR.crowd(ind, b), was = CR.crowd(ind, a);
+      if (now.id === was.id || now.id === "steady") return null;
+      const head = CROWD_NEWS[now.id][ind] || `${now.id === "needed" ? "Old Town is short on" : "A crowd of new"} ${ST.JOBS[ind].label.toLowerCase()}`;
+      return { text: `${head}. ${now.id === "needed" ? "New hires start on 20% more pay." : "Starting pay is down 10%, and more people apply for every job."}` };
+    }).filter(Boolean);
   }
 
   const API = { issueDay, latest, issue, monthName, yearly };
