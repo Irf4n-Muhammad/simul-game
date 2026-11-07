@@ -139,5 +139,5 @@ function showRecap(days, logs) {
 
 $("famBtn").onclick = () => { hideHint(); if (game) showFamily(); };
 $("planBtn").onclick = () => { hideHint(); if (game) showPlan(); };
-$("diaryBtn").onclick = () => { hideHint(); if (game) showDiary(); };
+$("diaryBtn").onclick = () => { hideHint(); if (game) showBook(); };
 

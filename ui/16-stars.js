@@ -1,5 +1,5 @@
-// ---- talent constellations: a full-screen night sky. Every talent is a star; lighting one traces the line to it.
-// Stars nobody has reached yet look like any other speck in the sky until a lit star next to them reveals them.
+// ---- talent constellations: the star map inside the book (Buku Bintang, ui/40-book.js). Every talent is a star;
+// writing one in draws the line to it. Before the reading at day 30 the map is a pencil sketch, after it gold ink on parchment.
 let skyLay = null, sky = null;
 const SKY_R = { root: 120, field: 240, spec: 355, niche: 455, legend: 690, master: 795, icon: 915, crown: 1045 };
 const SKY_SIZE = { core: 9, root: 7.5, field: 5.5, spec: 4.2, niche: 3.6, combo: 3.6, secret: 3.4, legend: 4.4, master: 5.6, icon: 7.4, crown: 10 };
@@ -47,45 +47,33 @@ function layoutSky() {
     const [x, y] = pol(a, r); P[id] = { x, y, a, r };
   }
   P.core = { x: 0, y: 0, a: 0, r: 0 };
-  // background stars live in the same world so they drift with the sky
-  const dust = [];
-  for (let i = 0; i < 520; i++) {
-    const a = skyHash("da" + i) * Math.PI * 2, r = Math.sqrt(skyHash("dr" + i)) * 900;
-    dust.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 1.2, s: 0.4 + skyHash("ds" + i) * 1.1, t: skyHash("dt" + i) * 6.28, d: 0.35 + skyHash("dd" + i) * 0.65 });
-  }
-  skyLay = { P, dust };
+  skyLay = { P };
   return skyLay;
 }
-const skyColor = n => n.tier === "combo" ? "#B59CFF" : n.tier === "secret" ? "#F5CF6B" : n.tier === "crown" ? "#FFD66B" : ({ body: "#7FE0A0", mind: "#7FB2FF", spark: "#FFB36B", heart: "#FF8FB8" })[n.root];
-const skyGlow = {};
-function glowSprite(col) {
-  if (skyGlow[col]) return skyGlow[col];
-  const c = document.createElement("canvas"); c.width = c.height = 128;
-  const g = c.getContext("2d"), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, col + "ff"); gr.addColorStop(0.18, col + "aa"); gr.addColorStop(0.45, col + "33"); gr.addColorStop(1, col + "00");
-  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-  return (skyGlow[col] = c);
-}
+const skyColor = n => n.tier === "combo" ? "#6A4A9A" : n.tier === "secret" ? "#8A6410" : n.tier === "crown" ? "#9A6E1C" : ({ body: "#3E7A4E", mind: "#3B5F98", spark: "#B05A20", heart: "#A84A66" })[n.root];
 function skyFit() {
   const { P } = layoutSky(), W = sky.cv.clientWidth, H = sky.cv.clientHeight, ps = Object.values(P);
   const x0 = Math.min(...ps.map(p => p.x)) - 30, x1 = Math.max(...ps.map(p => p.x)) + 30, y0 = Math.min(...ps.map(p => p.y)) - 30, y1 = Math.max(...ps.map(p => p.y)) + 30;
   const top = 96, bottom = 120, s = Math.min(W / (x1 - x0), (H - top - bottom) / (y1 - y0));
   return { s, ox: W / 2 - (x0 + x1) / 2 * s, oy: top + (H - top - bottom) / 2 - (y0 + y1) / 2 * s };
 }
-function showTree(id = cur && cur.id, back = null) {
+function showTree(id = cur && cur.id, back = null, spread = false) {
   const c = game.home.get(id); if (!c || !c.st) return;
   closeSheet(); Tele.layar("app", "stars");
   if (sky) sky.el.remove();
-  const el = document.createElement("div"); el.className = "sky"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `${c.name}'s constellations`);
+  // peta bintang di dalam buku: sebelum malam pembacaan masih sketsa pensil, sesudahnya perkamen bertinta emas
+  const skin = Rasi.stage(c.born, today()) === "read" ? "ink" : "pencil", star = Rasi.starOf(c.st);
+  const el = document.createElement("div"); el.className = `sky book ${skin}`; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `${c.name}'s star map`);
   el.innerHTML = `<canvas></canvas>
     <div class="sky-top"><button class="sky-x" aria-label="${back ? "Back" : "Close"}">${back ? "‹" : "✕"}</button>
-      <div class="sky-title"><span class="sky-kicker">Constellations</span><b>${esc(c.name)}</b><small id="skySub"></small></div>
-      <div class="sky-pts"><b id="skyPts">0</b><small>points</small></div></div>
+      <div class="sky-title"><span class="sky-kicker">${skin === "ink" ? "Born under" : "Notebook"}</span><b>${esc(skin === "ink" ? star.name : c.name)}</b><small id="skySub"></small></div>
+      <div class="sky-pts"><b id="skyPts">0</b><small>${skin === "ink" ? "ink" : "points"}</small></div></div>
     <div class="sky-panel" id="skyPanel"></div>
     <div class="sky-zoom"><button data-z="0.7" aria-label="Zoom in">+</button><button data-z="1.4" aria-label="Zoom out">−</button></div>`;
   (PH ? PH.screen : $("app")).appendChild(el);
   const cv = el.querySelector("canvas");
-  sky = { el, cv, ctx: cv.getContext("2d"), c, back, sel: null, cam: null, t0: performance.now(), anims: [], parts: [], v: null, raf: 0, closing: 0 };
+  sky = { el, cv, ctx: cv.getContext("2d"), c, back, skin, star, sel: null, cam: null, t0: performance.now(), anims: [], parts: [], v: null, raf: 0, closing: 0,
+    spread: spread && skin === "ink" ? { t: performance.now() + 900, d: 3600 } : null };
   skyResize(); sky.fit = skyFit();
   skyRefresh(); sky.cam = skyFitSeen();
   el.querySelector(".sky-x").onclick = closeSky;
@@ -154,26 +142,37 @@ function skyPanel() {
   const c = sky.c, v = sky.v, N = Tree.NODES, panel = $("skyPanel"), alive = c.alive(today()) && !("keluar" in c.info);
   if (!sky.sel) {
     const L = v.legacy;
-    panel.innerHTML = `<p class="sky-hint">${v.points ? `Tap a glowing star to light it.` : `Points come from growing up, practice and big moments.`}</p>
-      <small class="sky-meta">${v.parts.age} from growing up · ${v.parts.practice} from practice · ${v.parts.moments} from big moments · ${v.parts.mastery} from mastery</small>${L ? `<small class="sky-meta">Family path from ${esc(L.from)}: ${L.path.map(id => esc(Tree.NODES[id].label)).join(" → ")}. Each star on it costs 1 point less.</small>` : ""}`;
+    const verb = sky.skin === "pencil" ? "write it in" : "ink it";
+    panel.innerHTML = `<p class="sky-hint">${v.points ? `Tap a red star to ${verb}.` : `Points come from growing up, practice and big moments.`}</p>
+      <small class="sky-meta">${v.parts.age} from growing up · ${v.parts.practice} from practice · ${v.parts.moments} from big moments · ${v.parts.mastery} from mastery</small>${L ? `<small class="sky-meta">Family path from ${esc(L.from)}: ${L.path.map(id => esc(Tree.NODES[id].label)).join(" → ")}. Each star on it costs 1 point less.</small>` : ""}<button class="sky-diary" id="skyDiary">Family diary</button>`;
+    $("skyDiary").onclick = () => { closeSky(); showDiary(); };
     return;
   }
   panel.style.animation = "none"; void panel.offsetWidth; panel.style.animation = "";
   const n = Tree.info(sky.sel), st = v.nodes[sky.sel], col = skyColor(n);
-  if (st.s === "hidden") { panel.innerHTML = `<span class="sky-chip" style="--c:#8a93b8">Dark star</span><h3>Not seen yet</h3><p>${n.tier === "secret" ? "Something is hiding here." : "Light a star next to it to see what it is."}</p>`; return; }
-  if (st.s === "secret") { panel.innerHTML = `<span class="sky-chip" style="--c:#F5CF6B">Hidden star</span><h3>A secret</h3><p>${esc(n.hint)}</p>`; return; }
+  if (st.s === "hidden") { panel.innerHTML = `<span class="sky-chip" style="--c:#8A6A3A">Fog</span><h3>Not seen yet</h3><p>${n.tier === "secret" ? "Something is hiding here." : "Learn a star next to it to see what it is."}</p>`; return; }
+  if (st.s === "secret") { panel.innerHTML = `<span class="sky-chip" style="--c:#8A6410">Hidden star</span><h3>A secret</h3><p>${esc(n.hint)}</p>`; return; }
   const missing = n.req.filter(r => v.nodes[r].s !== "owned").map(r => N[r].label);
   const need = st.need, sk = need && Status.SKILL_LABEL[need.skill];
-  const why = st.s === "owned" ? `Lit on ${fmtDate(st.day)}.` : !alive ? "This life is over." : st.s === "glimpse" ? `Light ${missing.join(" and ")} first.`
-    : st.s === "gated" ? `Needs ${sk} talent ${need.talent}. ${esc(c.name)} has ${need.has}.${need.talent - need.has === 1 ? ` Reaching ${sk} 90 counts as one more.` : ""}` : st.cost > v.points ? `Needs ${st.cost} points. ${esc(c.name)} has ${v.points}.` : c.id !== cur.id ? `Go to ${esc(c.name)} to light it.` : !canCare() ? "Not right now." : "";
+  const why = st.s === "owned" ? `${sky.skin === "pencil" ? "Written" : "Inked"} on ${fmtDate(st.day)}.` : !alive ? "This life is over." : st.s === "glimpse" ? `Learn ${missing.join(" and ")} first.`
+    : st.s === "gated" ? `Needs ${sk} talent ${need.talent}. ${esc(c.name)} has ${need.has}.${need.talent - need.has === 1 ? ` Reaching ${sk} 90 counts as one more.` : ""}` : st.cost > v.points ? `Needs ${st.cost} points. ${esc(c.name)} has ${v.points}.` : c.id !== cur.id ? `Go to ${esc(c.name)} first.` : !canCare() ? "Not right now." : "";
   panel.innerHTML = `<div class="sky-row"><span class="sky-chip" style="--c:${col}">${n.tierLabel}</span><small>${n.share} of creatures</small></div>
     <h3>${esc(n.label)}</h3>${n.d ? `<p>${esc(n.d)}</p>` : ""}
     ${n.gate ? `<small class="sky-meta">Needs ${Status.SKILL_LABEL[N[n.root].skill]} talent ${n.gate}+${n.gate < 9 ? " (skill 90 counts as +1)" : ""}</small>` : ""}
     ${n.tier === "combo" ? `<small class="sky-meta">Joins ${esc(n.req.map(r => N[r].label).join(" + "))}</small>` : ""}
     ${v.legacy && v.legacy.path.includes(sky.sel) ? `<small class="sky-meta">Family star, from ${esc(v.legacy.from)}</small>` : ""}
     <ul>${n.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
-    ${st.s === "owned" ? `<small class="sky-meta">${why}</small>` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}>Light it up · ${st.cost} pt${st.cost === 1 ? "" : "s"}</button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
-  const go = $("skyGo"); if (go) go.onclick = skyLight;
+    ${st.s === "owned" ? `<small class="sky-meta">${why}</small>` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}><i></i><span>Hold to ${sky.skin === "pencil" ? "write it in" : "ink it"} · ${st.cost} pt${st.cost === 1 ? "" : "s"}</span></button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
+  const go = $("skyGo"); if (go) skyHold(go);
+}
+function skyHold(btn) {
+  let raf = 0, t0 = 0;
+  const stop = () => { cancelAnimationFrame(raf); raf = 0; btn.style.setProperty("--p", 0); };
+  btn.onpointerdown = e => { if (btn.disabled) return; e.preventDefault(); t0 = performance.now();
+    const tick = t => { const k = Math.min(1, (t - t0) / 800); btn.style.setProperty("--p", k); if (k < 1) raf = requestAnimationFrame(tick); else { raf = 0; skyLight(); } };
+    raf = requestAnimationFrame(tick); };
+  btn.onpointerup = btn.onpointerleave = btn.onpointercancel = () => { if (raf) stop(); };
+  btn.onclick = e => { if (e.detail === 0) skyLight(); }; // Enter/Space
 }
 function skyLight() {
   const id = sky.sel, n = Tree.NODES[id], c = sky.c;
@@ -191,7 +190,7 @@ function skyLight() {
 function skyFrame(ts) {
   if (!sky) return;
   sky.raf = requestAnimationFrame(skyFrame);
-  const { ctx, cv, dpr, v } = sky, W = cv.clientWidth, H = cv.clientHeight, N = Tree.NODES, { P, dust } = layoutSky();
+  const { ctx, cv, dpr } = sky, W = cv.clientWidth, H = cv.clientHeight;
   if (cv.width !== Math.round(W * dpr)) { skyResize(); sky.fit = skyFit(); }
   // opening: the camera drifts in from far away while the sky fades up
   const open = Math.min(1, (ts - sky.t0) / 1400), ease = 1 - Math.pow(1 - open, 3);
@@ -202,111 +201,100 @@ function skyFrame(ts) {
     if (k >= 1) sky.fly = null;
   }
   const cam = open < 1 ? { s: sky.cam.s * (0.55 + 0.45 * ease), ox: W / 2 + (sky.cam.ox - W / 2) * (0.55 + 0.45 * ease), oy: H / 2 + (sky.cam.oy - H / 2) * (0.55 + 0.45 * ease) } : sky.cam;
-  const X = x => x * cam.s + cam.ox, Y = y => y * cam.s + cam.oy, zoom = cam.s / sky.fit.s;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const bg = ctx.createRadialGradient(X(0), Y(0), 0, X(0), Y(0), Math.max(W, H) * 1.1);
-  bg.addColorStop(0, "#1a1f4d"); bg.addColorStop(0.45, "#0d1033"); bg.addColorStop(1, "#04050f");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const S = id => v.nodes[id].s;
-  // nebula: each constellation glows more the more of it is lit
-  const lit = {}; for (const id of v.have) { const r = N[id].root; if (r) lit[r] = (lit[r] || 0) + 1; }
-  ctx.globalCompositeOperation = "lighter";
-  for (const r of Tree.ROOTS) {
-    const p = P[r], g = glowSprite(skyColor(N[r])), size = (260 + Math.min(24, lit[r] || 0) * 18) * cam.s;
-    ctx.globalAlpha = (0.09 + Math.min(0.22, (lit[r] || 0) * 0.025)) * ease;
-    ctx.drawImage(g, X(p.x * 1.7) - size, Y(p.y * 1.7) - size, size * 2, size * 2);
+  {
+    const sp = sky.spread;
+    if (sp && ts < sp.t + sp.d) {
+      // malam pembacaan: tinta emas merembes dari bintang si makhluk ke seluruh peta
+      skyPaper(ts, cam, "pencil", ease, false);
+      const k = Math.max(0, (ts - sp.t) / sp.d), e = k * k * (3 - 2 * k), x0 = cam.ox, y0 = cam.oy, far = 1.15 * Math.max(Math.hypot(x0, y0), Math.hypot(W - x0, y0), Math.hypot(x0, H - y0), Math.hypot(W - x0, H - y0));
+      ctx.save(); ctx.beginPath();
+      for (let i = 0; i <= 48; i++) { const a = i / 48 * 6.283, w = 1 + 0.08 * Math.sin(a * 5 + ts / 400) + 0.05 * Math.sin(a * 11), r = e * far * w; ctx.lineTo(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); }
+      ctx.closePath(); ctx.clip(); skyPaper(ts, cam, "ink", ease, true); ctx.restore();
+    } else { sky.spread = null; skyPaper(ts, cam, sky.skin, ease, true); }
+    return;
   }
-  // sky dust, twinkling; it drifts slower than the stars for depth
-  for (const d of dust) {
-    const x = d.x * cam.s * d.d + (cam.ox - W / 2) * d.d + W / 2, y = d.y * cam.s * d.d + (cam.oy - H / 2) * d.d + H / 2;
-    if (x < -4 || y < -4 || x > W + 4 || y > H + 4) continue;
-    ctx.globalAlpha = (0.25 + 0.45 * (0.5 + 0.5 * Math.sin(ts / 900 + d.t))) * d.d * ease;
-    ctx.fillStyle = "#dfe6ff"; ctx.fillRect(x, y, d.s, d.s);
-  }
-  if (!sky.shoot || ts > sky.shoot.t + 900) { if (!sky.shoot || ts > sky.shoot.t + 5200 + skyHash(String(sky.shoot.t)) * 4000) sky.shoot = { t: ts, x: W * (0.2 + Math.random() * 0.8), y: H * Math.random() * 0.4, a: 2.5 + Math.random() * 0.5 }; }
-  if (ts - sky.shoot.t < 900) {
-    const k = (ts - sky.shoot.t) / 900, sx = sky.shoot.x - Math.cos(sky.shoot.a) * -k * 260, sy = sky.shoot.y + Math.sin(sky.shoot.a) * k * 260;
-    const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(sky.shoot.a) * -70, sy - Math.sin(sky.shoot.a) * 70);
-    g.addColorStop(0, "rgba(255,255,255,.9)"); g.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.globalAlpha = Math.sin(k * Math.PI) * ease; ctx.strokeStyle = g; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(sky.shoot.a) * -70, sy - Math.sin(sky.shoot.a) * 70); ctx.stroke();
-  }
-  ctx.globalCompositeOperation = "source-over";
-  // lines: lit lines glow, the next ones are faint dotted traces
-  const animating = new Set(sky.anims.map(a => a.to));
-  const line = (a, b, col, w, alpha, dash, prog = 1) => {
-    ctx.globalAlpha = alpha * ease; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash || []);
-    ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(a.x + (b.x - a.x) * prog), Y(a.y + (b.y - a.y) * prog)); ctx.stroke();
-  };
+}
+
+// ---- peta di buku: perkamen bertinta (sesudah umur 30) atau buku catatan pensil (sebelumnya)
+const SKY_INK = {
+  ink: { paper0: "#F2E2B8", paper1: "#E2C690", paper2: "#B8955A", line: "#B8862A", own: "#D9A93E", ownS: "#5A3A0E", hi: "#FFF3D0", open: "#7A1E14", fog: "#8A6A3A", txt: "#3A2410", halo: "rgba(240,224,180,.92)", font: "Cinzel, Georgia, serif", w: 700, fs: 1 },
+  pencil: { paper0: "#F3EFE6", paper1: "#EEE8DC", paper2: "#E2DACB", line: "#57534C", own: "#6A665E", ownS: "#3A3833", hi: "#F3EFE6", open: "#3A3833", fog: "#9A968E", txt: "#3A3833", halo: "rgba(243,239,230,.92)", font: "Caveat, cursive", w: 600, fs: 1.3 },
+};
+const skyDia = (ctx, x, y, r) => { ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); };
+const skySpk = (ctx, x, y, r, q = 0.22) => { const k = r * q; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x + k, y - k, x + r, y); ctx.quadraticCurveTo(x + k, y + k, x, y + r); ctx.quadraticCurveTo(x - k, y + k, x - r, y); ctx.quadraticCurveTo(x - k, y - k, x, y - r); ctx.closePath(); };
+const skyFigs = {};
+function skyPaper(ts, cam, skin, ease, main) {
+  const { ctx, cv, v } = sky, W = cv.clientWidth, H = cv.clientHeight, N = Tree.NODES, { P } = layoutSky(), C = SKY_INK[skin];
+  const X = x => x * cam.s + cam.ox, Y = y => y * cam.s + cam.oy, zoom = cam.s / sky.fit.s, S = id => v.nodes[id].s;
+  // kertas
+  const bg = ctx.createRadialGradient(X(0), Y(0), 0, X(0), Y(0), Math.max(W, H) * 1.2);
+  bg.addColorStop(0, C.paper0); bg.addColorStop(0.55, C.paper1); bg.addColorStop(1, C.paper2);
+  ctx.globalAlpha = 1; ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  if (skin === "pencil") { ctx.strokeStyle = "#CFC8BA"; ctx.lineWidth = 1; const g = 26, off = ((cam.oy % g) + g) % g; ctx.beginPath(); for (let y = off; y < H; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); } ctx.stroke(); }
+  // bintang besar empat sudut: logonya sekaligus bentuk peta; tiap sudut satu akar
+  ctx.globalAlpha = 0.9 * ease; ctx.beginPath();
+  const R = 1150, q = 0.3; ctx.moveTo(X(0), Y(-R * 1.32)); ctx.quadraticCurveTo(X(R * q), Y(-R * q * 1.32), X(R), Y(0)); ctx.quadraticCurveTo(X(R * q), Y(R * q * 1.32), X(0), Y(R * 1.32)); ctx.quadraticCurveTo(X(-R * q), Y(R * q * 1.32), X(-R), Y(0)); ctx.quadraticCurveTo(X(-R * q), Y(-R * q * 1.32), X(0), Y(-R * 1.32)); ctx.closePath();
+  ctx.fillStyle = skin === "ink" ? "rgba(90,58,24,.05)" : "rgba(0,0,0,0)"; ctx.fill();
+  ctx.strokeStyle = skin === "ink" ? "rgba(90,58,24,.22)" : "rgba(87,83,76,.28)"; ctx.lineWidth = 1.6; ctx.setLineDash(skin === "ink" ? [] : [7, 9]); ctx.stroke(); ctx.setLineDash([]);
+  // garis: yang sudah dipelajari bertinta, yang bisa dibuka putus-putus merah, sisanya tidak digambar
+  const animating = new Set(sky.anims.map(a => a.to)), wz = Math.max(0.8, Math.min(1.6, zoom * 0.7));
+  const line = (a, b, col, w, alpha, dash, prog = 1) => { ctx.globalAlpha = alpha * ease; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(a.x + (b.x - a.x) * prog), Y(a.y + (b.y - a.y) * prog)); ctx.stroke(); };
   for (const id of Tree.ORDER) {
-    const n = N[id], s = S(id), reqs = skyReqs(n);
-    for (const r of reqs) {
-      const rs = r === "core" ? "owned" : S(r), col = skyColor(n);
-      if (s === "owned" && rs === "owned" && !animating.has(id)) { line(P[r], P[id], col, 3.2, 0.18, null); line(P[r], P[id], "#ffffff", 1, 0.75, null); }
-      else if ((s === "open" || s === "glimpse" || s === "gated") && rs === "owned") line(P[r], P[id], col, 1, s === "gated" ? 0.2 : 0.35, [2, 5]);
+    const n = N[id], s = S(id);
+    for (const r of skyReqs(n)) {
+      const rs = r === "core" ? "owned" : S(r);
+      if (s === "owned" && rs === "owned" && !animating.has(id)) line(P[r], P[id], C.line, 2.6 * wz, 0.95, null);
+      else if ((s === "open" || s === "glimpse" || s === "gated") && rs === "owned") line(P[r], P[id], s === "open" ? C.open : C.fog, 1.2 * wz, s === "open" ? 0.6 : 0.4, [4, 5]);
     }
   }
   ctx.setLineDash([]);
-  sky.anims = sky.anims.filter(a => {
-    const k = Math.min(1, (ts - a.t) / 650), col = skyColor(N[a.to]);
-    line(P[a.from], P[a.to], col, 5, 0.35, null, k); line(P[a.from], P[a.to], "#ffffff", 1.6, 0.95, null, k);
-    return k < 1;
-  });
-  // stars
-  ctx.globalCompositeOperation = "lighter";
-  const star = (x, y, r, col, a) => { const g = glowSprite(col), s = r * 6; ctx.globalAlpha = a; ctx.drawImage(g, x - s, y - s, s * 2, s * 2); };
+  const anims = sky.anims.filter(a => { const k = Math.min(1, (ts - a.t) / 900); line(P[a.from], P[a.to], C.line, 3.4 * wz, 1, null, k); return k < 1; });
+  if (main) sky.anims = anims;
+  // titik
   const labels = [];
   for (const id of Tree.ORDER) {
-    const n = N[id], s = S(id), p = P[id], x = X(p.x), y = Y(p.y), col = skyColor(n);
-    if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue;
-    const tw = 0.5 + 0.5 * Math.sin(ts / 700 + skyHash(id) * 6.28), base = SKY_SIZE[n.tier] * Math.max(0.8, Math.min(1.8, zoom * 0.6));
-    if (s === "hidden") { ctx.globalAlpha = (0.35 + 0.3 * tw) * ease; ctx.fillStyle = "#cfd6ff"; ctx.fillRect(x - 0.8, y - 0.8, 1.6, 1.6); continue; }
-    if (s === "secret") { star(x, y, base * 0.7, "#F5CF6B", (0.2 + 0.35 * tw) * ease); if (zoom > 1.6) labels.push([x, y + base + 10, "?", "#F5CF6B", 11, 0.7]); continue; }
+    const n = N[id], s = S(id), p = P[id], x = X(p.x), y = Y(p.y);
+    if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue;
+    const tw = 0.5 + 0.5 * Math.sin(ts / 600 + skyHash(id) * 6.28), base = SKY_SIZE[n.tier] * Math.max(0.9, Math.min(2, zoom * 0.7)) * 1.25;
+    const big = ["root", "niche", "combo", "secret", ...SKY_OUTER].includes(n.tier);
+    if (s === "hidden") { ctx.globalAlpha = 0.3 * ease; ctx.fillStyle = C.fog; ctx.fillRect(x - 1, y - 1, 2, 2); continue; }
+    if (s === "secret") { ctx.globalAlpha = (0.25 + 0.3 * tw) * ease; ctx.fillStyle = C.fog; ctx.font = `${C.w} ${12 * C.fs}px ${C.font}`; ctx.textAlign = "center"; ctx.fillText("?", x, y + 4); continue; }
     const pending = animating.has(id) || (sky.flare && sky.flare.id === id && ts < sky.flare.t);
     if (s === "owned" && !pending) {
-      star(x, y, base * (1.15 + 0.1 * tw), col, (SKY_OUTER.includes(n.tier) || n.tier === "root" ? 1 : 0.7) * ease);
-      ctx.globalAlpha = ease; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, base * 0.55, 0, 6.28); ctx.fill();
-      if (["root", "niche", "combo", "secret", ...SKY_OUTER].includes(n.tier)) { // four-point sparkle on the big ones
-        const L = base * (2.6 + tw) * (n.tier === "crown" ? 1.6 : 1); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.globalAlpha = 0.7 * ease;
-        ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.moveTo(x, y - L); ctx.lineTo(x, y + L); ctx.stroke();
-        if (n.tier === "icon" || n.tier === "crown") { // the outermost stars also get a slow diagonal sparkle and a halo
-          const D = L * 0.55; ctx.globalAlpha = 0.45 * ease; ctx.beginPath(); ctx.moveTo(x - D, y - D); ctx.lineTo(x + D, y + D); ctx.moveTo(x + D, y - D); ctx.lineTo(x - D, y + D); ctx.stroke();
-          ctx.strokeStyle = col; ctx.globalAlpha = (0.35 + 0.25 * tw) * ease; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, base * 2.1, 0, 6.28); ctx.stroke();
-        }
-      }
+      if (skin === "ink") { const g = ctx.createRadialGradient(x, y, 0, x, y, base * 3); g.addColorStop(0, "rgba(255,233,168,.75)"); g.addColorStop(1, "rgba(255,233,168,0)"); ctx.globalAlpha = ease; ctx.fillStyle = g; ctx.fillRect(x - base * 3, y - base * 3, base * 6, base * 6); }
+      ctx.globalAlpha = ease; (big ? skySpk(ctx, x, y, base * (n.tier === "root" ? 1.35 : 1.7), 0.26) : skyDia(ctx, x, y, base * 1.25)); ctx.fillStyle = C.own; ctx.fill(); ctx.strokeStyle = C.ownS; ctx.lineWidth = 1.2; ctx.stroke();
+      skyDia(ctx, x, y, base * 0.45); ctx.fillStyle = C.hi; ctx.fill();
     } else {
-      const aff = s === "open" && v.nodes[id].cost <= v.points;
-      const dim = s === "glimpse" || s === "gated";
-      star(x, y, base * (aff ? 0.8 + 0.35 * tw : 0.6), col, (dim ? 0.35 : aff ? 0.75 : 0.5) * ease);
-      ctx.globalAlpha = (dim ? 0.4 : 0.85) * ease; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, base * 0.32, 0, 6.28); ctx.fill();
-      if (aff) { ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.globalAlpha = (0.3 + 0.5 * tw) * ease; ctx.beginPath(); ctx.arc(x, y, base * (1.4 + 0.5 * tw), 0, 6.28); ctx.stroke(); }
+      const aff = s === "open" && v.nodes[id].cost <= v.points, dim = s === "glimpse" || s === "gated";
+      ctx.globalAlpha = (dim ? 0.4 : s === "open" ? 0.95 : 0.6) * ease; (big ? skySpk(ctx, x, y, base * (n.tier === "root" ? 1.15 : 1.4), 0.26) : skyDia(ctx, x, y, base * 1.05));
+      ctx.fillStyle = C.hi; ctx.fill(); ctx.strokeStyle = s === "open" ? C.open : C.fog; ctx.lineWidth = 1.4; ctx.stroke();
+      if (aff) { ctx.globalAlpha = (0.35 + 0.55 * tw) * ease; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, base * 2.4, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); }
     }
-    const show = n.tier === "root" || ((n.tier === "field" || n.tier === "icon" || n.tier === "crown") && zoom > 1.25) || zoom > 2;
-    if (show) labels.push([x, y + base + SKY_FONT[n.tier] + 3, n.label + (s === "gated" ? " · talent " + v.nodes[id].need.talent : ""), s === "owned" ? (n.tier === "crown" ? "#FFE39A" : "#ffffff") : "#aab3d9", SKY_FONT[n.tier], s === "glimpse" || s === "gated" ? 0.55 : 1]);
+    const known = s === "owned" || s === "open";
+    const show = n.tier === "root" || id === sky.sel || (known && (n.tier === "field" || zoom > 1.25)) || ((n.tier === "field" || n.tier === "icon" || n.tier === "crown") && zoom > 1.25) || zoom > 2;
+    if (show) labels.push({ id, x, y: y + base * 1.9 + 4, text: n.label + (s === "gated" ? " · talent " + v.nodes[id].need.talent : ""), col: s === "owned" ? C.txt : s === "open" ? C.open : C.fog, size: SKY_FONT[n.tier] * C.fs, a: s === "glimpse" || s === "gated" ? 0.6 : 1,
+      rank: id === sky.sel ? 0 : n.tier === "root" ? 1 : s === "owned" ? 2 : s === "open" ? 3 : 4 });
   }
-  // the creature's own star at the center
-  star(X(0), Y(0), SKY_SIZE.core * (1.2 + 0.1 * Math.sin(ts / 500)), "#ffffff", 0.9 * ease);
-  ctx.globalCompositeOperation = "source-over";
-  // flare particles when a star is lit
-  sky.parts = sky.parts.filter(q => {
-    const age = (ts - q.t) / 1000; if (age < 0) return true; if (age > 1) return false;
-    ctx.globalAlpha = (1 - age) * ease; ctx.fillStyle = q.col;
-    ctx.beginPath(); ctx.arc(X(q.x + q.vx * age), Y(q.y + q.vy * age), 1.8 * (1 - age) + 0.6, 0, 6.28); ctx.fill();
-    return true;
-  });
-  if (sky.flare && ts >= sky.flare.t && ts < sky.flare.t + 700) {
-    const p = P[sky.flare.id], k = (ts - sky.flare.t) / 700;
-    ctx.globalCompositeOperation = "lighter"; star(X(p.x), Y(p.y), 6 + 26 * k, skyColor(N[sky.flare.id]), (1 - k) * 0.9); ctx.globalCompositeOperation = "source-over";
-  }
-  if (sky.sel) {
-    const p = P[sky.sel], r = 14 + 2 * Math.sin(ts / 300);
-    ctx.globalAlpha = 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -ts / 60;
-    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, 6.28); ctx.stroke(); ctx.setLineDash([]);
-  }
-  ctx.textAlign = "center"; ctx.lineJoin = "round";
-  for (const [x, y, text, col, size, a] of labels) {
-    ctx.font = `700 ${size}px Manrope, system-ui, sans-serif`;
-    ctx.globalAlpha = a * ease; ctx.strokeStyle = "rgba(6,8,24,.85)"; ctx.lineWidth = 4; ctx.strokeText(text, x, y); ctx.fillStyle = col; ctx.fillText(text, x, y);
+  // pusat: bintang si makhluk (sosok rasinya kalau sudah dibaca, tanda tanya kalau belum)
+  const cx = X(0), cy = Y(0), cr = 20 * Math.max(0.9, Math.min(2, zoom * 0.7));
+  ctx.globalAlpha = ease; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, 6.28); ctx.fillStyle = skin === "ink" ? "#FFF3D0" : C.hi; ctx.fill(); ctx.strokeStyle = skin === "ink" ? "#B8862A" : C.line; ctx.lineWidth = 1.6; ctx.stroke();
+  skySpk(ctx, cx, cy, cr * 1.5); ctx.stroke();
+  if (skin === "ink") { const f = sky.star.fig, path = skyFigs[f] || (skyFigs[f] = new Path2D(BK_FIG[f])); ctx.save(); ctx.translate(cx - cr * 0.72, cy - cr * 0.72); ctx.scale(cr * 0.0144, cr * 0.0144); ctx.strokeStyle = "#5A3A0E"; ctx.lineWidth = 5; ctx.lineCap = ctx.lineJoin = "round"; ctx.stroke(path); ctx.restore(); }
+  else { ctx.fillStyle = C.txt; ctx.font = `600 ${cr * 1.2}px Caveat, cursive`; ctx.textAlign = "center"; ctx.fillText("?", cx, cy + cr * 0.4); }
+  // percikan tinta saat satu bintang ditulis
+  const parts = sky.parts.filter(q => { const age = (ts - q.t) / 1000; if (age < 0) return true; if (age > 1) return false;
+    ctx.globalAlpha = (1 - age) * ease; ctx.fillStyle = skin === "ink" ? "#B8862A" : C.line; ctx.beginPath(); ctx.arc(X(q.x + q.vx * age * 0.6), Y(q.y + q.vy * age * 0.6), 2 * (1 - age) + 0.6, 0, 6.28); ctx.fill(); return true; });
+  if (main) sky.parts = parts;
+  if (sky.sel) { const p = P[sky.sel], r = 18 + 2 * Math.sin(ts / 300); ctx.globalAlpha = 0.9; ctx.strokeStyle = C.open; ctx.lineWidth = 1.4; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -ts / 60; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); }
+  // nama: yang penting dulu, yang bertabrakan dilewati
+  labels.sort((a, b) => a.rank - b.rank);
+  const taken = []; ctx.textAlign = "center"; ctx.lineJoin = "round";
+  for (const L of labels) {
+    ctx.font = `${C.w} ${L.size}px ${C.font}`; const w = ctx.measureText(L.text).width, box = [L.x - w / 2 - 3, L.y - L.size, L.x + w / 2 + 3, L.y + 4];
+    if (taken.some(b => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) continue;
+    taken.push(box);
+    ctx.globalAlpha = L.a * ease; ctx.strokeStyle = C.halo; ctx.lineWidth = 4; ctx.strokeText(L.text, L.x, L.y); ctx.fillStyle = L.col; ctx.fillText(L.text, L.x, L.y);
   }
   ctx.globalAlpha = 1;
 }

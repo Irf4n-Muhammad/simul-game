@@ -1,6 +1,6 @@
 <title>Makhluk Kecil 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Caveat:wght@500;600&family=Bodoni+Moda:ital,wght@0,400..700;1,400..700&family=Anton&family=UnifrakturMaguntia&family=Manrope:wght@500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Caveat:wght@500;600&family=Bodoni+Moda:ital,wght@0,400..700;1,400..700&family=Anton&family=UnifrakturMaguntia&family=Manrope:wght@500;600;700;800&family=Roboto:wght@400;500;700&family=Cinzel:wght@600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 /* Layout: the room is a small diorama in the middle; a thin translucent HUD floats above and below it. */
 :root {
@@ -519,6 +519,38 @@ svg { stroke: currentColor; }
 .sky-chip { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 3px 9px; }
 .sky-go { margin-top: 4px; height: 52px; border-radius: 999px; border: 0; font-weight: 800; font-size: 16px; color: #2b1c03; background: linear-gradient(180deg, #ffe9a6, #efbd4b); box-shadow: 0 0 24px rgba(245,207,107,.45); }
 .sky-go:disabled { background: rgba(255,255,255,.1); color: #8f98c2; box-shadow: none; }
+/* peta bintang di dalam buku: perkamen bertinta (sesudah umur 30) atau buku catatan pensil */
+.sky.book { background: #E9D3A0; color: #3A2410; font-family: "IM Fell English", Georgia, serif; }
+.sky.book.pencil { background: #F1ECE1; color: #3A3833; }
+.sky.book .sky-top { padding-bottom: 18px; background: linear-gradient(rgba(233,211,160,.95), rgba(233,211,160,0)); }
+.sky.book.pencil .sky-top { background: linear-gradient(rgba(241,236,225,.95), rgba(241,236,225,0)); }
+.sky.book .sky-x, .sky.book .sky-zoom button { background: rgba(255,248,232,.92); color: #3A2410; border: 1px solid rgba(90,58,24,.25); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sky.book .sky-kicker { font-family: Cinzel, Georgia, serif; color: #8A5A12; font-weight: 700; }
+.sky.book .sky-title b { font-family: Cinzel, Georgia, serif; font-weight: 700; color: #3A2410; letter-spacing: .04em; }
+.sky.book .sky-title small { font-style: italic; font-weight: 400; color: #6A4512; font-size: 13px; }
+.sky.book.pencil .sky-kicker, .sky.book.pencil .sky-title b { font-family: Caveat, cursive; letter-spacing: 0; text-transform: none; color: #3A3833; }
+.sky.book.pencil .sky-kicker { font-size: 16px; } .sky.book.pencil .sky-title b { font-size: 28px; }
+.sky.book.pencil .sky-title small { color: #6A6660; }
+.sky.book .sky-pts { width: 56px; height: 56px; background: radial-gradient(circle at 42% 34%, #F3D98A, #C9962E 55%, #7A5214); color: #3A2410; box-shadow: 0 3px 10px rgba(90,58,24,.35); }
+.sky.book .sky-pts b { font-family: Cinzel, Georgia, serif; }
+.sky.book.pencil .sky-pts { background: #F7F3EA; border: 1.5px solid #57534C; color: #3A3833; box-shadow: none; }
+.sky.book.pencil .sky-pts b { font-family: Caveat, cursive; font-size: 26px; }
+.sky.book .sky-panel { border-radius: 3px; border: 0; color: #3A2410; background: radial-gradient(ellipse at 40% 30%, #F6E6BE, #E2C68E 85%); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 10px 28px rgba(60,36,10,.4), inset 0 0 22px rgba(120,80,20,.3); transform: rotate(-.6deg); }
+.sky.book.pencil .sky-panel { background: #F7F3EA; box-shadow: 0 8px 24px rgba(40,38,34,.3); }
+.sky.book .sky-panel h3 { font-family: Cinzel, Georgia, serif; font-weight: 700; color: #3A2410; }
+.sky.book.pencil .sky-panel h3 { font-family: Caveat, cursive; font-size: 30px; font-weight: 600; color: #3A3833; }
+.sky.book .sky-panel p { color: #4A3018; font-style: italic; font-weight: 400; font-size: 15px; }
+.sky.book .sky-panel ul { color: #3A2410; font-weight: 400; font-size: 14px; }
+.sky.book .sky-meta, .sky.book .sky-row small { color: #6A4512; font-weight: 400; font-style: italic; font-size: 13px; }
+.sky.book .sky-hint { color: #3A2410 !important; font-weight: 400 !important; font-style: italic; font-size: 16px !important; }
+.sky.book .sky-chip { font-family: Cinzel, Georgia, serif; }
+.sky.book .sky-go { position: relative; overflow: hidden; font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 14px; letter-spacing: .06em; color: #F6D2C8; background: radial-gradient(circle at 38% 30%, #D2503F, #8E1F1C 60%, #5A0F0D); box-shadow: 0 4px 10px rgba(80,16,10,.4); touch-action: none; -webkit-user-select: none; user-select: none; }
+.sky.book .sky-go i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); background: rgba(255,231,160,.45); }
+.sky.book .sky-go span { position: relative; }
+.sky.book.pencil .sky-go { font-family: Caveat, cursive; font-size: 21px; letter-spacing: 0; color: #F7F3EA; background: #57534C; box-shadow: none; }
+.sky.book .sky-go:disabled { background: rgba(90,58,24,.14); color: #8A6A3A; box-shadow: none; }
+.sky-diary { align-self: center; margin-top: 6px; padding: 8px 18px; border-radius: 999px; border: 1px solid rgba(90,58,24,.35); background: transparent; color: #6A4512; font-family: Cinzel, Georgia, serif !important; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.sky.book.pencil .sky-diary { font-family: Caveat, cursive !important; font-size: 18px; letter-spacing: 0; text-transform: none; color: #3A3833; border-color: #9A968E; }
 @keyframes skyUp { from { transform: translateY(16px); opacity: 0; } }
 .fxl { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); font-weight: 600; }
 #lifeBtn { position: relative; }
@@ -857,7 +889,6 @@ svg { stroke: currentColor; }
 .k-turn b { font-size: 17px; letter-spacing: .08em; text-transform: uppercase; } .k-turn span { font-size: 13px; opacity: .7; }
 .konser-ui .k-turn button { margin-top: 14px; padding: 10px 18px; border-radius: 999px; background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.3); color: #fff; font-size: 13px; }
 @keyframes kTurn { 0%, 20% { transform: rotate(0); } 50%, 75% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
-}
 .konser-ui { position: absolute; inset: 0; pointer-events: none; z-index: 12; color: #fff; font-family: inherit; touch-action: none; }
 .konser-ui b, .konser-ui span, .konser-ui .k-round, .konser-ui .k-turn { color: #fff; }
 .konser-ui button { pointer-events: auto; font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -888,6 +919,7 @@ svg { stroke: currentColor; }
   .k-joy { left: calc(env(safe-area-inset-left, 0px) + 28px); bottom: 18px; width: 112px; height: 112px; }
   .k-btns { right: calc(env(safe-area-inset-right, 0px) + 22px); bottom: 14px; }
   .k-say { top: 16%; } .k-help { bottom: 22px; }
+}
 #app.in-globe .hood-chip { color: #fff; background: rgba(20,30,48,.42); border-color: rgba(255,255,255,.25); }
 #app.in-globe .town-hint { color: #E8ECF2; background: rgba(20,30,48,.42); }
 .town-q { position: absolute; top: 76px; right: 16px; pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--ink-soft); font-weight: 800; font-size: 15px; display: grid; place-items: center; padding: 0; box-shadow: var(--shadow); }
@@ -1240,6 +1272,33 @@ svg { stroke: currentColor; }
 .chip.ck-prestasi { border-color: #D4A853; box-shadow: inset 0 0 0 1px #D4A853; } .chip.ck-terbatas { border-color: var(--plum); } .chip.ck-event { border-color: #5B9BD5; } .chip.ck-hadiah { border-color: #E58A8A; }
 .chip.ck[aria-pressed="true"] { box-shadow: none; }
 .ck-sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+
+/* Buku Bintang (rasi.js, ui/40-book.js): buku muncul di atas layar main, latar game diblur */
+.bk { position: absolute; inset: 0; z-index: 62; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(12,10,8,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s ease; font-family: "IM Fell English", Georgia, serif; color: #2E1C0A; overflow: hidden; }
+.bk.on { opacity: 1; }
+.bk button { font-family: inherit; }
+.bk-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 0; display: flex; align-items: center; gap: 10px; }
+.bk-x { width: 40px; height: 40px; border-radius: 20px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 16px; }
+.bk-cap-t { flex: 1; text-align: center; font-family: Cinzel, serif; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: #F4E6C0; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.bk-diary { height: 34px; padding: 0 12px; border-radius: 17px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 13px; }
+.bk-closed { border: 0; background: none; padding: 0; width: min(92vw, 380px); filter: drop-shadow(0 26px 30px rgba(0,0,0,.7)); transition: transform .25s ease; }
+.bk-closed:active { transform: scale(.98); }
+.bk-cover-svg { display: block; width: 100%; height: auto; }
+.bk-hint { position: absolute; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); left: 24px; right: 24px; text-align: center; font-style: italic; font-size: 16px; color: #F4E6C0; text-shadow: 0 1px 4px rgba(0,0,0,.8); margin: 0; }
+.bk-rit { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(6,5,10,.96); padding: 24px; }
+.bk-rit-book { position: relative; width: min(64vw, 260px); aspect-ratio: 270 / 370; }
+.bk-rit-book > div { position: absolute; inset: 0; transition: opacity 2.2s ease 1s, transform 2.2s ease 1s, filter 2.2s ease 1s; }
+.bk-rit-book .new { opacity: 0; transform: scale(.94); filter: brightness(2.4) blur(4px); }
+.bk-rit.go .bk-rit-book .old { opacity: 0; transform: scale(1.04); filter: brightness(2) blur(3px); }
+.bk-rit.go .bk-rit-book .new { opacity: 1; transform: none; filter: drop-shadow(0 0 40px rgba(255,214,120,.45)); }
+.bk-rit-t { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #F4E6C0; opacity: 0; transform: translateY(8px); transition: opacity 1s ease 3s, transform 1s ease 3s; max-width: 340px; }
+.bk-rit.go .bk-rit-t { opacity: 1; transform: none; }
+.bk-rit-t small { font-family: Cinzel, serif; font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: #E8C46A; }
+.bk-rit-t b { font-family: Cinzel, serif; font-size: 21px; line-height: 1.2; }
+.bk-rit-t span { font-style: italic; font-size: 16px; }
+.bk-rit-t em { font-size: 13px; color: #B9AE98; }
+.bk-rit-t button { margin-top: 8px; height: 46px; padding: 0 28px; border-radius: 23px; border: 1.5px solid #C9962E; background: rgba(255,214,110,.12); color: #F0CF7E; font-family: Cinzel, serif; font-size: 14px; font-weight: 700; letter-spacing: .12em; }
+@media (prefers-reduced-motion: reduce) { .bk, .bk-rit-book > div, .bk-rit-t { transition: none; } }
 </style>
 
 <div id="app">
@@ -1263,7 +1322,7 @@ svg { stroke: currentColor; }
         <button class="icon-btn" id="lifeBtn" aria-label="Phone">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></svg>
         </button>
-        <button class="icon-btn" id="diaryBtn" aria-label="Diary">
+        <button class="icon-btn" id="diaryBtn" aria-label="Book">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" fill="none"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M10 8h5"/></svg>
         </button>
       </div>
@@ -1383,6 +1442,7 @@ svg { stroke: currentColor; }
 <script src="bank.js"></script>
 <script src="status.js"></script>
 <script src="tree.js"></script>
+<script src="rasi.js"></script>
 <script src="cosmetics.js"></script>
 <script src="career.js"></script>
 <script src="market.js"></script>
