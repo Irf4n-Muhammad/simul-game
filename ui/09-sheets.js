@@ -138,6 +138,6 @@ function showRecap(days, logs) {
 }
 
 $("famBtn").onclick = () => { hideHint(); if (game) showFamily(); };
-$("planBtn").onclick = () => { hideHint(); if (game) showAgenda(null); };   // v80: tombol kalender = Agenda (Daily plan ada di dalamnya)
+$("planBtn").onclick = () => { hideHint(); if (game) { agMon = 0; agSel = null; showAgenda(null); } };   // v80: tombol kalender = Agenda (Daily plan ada di dalamnya)
 $("diaryBtn").onclick = () => { hideHint(); if (game) showBook(); };
 

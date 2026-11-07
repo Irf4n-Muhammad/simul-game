@@ -39,7 +39,7 @@
             k: "sekolah:" + m.id, cid: m.id, lbl: "SCHOOL",
             tx: P ? `${m.nama} is enrolled at ${A.SEKOLAH[P.id].nama}` : `Enrol ${m.nama} in a school`,
             why: P ? `You can still switch until enrolment closes.` : `${m.nama} starts school ${fmt(start)}. If no form goes in, it's the school round the corner.`,
-            day: close, left, done: !!P, urgent: !P && left <= URGENT,
+            day: close, from: open, left, done: !!P, urgent: !P && left <= URGENT,
             opts: Object.keys(A.SEKOLAH).map(id => ({ id, label: A.SEKOLAH[id].nama, sub: WHY_SCHOOL[id], act: "daftar:sekolah:" + id, star: id === star, picked: !!P && P.id === id })),
           });
         }
