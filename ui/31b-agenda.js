@@ -17,7 +17,6 @@ let agRecap = null;   // rekap pembuka tetap tampil waktu Agenda digambar ulang 
 // Ketuk tanggal = isi hari itu muncul di bawah kisi. agMon = geser bulan dari bulan sekarang, agSel = hari game yang dipilih.
 let agMon = 0, agSel = null;
 const AG_WD = ["M", "T", "W", "T", "F", "S", "S"];
-const dayOfDate = ts => Math.round((ts - Engine.START_DATE) / 86400000);
 // semua tanggal yang diketahui: batas waktu kartu, jendela, dan tanggal soon.js (sampai setahun ke depan)
 function agEvents(R, S, d) {
   const ev = new Map(), band = new Set();
