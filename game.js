@@ -490,6 +490,8 @@
         const x = new E.Ctx(c, day, E.seed_rng("daftar", c.id, day), this.home, true);
         x.say(prev ? `You change the form: ${x.n} will go to ${S.nama}, ${S.di}, instead.` : S.teks(x.n) + ` School starts on day ${c.born + A.DAFTAR.masuk + 1}.`);
         if (!prev) x.remember(`Enrolled at ${S.nama}.`);
+        // sekolah dekat = teman satu jalan (Ramah +1, sama seperti pilihan lama di umur 56); pindah dari situ = bonusnya dicabut lagi
+        if (id === "dekat") x.trait("ramah", 1); else if (prev && prev.id === "dekat") x.trait("ramah", -1);
         (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["daftar_sekolah"]));
         return true;
       }
