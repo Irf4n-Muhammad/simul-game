@@ -57,7 +57,9 @@ function boot() {
   const missedDays = new Set(missed.map(l => l.day)).size;
   selected = selected || vm().anggota[0].id;
   refresh(); applyHome();
-  if (state.dilihat >= 0 && missedDays >= 2) showRecap(missedDays, missed);
+  // v80: buka pertama hari ini = Agenda (rekap "selama kamu pergi" ikut di atasnya); kalau Agenda sudah dilihat hari ini, rekap biasa
+  const recap = state.dilihat >= 0 && missedDays >= 2 ? { days: missedDays, logs: missed.filter(l => l.dramas.some(x => x !== "kecil") || l.events.includes("akhir_hidup")).slice(-4) } : null;
+  if (!agendaMaybe(recap) && recap) showRecap(missedDays, missed);
   greetIfMissed();
   clearInterval(timer); timer = setInterval(tick, 500); tick();
   if (globalThis.Net && kdNet === null) Net.init({ game: () => game, changed: kdRefresh, recorded: kdRecorded }).then(ok => { kdNet = ok; kdRefresh(); });

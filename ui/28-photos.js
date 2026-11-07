@@ -320,6 +320,8 @@ function tick() {
   if (game.home.last_day !== before || !cur) refresh(); else { drawHud(); careUi(); }
   $("dayBar").style.width = `${Math.min(100, (dayFloat() - Math.floor(dayFloat())) * 100)}%`;
   if (!sheetKind && !PH && !game.pending) { const r = nextUnseenResult(); if (r) { markSeen(r); showResult(r); } }
+  // v80: hari berganti waktu app terbuka (atau dibuka lagi dari latar belakang): Agenda hari baru
+  if (visible && state.agenda_hari != null && state.agenda_hari !== t) agendaMaybe(null);
   if (sheetKind === "dilemma" && game.pending) { const cd = countdownText(game.pending); $("cdBar").style.width = cd.frac * 100 + "%"; $("cdText").textContent = cd.text; }
   // DEV-NEXT
   if (DEV) devClock();

@@ -563,7 +563,29 @@ svg { stroke: currentColor; }
 .sky.book.pencil .sky-diary { font-family: Caveat, cursive !important; font-size: 18px; letter-spacing: 0; text-transform: none; color: #3A3833; border-color: #9A968E; }
 @keyframes skyUp { from { transform: translateY(16px); opacity: 0; } }
 .fxl { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); font-weight: 600; }
-#lifeBtn { position: relative; }
+#lifeBtn, #planBtn { position: relative; }
+#planBtn .dot-new { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 50%; background: #E0645A; box-shadow: 0 0 0 2px #fff; }
+/* v80: Agenda (ui/31b-agenda.js): kartu rekomendasi dengan batas waktu dan pilihan */
+.ag-list { display: flex; flex-direction: column; gap: 10px; }
+.ag-card { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ag-card.urgent { border-color: #E0645A; box-shadow: 0 0 0 2px rgba(224,100,90,.15); }
+.ag-card.urgent .days { background: #E0645A; }
+.ag-card.done { opacity: .8; }
+.ag-head { display: flex; align-items: center; gap: 10px; }
+.ag-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag-head b { font-weight: 800; font-size: 14px; } .ag-head .k { font-style: normal; color: var(--accent); letter-spacing: .05em; }
+.ag-head .sub { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.ag-head .days { flex: none; width: 54px; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: var(--sky); color: #fff; font-style: normal; line-height: 1; }
+.ag-head .days b { font-size: 21px; font-weight: 800; } .ag-head .days small { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-top: 3px; }
+.ag-head .days.ok { background: var(--good, #6BA368); }
+.ag-opts { display: flex; flex-direction: column; gap: 6px; }
+.ag-opt { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; background: var(--paper, #FBF6EE); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; color: var(--ink); }
+.ag-opt span { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .ag-opt b { font-size: 13.5px; font-weight: 800; } .ag-opt small { font-size: 11.5px; color: var(--ink-soft); font-weight: 600; }
+.ag-opt em { flex: none; font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.ag-opt.picked { border-color: var(--ink); background: #fff; } .ag-opt:disabled:not(.picked) { opacity: .45; }
+.ag-recap .linkish { border: 0; background: none; padding: 2px 0; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.ag-recap { border-radius: 14px; background: rgba(141,169,189,.12); padding: 10px 12px; } .ag-recap h3 { margin: 0 0 6px; font-size: 13px; } .ag-recap p { margin: 4px 0; font-size: 13px; }
+.ag-more { display: flex; gap: 8px; flex-wrap: wrap; }
 #lifeBtn .dot-new { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 50%; background: #E0645A; box-shadow: 0 0 0 2px #fff; }
 .snap { pointer-events: auto; width: 46px; height: 46px; border-radius: 50%; background: #fff; color: var(--ink); border: 0; box-shadow: 0 6px 18px rgba(46,42,38,.25); display: grid; place-items: center; padding: 0; animation: bob 1.4s ease-in-out infinite; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 30; }
@@ -1326,7 +1348,7 @@ svg { stroke: currentColor; }
         <button class="icon-btn" id="townBtn" aria-label="Go to town">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10l5-4 5 4v11M15 21v-7h4v7M9 21v-4h2v4"/></svg>
         </button>
-        <button class="icon-btn" id="planBtn" aria-label="Daily plan">
+        <button class="icon-btn" id="planBtn" aria-label="Agenda">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3" fill="none"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>
         </button>
         <button class="icon-btn" id="lifeBtn" aria-label="Phone">
@@ -1473,4 +1495,5 @@ svg { stroke: currentColor; }
 <script src="balik.js"></script>
 <script src="kabar.js"></script>
 <script src="dapur.js"></script>
+<script src="rekom.js"></script>
 <script src="ui.js"></script>

@@ -25,6 +25,6 @@ function drawHud() {
   $("ageLbl").textContent = `${PHASE_EN[cur.fase] || cur.fase} · ${fmtAge(cur.umur)} · Day ${game.home.last_day + 1}`;
   $("face").style.background = "#" + (COLOR[cur.rupa.warna] || 0xcccccc).toString(16).padStart(6, "0");
   $("bottom").style.opacity = gone ? 0.5 : 1;
-  drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead(); tanyaDot(); bondCheck(); kabarOffer();
+  drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead(); tanyaDot(); agendaDot(); bondCheck(); kabarOffer();
 }
 
