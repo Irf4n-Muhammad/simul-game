@@ -470,6 +470,31 @@
     return { root: path[0], node: deep, path };
   }
 
+  // menghapus tulisan pensil: sebelum malam pembacaan (umur ERASE_BEFORE hari, rasi.js) masa kecil buat coba-coba,
+  // jadi bintang yang sudah ditulis boleh dihapus dan poinnya balik. Hanya ujung jalur (tidak ada bintang lain yang
+  // bergantung padanya) dan hanya tingkat biasa; sesudah dibaca, tintanya permanen.
+  const ERASE_BEFORE = 30, ERASABLE = ["root", "field", "spec", "niche"];
+  function canErase(c, id, day) {
+    const T = c && c.st && c.st.tree, n = NODES[id];
+    if (!T || !n || !T.have.includes(id) || !ERASABLE.includes(n.tier)) return false;
+    if (!c.alive(day) || c.age(day) >= ERASE_BEFORE) return false;
+    return !T.have.some(k => k !== id && (NODES[k].req.includes(id) || (NODES[k].reqAny || []).includes(id) && !NODES[k].reqAny.some(r => r !== id && T.have.includes(r))));
+  }
+  const refundOf = (c, id) => { const T = tr(c.st); return T.paid && T.paid[id] != null ? T.paid[id] : cost(c, id); };
+
+  // tindakan pemain "hapus:<id>"
+  const _actErase = HOOKS.act;
+  HOOKS.act = (home, cid, kind, day) => {
+    if (!kind.startsWith("hapus:")) return _actErase(home, cid, kind, day);
+    const c = home.get(cid), id = kind.slice(6);
+    if (!c || !c.st || !canErase(c, id, day)) return false;
+    const T = tr(c.st), n = NODES[id];
+    T.spent = Math.max(0, T.spent - refundOf(c, id));
+    T.have = T.have.filter(k => k !== id); delete T.days[id]; if (T.paid) delete T.paid[id];
+    if (n.fx.life) c.death_day -= n.fx.life;
+    return true;
+  };
+
   // tindakan pemain "pohon:<id>"
   const _act = HOOKS.act;
   HOOKS.act = (home, cid, kind, day) => {
@@ -478,9 +503,10 @@
     if (!c || !c.st || !c.alive(day) || "keluar" in c.info) return false;
     update(c, day);
     if (!canUnlock(c, id, home, day)) return false;
-    const T = tr(c.st), n = NODES[id];
-    T.spent += cost(c, id);
+    const T = tr(c.st), n = NODES[id], paid = cost(c, id);
+    T.spent += paid;
     T.have.push(id); T.days[id] = day;
+    (T.paid ||= {})[id] = paid;
     if (n.fx.life) c.death_day += n.fx.life;
     if (["niche", "combo", "secret", "legend", "master", "icon", "crown"].includes(n.tier)) {
       const x = new Ctx(c, day, seed_rng(cid, day, "pohon"), home, true);
@@ -532,7 +558,7 @@
   }
 
   const API = { NODES, ORDER, ROOTS: ROOTS.map(r => r[0]), COMBOS, SECRETS, COST, TIER_LABEL, GATE, setDev: v => { devOpen = !!v; }, view, info, gearOf, pathOf, points,
-    canUnlock, cost, fxLines, count: ORDER.length, callings: ORDER.filter(id => ["niche", "combo"].includes(NODES[id].tier)).length };
+    canUnlock, canErase, refundOf, ERASE_BEFORE, cost, fxLines, count: ORDER.length, callings: ORDER.filter(id => ["niche", "combo"].includes(NODES[id].tier)).length };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Tree = API;
 })();

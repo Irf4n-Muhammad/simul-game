@@ -62,7 +62,7 @@ function showTree(id = cur && cur.id, back = null, spread = false) {
   closeSheet(); Tele.layar("app", "stars");
   if (sky) sky.el.remove();
   // peta bintang di dalam buku: sebelum malam pembacaan masih sketsa pensil, sesudahnya perkamen bertinta emas
-  const skin = Rasi.stage(c.born, today()) === "read" ? "ink" : "pencil", star = Rasi.starOf(c.st);
+  const skin = Rasi.isRead(c.born, today()) ? "ink" : "pencil", star = Rasi.starOf(c.st);
   const el = document.createElement("div"); el.className = `sky book ${skin}`; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `${c.name}'s star map`);
   el.innerHTML = `<canvas></canvas>
     <div class="sky-top"><button class="sky-x" aria-label="${back ? "Back" : "Close"}">${back ? "‹" : "✕"}</button>
@@ -72,7 +72,10 @@ function showTree(id = cur && cur.id, back = null, spread = false) {
     <div class="sky-zoom"><button data-z="0.7" aria-label="Zoom in">+</button><button data-z="1.4" aria-label="Zoom out">−</button></div>`;
   (PH ? PH.screen : $("app")).appendChild(el);
   const cv = el.querySelector("canvas");
-  sky = { el, cv, ctx: cv.getContext("2d"), c, back, skin, star, sel: null, cam: null, t0: performance.now(), anims: [], parts: [], v: null, raf: 0, closing: 0,
+  // jalur panggilan (sesudah malam kedua): dari panggilan sampai ke inti, digambar lebih tebal
+  const call = Rasi.stage(c.born, today()) === "called" ? Rasi.callingOf(c.st, Tree.NODES) : null, callPath = new Set();
+  for (let k = call; k; k = (Tree.NODES[k].req[0] || (Tree.NODES[k].reqAny || []).find(r => c.st.tree.have.includes(r)))) callPath.add(k);
+  sky = { el, cv, ctx: cv.getContext("2d"), c, back, skin, star, callPath, sel: null, cam: null, t0: performance.now(), anims: [], parts: [], v: null, raf: 0, closing: 0,
     spread: spread && skin === "ink" ? { t: performance.now() + 900, d: 3600 } : null };
   skyResize(); sky.fit = skyFit();
   skyRefresh(); sky.cam = skyFitSeen();
@@ -153,6 +156,7 @@ function skyPanel() {
   if (st.s === "hidden") { panel.innerHTML = `<span class="sky-chip" style="--c:#8A6A3A">Fog</span><h3>Not seen yet</h3><p>${n.tier === "secret" ? "Something is hiding here." : "Learn a star next to it to see what it is."}</p>`; return; }
   if (st.s === "secret") { panel.innerHTML = `<span class="sky-chip" style="--c:#8A6410">Hidden star</span><h3>A secret</h3><p>${esc(n.hint)}</p>`; return; }
   const missing = n.req.filter(r => v.nodes[r].s !== "owned").map(r => N[r].label);
+  const erase = st.s === "owned" && alive && c.id === cur.id && canCare() && Tree.canErase(c, sky.sel, today());
   const need = st.need, sk = need && Status.SKILL_LABEL[need.skill];
   const why = st.s === "owned" ? `${sky.skin === "pencil" ? "Written" : "Inked"} on ${fmtDate(st.day)}.` : !alive ? "This life is over." : st.s === "glimpse" ? `Learn ${missing.join(" and ")} first.`
     : st.s === "gated" ? `Needs ${sk} talent ${need.talent}. ${esc(c.name)} has ${need.has}.${need.talent - need.has === 1 ? ` Reaching ${sk} 90 counts as one more.` : ""}` : st.cost > v.points ? `Needs ${st.cost} points. ${esc(c.name)} has ${v.points}.` : c.id !== cur.id ? `Go to ${esc(c.name)} first.` : !canCare() ? "Not right now." : "";
@@ -162,17 +166,37 @@ function skyPanel() {
     ${n.tier === "combo" ? `<small class="sky-meta">Joins ${esc(n.req.map(r => N[r].label).join(" + "))}</small>` : ""}
     ${v.legacy && v.legacy.path.includes(sky.sel) ? `<small class="sky-meta">Family star, from ${esc(v.legacy.from)}</small>` : ""}
     <ul>${n.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
-    ${st.s === "owned" ? `<small class="sky-meta">${why}</small>` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}><i></i><span>Hold to ${sky.skin === "pencil" ? "write it in" : "ink it"} · ${st.cost} pt${st.cost === 1 ? "" : "s"}</span></button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
-  const go = $("skyGo"); if (go) skyHold(go);
+    ${skyBend(sky.sel, v)}${skyCrowd(sky.sel)}
+    ${st.s === "owned" ? `<small class="sky-meta">${why}</small>${erase ? `<button class="sky-go erase" id="skyErase"><i></i><span>Hold to erase · ${Tree.refundOf(c, sky.sel)} pt${Tree.refundOf(c, sky.sel) === 1 ? "" : "s"} back</span></button><small class="sky-meta">Pencil rubs out until the stars read the book.</small>` : ""}` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}><i></i><span>Hold to ${sky.skin === "pencil" ? "write it in" : "ink it"} · ${st.cost} pt${st.cost === 1 ? "" : "s"}</span></button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
+  const go = $("skyGo"); if (go) skyHold(go, skyLight);
+  const er = $("skyErase"); if (er) skyHold(er, skyErase);
 }
-function skyHold(btn) {
+// jalan belok: crossroads yang tumbuh dari bintang ini, jadi tinta di sini tidak terbuang kalau mau pindah arah
+function skyBend(id, v) {
+  const N = Tree.NODES; if (v.nodes[id].s !== "owned") return "";
+  const ways = Tree.ORDER.filter(k => N[k].tier === "combo" && N[k].req.includes(id)).slice(0, 3);
+  if (!ways.length) return "";
+  return `<small class="sky-meta sky-bend">Can bend toward ${ways.map(k => `<b>${esc(N[k].label)}</b> (with ${esc(N[k].req.filter(r => r !== id).map(r => N[r].label).join(" + "))})`).join(", ")}.</small>`;
+}
+// keadaan kota sekarang untuk pekerjaan di bintang ini (career.js), hanya yang sudah terjadi
+function skyCrowd(id) {
+  const jobs = Object.keys(Tree.NODES[id].fx.job || {}); if (!jobs.length || !Career.crowd) return "";
+  const cz = Career.crowd(jobs[0], today()); if (cz.id === "steady") return "";
+  return `<small class="sky-meta sky-crowd ${cz.id}">${cz.id === "needed" ? `Old Town is short on people in ${esc(BW_IND[jobs[0]].toLowerCase())} right now.` : `Lots of newcomers in ${esc(BW_IND[jobs[0]].toLowerCase())} right now.`}</small>`;
+}
+function skyErase() {
+  const id = sky.sel, c = sky.c;
+  if (!game.act(c.id, "hapus:" + id)) return;
+  save(); refresh(true); sky.sel = null; skyRefresh();
+}
+function skyHold(btn, done) {
   let raf = 0, t0 = 0;
   const stop = () => { cancelAnimationFrame(raf); raf = 0; btn.style.setProperty("--p", 0); };
   btn.onpointerdown = e => { if (btn.disabled) return; e.preventDefault(); t0 = performance.now();
-    const tick = t => { const k = Math.min(1, (t - t0) / 800); btn.style.setProperty("--p", k); if (k < 1) raf = requestAnimationFrame(tick); else { raf = 0; skyLight(); } };
+    const tick = t => { const k = Math.min(1, (t - t0) / 800); btn.style.setProperty("--p", k); if (k < 1) raf = requestAnimationFrame(tick); else { raf = 0; done(); } };
     raf = requestAnimationFrame(tick); };
   btn.onpointerup = btn.onpointerleave = btn.onpointercancel = () => { if (raf) stop(); };
-  btn.onclick = e => { if (e.detail === 0) skyLight(); }; // Enter/Space
+  btn.onclick = e => { if (e.detail === 0) done(); }; // Enter/Space
 }
 function skyLight() {
   const id = sky.sel, n = Tree.NODES[id], c = sky.c;
@@ -244,7 +268,7 @@ function skyPaper(ts, cam, skin, ease, main) {
     const n = N[id], s = S(id);
     for (const r of skyReqs(n)) {
       const rs = r === "core" ? "owned" : S(r);
-      if (s === "owned" && rs === "owned" && !animating.has(id)) line(P[r], P[id], C.line, 2.6 * wz, 0.95, null);
+      if (s === "owned" && rs === "owned" && !animating.has(id)) { const cp = sky.callPath.has(id) && (r === "core" || sky.callPath.has(r)); if (cp) line(P[r], P[id], "#8E1F1C", 6 * wz, 0.25, null); line(P[r], P[id], C.line, (cp ? 4 : 2.6) * wz, 0.95, null); }
       else if ((s === "open" || s === "glimpse" || s === "gated") && rs === "owned") line(P[r], P[id], s === "open" ? C.open : C.fog, 1.2 * wz, s === "open" ? 0.6 : 0.4, [4, 5]);
     }
   }

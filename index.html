@@ -519,6 +519,12 @@ svg { stroke: currentColor; }
 .sky-chip { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 3px 9px; }
 .sky-go { margin-top: 4px; height: 52px; border-radius: 999px; border: 0; font-weight: 800; font-size: 16px; color: #2b1c03; background: linear-gradient(180deg, #ffe9a6, #efbd4b); box-shadow: 0 0 24px rgba(245,207,107,.45); }
 .sky-go:disabled { background: rgba(255,255,255,.1); color: #8f98c2; box-shadow: none; }
+/* keramaian bidang (career.js): tag di kartu lowongan dan catatan di halaman lowongan */
+.bw-crowd { display: inline-block; align-self: flex-start; margin-top: 4px; padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 800; }
+.bw-crowd.needed { background: #E3F4E6; color: #2E6B3E; }
+.bw-crowd.crowded { background: #FBE9DF; color: #9A4A1E; }
+.bw-crowdnote.needed { border-left: 4px solid #4E9A5E; }
+.bw-crowdnote.crowded { border-left: 4px solid #C9743E; }
 /* peta bintang di dalam buku: perkamen bertinta (sesudah umur 30) atau buku catatan pensil */
 .sky.book { background: #E9D3A0; color: #3A2410; font-family: "IM Fell English", Georgia, serif; }
 .sky.book.pencil { background: #F1ECE1; color: #3A3833; }
@@ -549,6 +555,10 @@ svg { stroke: currentColor; }
 .sky.book .sky-go span { position: relative; }
 .sky.book.pencil .sky-go { font-family: Caveat, cursive; font-size: 21px; letter-spacing: 0; color: #F7F3EA; background: #57534C; box-shadow: none; }
 .sky.book .sky-go:disabled { background: rgba(90,58,24,.14); color: #8A6A3A; box-shadow: none; }
+.sky.book .sky-go.erase { background: transparent; color: #3A3833; border: 1.5px dashed #57534C; font-size: 19px; }
+.sky.book .sky-go.erase i { background: rgba(87,83,76,.18); }
+.sky.book .sky-bend b { font-style: normal; }
+.sky.book .sky-crowd.needed { color: #2E6B3E; } .sky.book .sky-crowd.crowded { color: #9A4A1E; }
 .sky-diary { align-self: center; margin-top: 6px; padding: 8px 18px; border-radius: 999px; border: 1px solid rgba(90,58,24,.35); background: transparent; color: #6A4512; font-family: Cinzel, Georgia, serif !important; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .sky.book.pencil .sky-diary { font-family: Caveat, cursive !important; font-size: 18px; letter-spacing: 0; text-transform: none; color: #3A3833; border-color: #9A968E; }
 @keyframes skyUp { from { transform: translateY(16px); opacity: 0; } }

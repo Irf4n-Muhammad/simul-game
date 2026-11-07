@@ -78,12 +78,39 @@
   }
   const coName = id => (CO[id] ? CO[id].name : "");
 
+  // ---------------------------------------------------------------- keramaian bidang
+  // Kota bereaksi ke siapa yang benar-benar masuk tiap bulan, bukan ke ramalan: tidak ada papan "kota butuh X nanti"
+  // yang bisa dikejar rame-rame. Tingkat -1 Needed, 0 Steady, 1 Crowded; tiap bulan paling banyak geser satu langkah.
+  // Masukannya angkatan kota (seed per bidang per bulan) ditambah pendatang nyata (keluarga pemain, nanti pemain lain)
+  // lewat setCrowdFeed. Hanya bulan yang sudah lewat dihitung, jadi tingkat bulan ini tetap sampai bulan berganti.
+  // Gaji awal dikunci saat diterima (job.crowd di status.js), jadi yang sudah masuk tidak ikut dihukum.
+  const CROWD_MONTH = 30, CROWD_LOOK = 24;
+  const CROWD = { "-1": { id: "needed", label: "Needed", apps: 0.35, req: -6, pay: 1.2 }, 0: { id: "steady", label: "Steady", apps: 1, req: 0, pay: 1 },
+    1: { id: "crowded", label: "Crowded", apps: 2.3, req: 4, pay: 0.9 } };
+  const CROWD_LEAN = { athlete: 0.6, influencer: 0.6, designer: 0.25, office: 0.2, software: 0.15, fastfood: 0, doctor: -0.1, quant: -0.25, teacher: -0.3, nurse: -0.45 };
+  let crowdFeed = null;
+  function setCrowdFeed(fn) { crowdFeed = fn; _open.clear(); }
+  function crowdLevel(ind, day) {
+    const m = Math.floor(day / CROWD_MONTH);
+    if (!JOBS[ind] || ind === "founder" || m < 1) return 0;
+    let p = 0, lvl = 0;
+    for (let k = Math.max(0, m - CROWD_LOOK); k < m; k++) {
+      // angkatan kota bulan itu: bidang impian (atlet, influencer) condong ramai, bidang merawat condong kurang orang
+      const town = (hash(CITY + ind + "angkatan" + k) - 0.5) * 0.9 + (CROWD_LEAN[ind] || 0) * 0.45;
+      p = 0.82 * p + town + 0.35 * (crowdFeed ? crowdFeed(ind, k) || 0 : 0);
+      const target = p > 0.9 ? 1 : p < -0.9 ? -1 : 0;
+      lvl += Math.sign(target - lvl);
+    }
+    return lvl;
+  }
+  const crowd = (ind, day) => CROWD[crowdLevel(ind, day)];
+
   // ---------------------------------------------------------------- lowongan
   function listing(co, level, posted, dur, extra) {
-    const J = JOBS[co.ind];
+    const J = JOBS[co.ind], cz = crowd(co.ind, posted);
     return { id: `${co.id}-${posted}-${level}`, co: co.id, ind: co.ind, level, title: co.ladder[level], posted, until: posted + dur,
-      req: J.req + level * 10 + co.reqAdj, pay: ST.salary({ id: co.ind, level, co: co.id }),
-      applicants: 3 + Math.floor(hash(co.id + posted + level) * (co.sz.id === "Large company" ? 240 : 70)), ...extra };
+      req: J.req + level * 10 + co.reqAdj + cz.req, pay: ST.salary({ id: co.ind, level, co: co.id, crowd: cz.pay }), crowd: cz.id, crowdPay: cz.pay,
+      applicants: Math.max(2, Math.round((3 + Math.floor(hash(co.id + posted + level) * (co.sz.id === "Large company" ? 240 : 70))) * cz.apps)), ...extra };
   }
   const _open = new Map();
   function openings(day) {
@@ -107,14 +134,17 @@
   function canWork(c, day) {
     return phase_of(c.age(day)) === "dewasa" && !c.info.kuliah_aktif && !c.info.pensiun && !("keluar" in c.info);
   }
+  // magang: bidang yang kurang orang melatih pendatang dari bidang lain, jadi syaratnya lebih rendah buat yang pindah jalur
+  const switching = (c, L) => !!(c.st && (c.st.history || []).some(h => h.ind !== L.ind) && !(c.st.history || []).some(h => h.ind === L.ind));
+  const reqFor = (c, L) => L.req - (L.crowd === "needed" && switching(c, L) ? 6 : 0);
   function fit(c, L) {
     if (!c || !c.st) return null;
     const m = { kind: "interview", job: L.ind, w: JOBS[L.ind].w };
     const e = ST.estimateFor(c, m);
-    const base = e.skill + e.talent + e.cond + e.tree, gap = L.req - base;
+    const req = reqFor(c, L), base = e.skill + e.talent + e.cond + e.tree, gap = req - base;
     // peluang lolos dengan dadu yang belum dilempar (1..6 sama rata)
-    const chance = ST.DICE_BONUS.slice(1).filter(b => base + b >= L.req).length / 6;
-    return { base, gap, chance, label: chance >= 0.67 ? "Good fit" : chance >= 0.17 ? "A stretch" : "Long shot" };
+    const chance = ST.DICE_BONUS.slice(1).filter(b => base + b >= req).length / 6;
+    return { base, gap, chance, req, apprentice: req < L.req, label: chance >= 0.67 ? "Good fit" : chance >= 0.17 ? "A stretch" : "Long shot" };
   }
 
   // ---------------------------------------------------------------- riwayat, PHK, tawaran recruiter (tiap hari)
@@ -197,8 +227,8 @@
     if (c.st.job && c.st.job.co === L.co && c.st.job.level >= L.level) return false;
     if (ST.pendingFor(home, cid).some(m => m.kind === "interview")) return false;
     if ((c.st.applied || []).includes(L.id)) return false;
-    const m = ST.schedule(home, { cid, kind: "interview", day: day + 2, req: L.req, w: JOBS[L.ind].w, job: L.ind, by: "you",
-      co: L.co, level: L.level, title: L.title, label: `Interview: ${L.title} at ${coName(L.co)}` });
+    const m = ST.schedule(home, { cid, kind: "interview", day: day + 2, req: reqFor(c, L), w: JOBS[L.ind].w, job: L.ind, by: "you",
+      co: L.co, level: L.level, title: L.title, crowd: L.crowdPay || 1, label: `Interview: ${L.title} at ${coName(L.co)}` });
     if (!m) return false;
     (c.st.applied ||= []).push(L.id);
     if (c.st.applied.length > 40) c.st.applied.splice(0, 10);
@@ -314,7 +344,7 @@
       connections: network(c, home).length + 40 + Math.floor(hash(c.id + "conn") * 260), offers: st ? (st.offers || []).filter(o => o.until > day) : [] };
   }
 
-  const API = { COS, CO, IND, coName, alive, companiesAt, openings, fit, feed, profile, canWork, npcCareer, layoffDay };
+  const API = { COS, CO, IND, coName, alive, companiesAt, openings, fit, feed, profile, canWork, npcCareer, layoffDay, CROWD, crowd, crowdLevel, setCrowdFeed };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Career = API;
 })();

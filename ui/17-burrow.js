@@ -4,6 +4,16 @@ let bw = null;
 const srchHit = (q, ...parts) => { const t = parts.filter(Boolean).join(" ").toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.includes(w)); };
 let srchN = 0; // jumlah hasil pencarian terakhir, buat telemetry
 const srchBox = (ph, val, cls = "") => `<label class="srch ${cls}"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input type="search" placeholder="${esc(ph)}" value="${esc(val || "")}" autocomplete="off" spellcheck="false"></label>`;
+// pendatang nyata untuk keramaian bidang (career.js): anggota keluarga yang diterima kerja di bidang itu pada bulan itu
+Career.setCrowdFeed((ind, k) => game ? game.home.members.reduce((n, m) => n + ((m.st && m.st.history) || []).filter(h => h.ind === ind && h.how === "hired" && Math.floor(h.from / 30) === k).length, 0) : 0);
+// keramaian bidang sebagai cerita singkat, bukan angka
+const bwCrowdTag = L => !L.crowd || L.crowd === "steady" ? "" : `<i class="bw-crowd ${L.crowd}">${L.crowd === "needed" ? "Town needs more" : "Crowded field"}</i>`;
+function bwCrowdNote(L, c) {
+  const f = BW_IND[L.ind].toLowerCase();
+  if (L.crowd === "needed") return `<section class="bw-card bw-crowdnote needed"><h4>Old Town is short on ${esc(f)} people</h4><p>Fewer people went into ${esc(f)} these past months. Getting in is easier, and the starting pay is 20% higher. ${esc(c.name)} keeps that pay for as long as they stay.${Career.fit(c, L).apprentice ? ` The town trains people coming from other fields, so the bar is lower for ${esc(c.name)}.` : ""}</p></section>`;
+  if (L.crowd === "crowded") return `<section class="bw-card bw-crowdnote crowded"><h4>Lots of newcomers in ${esc(f)}</h4><p>Many people went into ${esc(f)} these past months, so more apply and the starting pay is 10% lower. The ones who rise to the top here get known all over town.</p></section>`;
+  return "";
+}
 const BW_IND = { fastfood: "Food", office: "Office", teacher: "Teaching", nurse: "Care", designer: "Design", software: "Tech", influencer: "Media", athlete: "Sports", doctor: "Medicine", quant: "Finance" };
 const bwAgo = d => { const n = today() - d; return n <= 0 ? "Today" : n < 7 ? `${n}d` : n < 60 ? `${Math.floor(n / 7)}w` : `${Math.floor(n / 30)}mo`; };
 const bwSpan = (a, b) => { const n = Math.max(1, b - a); return n < 30 ? `${n} day${n > 1 ? "s" : ""}` : n < 365 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} yr${n >= 730 ? "s" : ""} ${Math.floor((n % 365) / 30) ? Math.floor((n % 365) / 30) + " mo" : ""}`.trim(); };
@@ -101,7 +111,7 @@ function bwFeed() {
 function bwJobCard(L, c) {
   const f = Career.fit(c, L), co = Career.CO[L.co];
   return `<button class="bw-card bw-jobrow" data-job="${esc(L.id)}">${bwLogo(L.co)}<span class="grow"><b>${esc(L.title)}</b><span>${esc(co.name)}</span>
-      <small>${coins(L.pay)}/day · ${BW_IND[L.ind]} · ${L.offer ? `from ${esc(L.recruiter)}` : `${bwAgo(L.posted)} · ${L.applicants} applied`}</small></span>
+      <small>${coins(L.pay)}/day · ${BW_IND[L.ind]} · ${L.offer ? `from ${esc(L.recruiter)}` : `${bwAgo(L.posted)} · ${L.applicants} applied`}</small>${bwCrowdTag(L)}</span>
       <span class="bw-fit ${f.label === "Good fit" ? "good" : f.label === "A stretch" ? "mid" : "low"}">${f.label}</span></button>`;
 }
 function bwFamCard(L, c) {
@@ -156,8 +166,9 @@ function bwJob(id) {
       <div class="bw-facts"><span>💰 ${coins(L.pay)} a day</span><span>🏢 ${esc(co.size)}</span><span>🧭 ${BW_IND[L.ind]}</span></div></section>
     <section class="bw-card"><h4>How ${esc(c.name)} fits</h4>
       <div class="bw-meter"><i style="width:${Math.round(f.chance * 100)}%"></i></div>
-      <p><b>${f.label}.</b> ${f.chance >= 1 ? "Any roll of the dice gets it." : f.chance <= 0 ? "Even a 6 on the dice won't be enough yet." : `About ${Math.round(f.chance * 6)} in 6 dice rolls would get it.`} Score now ${f.base}, needs ${L.req}, dice adds 2 to 15 on the day.</p>
+      <p><b>${f.label}.</b> ${f.chance >= 1 ? "Any roll of the dice gets it." : f.chance <= 0 ? "Even a 6 on the dice won't be enough yet." : `About ${Math.round(f.chance * 6)} in 6 dice rolls would get it.`} Score now ${f.base}, needs ${f.req}, dice adds 2 to 15 on the day.</p>
       <small class="bw-sub">Looks for: ${esc(skills)}</small></section>
+    ${bwCrowdNote(L, c)}
     <section class="bw-card"><h4>About ${esc(co.name)}</h4><p>${esc(co.culture)} ${co.founded < 0 ? `Around for ${Math.max(1, Math.round((today() - co.founded) / 365))} years.` : `Opened ${bwAgo(co.founded).toLowerCase()} ago.`}</p></section>
     <div class="bw-apply"><button class="bw-btn big" id="bwApply" data-id="${esc(L.id)}" ${why ? "disabled" : ""}>${done ? "Applied" : "Easy apply"}</button>${why ? `<small class="bw-sub">${esc(why)}</small>` : `<small class="bw-sub">Interview in 2 days. Save a good dice roll for it.</small>`}</div>`;
 }
