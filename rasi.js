@@ -7,7 +7,7 @@
 // rasi aslinya (busur Orion, elang Aquila, harpa Lyra, ...), dan tidak ada satu pun rasi zodiak.
 "use strict";
 (function () {
-  const READ_AGE = 30;
+  const READ_AGE = 30, CALL_AGE = 270;
   // akar pohon bakat (tree.js) -> skill di status.js
   const ROOTS = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
   const ORDER = ["body", "mind", "spark", "heart"];
@@ -52,19 +52,33 @@
     const [a, b] = rank(st);
     return { ...STARS[a + ">" + b], first: a, second: b, key: a + ">" + b };
   }
-  // umur dan tahap buku. day = hari game sekarang, born = hari lahir makhluk
+  // umur dan tahap buku. day = hari game sekarang, born = hari lahir makhluk. Di umur CALL_AGE (dewasa) ada malam kedua:
+  // tinta yang paling dalam menetap jadi panggilan hidupnya (callingOf).
   function stage(born, day) {
     const age = day - born;
-    return age >= READ_AGE ? "read" : "notebook";
+    return age >= CALL_AGE ? "called" : age >= READ_AGE ? "read" : "notebook";
   }
+  const isRead = (born, day) => stage(born, day) !== "notebook";
   function daysToReading(born, day) { return Math.max(0, born + READ_AGE - day); }
   // hari pembacaan (hari game), dipakai UI buat momen ritual sekali
   function readingDay(born) { return born + READ_AGE; }
   // segel per akar setelah pembacaan: akar bintang pertama dan kedua tersegel, sisanya belum
   function seal(st, root, born, day) {
-    if (stage(born, day) !== "read") return "none";
+    if (!isRead(born, day)) return "none";
     const s = starOf(st);
     return root === s.first ? "first" : root === s.second ? "second" : "warm";
+  }
+  // panggilan hidup: bintang paling dalam yang sudah ditulis (tingkat tertinggi, lalu yang paling akhir). NODES dari tree.js
+  const CALL_TIER = ["crown", "icon", "master", "legend", "secret", "combo", "niche", "spec", "field"];
+  function callingOf(st, NODES) {
+    const T = st && st.tree; if (!T || !T.have.length) return null;
+    let best = null, bk = null;
+    for (const id of T.have) {
+      const t = CALL_TIER.indexOf(NODES[id].tier); if (t < 0) continue;
+      const k = [t, -(T.days[id] || 0)];
+      if (!bk || k[0] < bk[0] || (k[0] === bk[0] && k[1] < bk[1])) { best = id; bk = k; }
+    }
+    return best;
   }
   function plain(s) { return `Learns ${ROOT_PLAIN[s.first]} fastest, then ${ROOT_PLAIN[s.second]}.`; }
   // angka romawi buat hari di buku (umur, bukan tanggal)
@@ -74,7 +88,7 @@
     return out;
   }
 
-  const API = { READ_AGE, ROOTS, ORDER, ROOT_LABEL, ROOT_PLAIN, STARS, rank, starOf, stage, daysToReading, readingDay, seal, plain, roman };
+  const API = { READ_AGE, CALL_AGE, isRead, callingOf, ROOTS, ORDER, ROOT_LABEL, ROOT_PLAIN, STARS, rank, starOf, stage, daysToReading, readingDay, seal, plain, roman };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Rasi = API;
 })();

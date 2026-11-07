@@ -28,7 +28,9 @@ const bkSpark = (x, y, r, k = 0.18) => `M${x} ${y - r} Q${x + r * k} ${y - r * k
 function bkSnap(id) {
   const c = game.home.get(id); if (!c || !c.st) return null;
   const day = today(), stage = Rasi.stage(c.born, day), star = Rasi.starOf(c.st);
-  return { c, day, stage, star, read: stage === "read", left: Rasi.daysToReading(c.born, day) };
+  // panggilan baru ditulis di sampul sesudah malam kedua (umur 270)
+  const calling = stage === "called" ? Rasi.callingOf(c.st, Tree.NODES) : null;
+  return { c, day, stage, star, read: stage !== "notebook", called: stage === "called", calling, left: Rasi.daysToReading(c.born, day) };
 }
 
 // ---------------------------------------------------------------- sampul
@@ -71,13 +73,15 @@ function bkCover(S) {
     <path d="M${cx - 50} 302 H${cx - 12} M${cx + 12} 302 H${cx + 50}" stroke="${M1}" stroke-width="0.7" opacity="0.7"/>
     <g transform="translate(${cx} 308) scale(0.62)">${bkGlyph(s, M1, 3)}</g>
     ${corner(36, 8, 1, 1)}${corner(250, 8, -1, 1)}${corner(36, 352, 1, -1)}${corner(250, 352, -1, -1)}
+    ${S.called && S.calling ? `<path d="M40 324 H244 L236 337 L244 350 H40 L48 337 Z" fill="${D}" stroke="url(#bkM)" stroke-width="1.2"/>
+    <text x="${cx - 10}" y="341.5" text-anchor="middle" font-family="Cinzel, serif" font-size="${Tree.NODES[S.calling].label.length > 16 ? 10 : 12}" font-weight="700" letter-spacing="1.5" fill="${M1}">${esc(Tree.NODES[S.calling].label.toUpperCase())}</text>` : ""}
     <rect x="236" y="158" width="26" height="40" rx="5" fill="url(#bkM)" stroke="${M2}" stroke-width="1"/>
     <circle cx="249" cy="174" r="3.4" fill="${D}"/><path d="M247.5 176 L246.5 186 H251.5 L250.5 176 Z" fill="${D}"/>
   </svg>`;
 }
 
 // ---------------------------------------------------------------- layar
-function showBook(id = cur && cur.id, ritual = false) {
+function showBook(id = cur && cur.id, ritual = false) {  // ritual: false, true (malam pembacaan) atau "call" (malam panggilan)
   const S = bkSnap(id); if (!S) return;
   closeSheet(); if (PH) closePhone(true); Tele.layar("app", "book");
   if (bk) bk.el.remove();
@@ -87,7 +91,7 @@ function showBook(id = cur && cur.id, ritual = false) {
   $("app").appendChild(el);
   bkDraw();
   requestAnimationFrame(() => el.classList.add("on"));
-  if (ritual) bkRitual();
+  if (ritual === "call") bkCalling(); else if (ritual) bkRitual();
 }
 function bkDraw() {
   const { el, S } = bk, s = S.star;
@@ -120,13 +124,28 @@ function bkRitual() {
   requestAnimationFrame(() => r.classList.add("go"));
   r.querySelector("button").onclick = () => bkOpen(true);
 }
+// malam kedua di umur 270: tinta yang paling dalam menetap jadi panggilan hidup, dan namanya ditulis di sampul
+function bkCalling() {
+  const { el, S } = bk, N = Tree.NODES, id = S.calling;
+  (state.buku2 ||= {})[S.c.id] = S.day; save();
+  Tele.ev("panggilan", { k: id || "none" });
+  const r = document.createElement("div"); r.className = "bk-rit";
+  r.innerHTML = `<div class="bk-rit-book"><div class="old">${bkCover({ ...S, called: false, calling: null })}</div><div class="new">${bkCover(S)}</div></div>
+    <div class="bk-rit-t"><small>The night of the calling</small>${id ? `<b>${esc(S.c.name)}'s ink settled on ${esc(N[id].label)}</b><span>${esc(N[id].d || `The deepest line in the book, written on day ${Math.max(1, (S.c.st.tree.days[id] || S.c.born) - S.c.born)}.`)}</span>
+    <em>Grown-ups can still learn new stars. This one is the line the book will be remembered by.</em>` : `<b>${esc(S.c.name)}'s ink hasn't settled yet</b><span>No road ran deep enough to name. The book stays open.</span><em>Any star learned from here can still become the calling.</em>`}<button>Open the book</button></div>`;
+  el.appendChild(r);
+  requestAnimationFrame(() => r.classList.add("go"));
+  r.querySelector("button").onclick = () => bkOpen(false);
+}
 // sekali per makhluk: begitu umurnya sampai 30 hari dan pemain sedang di rumah, bukunya dibaca
 function bkCheck() {
   if (!game || !cur || bk || sky || PH || sheetKind || tour || document.visibilityState !== "visible") return;
   if (cur.fase === "meninggal" || cur.fase === "merantau") return;
   if ($("app").classList.contains("in-town")) return;
   const c = game.home.get(cur.id); if (!c || !c.st) return;
-  if (Rasi.stage(c.born, today()) !== "read" || (state.buku && state.buku[c.id] != null)) return;
-  showBook(c.id, true);
+  const stage = Rasi.stage(c.born, today());
+  if (stage === "notebook") return;
+  if (!state.buku || state.buku[c.id] == null) return showBook(c.id, true);
+  if (stage === "called" && (!state.buku2 || state.buku2[c.id] == null)) showBook(c.id, "call");
 }
 setInterval(bkCheck, 2500);

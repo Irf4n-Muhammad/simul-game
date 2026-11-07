@@ -29,6 +29,8 @@ test("seri dipecah oleh skill, lalu urutan tetap", () => {
 test("buku catatan sampai umur 30, lalu dibaca", () => {
   assert.strictEqual(R.stage(10, 39), "notebook");
   assert.strictEqual(R.stage(10, 40), "read");
+  assert.strictEqual(R.stage(10, 280), "called");
+  assert.ok(R.isRead(10, 280) && !R.isRead(10, 39));
   assert.strictEqual(R.daysToReading(10, 25), 15);
   assert.strictEqual(R.daysToReading(10, 90), 0);
 });
@@ -45,4 +47,11 @@ test("angka romawi", () => {
   assert.strictEqual(R.roman(61), "LXI");
   assert.strictEqual(R.roman(84), "LXXXIV");
   assert.strictEqual(R.roman(270), "CCLXX");
+});
+
+test("panggilan: bintang paling dalam, seri dipecah oleh yang terakhir ditulis", () => {
+  const N = { a: { tier: "field" }, b: { tier: "spec" }, c: { tier: "niche" }, d: { tier: "niche" }, r: { tier: "root" } };
+  assert.strictEqual(R.callingOf({ tree: { have: ["r", "a", "b"], days: { r: 1, a: 2, b: 3 } } }, N), "b");
+  assert.strictEqual(R.callingOf({ tree: { have: ["c", "d", "a"], days: { c: 9, d: 5, a: 1 } } }, N), "c");
+  assert.strictEqual(R.callingOf({ tree: { have: ["r"], days: {} } }, N), null);
 });
