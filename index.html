@@ -519,6 +519,38 @@ svg { stroke: currentColor; }
 .sky-chip { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 3px 9px; }
 .sky-go { margin-top: 4px; height: 52px; border-radius: 999px; border: 0; font-weight: 800; font-size: 16px; color: #2b1c03; background: linear-gradient(180deg, #ffe9a6, #efbd4b); box-shadow: 0 0 24px rgba(245,207,107,.45); }
 .sky-go:disabled { background: rgba(255,255,255,.1); color: #8f98c2; box-shadow: none; }
+/* peta bintang di dalam buku: perkamen bertinta (sesudah umur 30) atau buku catatan pensil */
+.sky.book { background: #E9D3A0; color: #3A2410; font-family: "IM Fell English", Georgia, serif; }
+.sky.book.pencil { background: #F1ECE1; color: #3A3833; }
+.sky.book .sky-top { padding-bottom: 18px; background: linear-gradient(rgba(233,211,160,.95), rgba(233,211,160,0)); }
+.sky.book.pencil .sky-top { background: linear-gradient(rgba(241,236,225,.95), rgba(241,236,225,0)); }
+.sky.book .sky-x, .sky.book .sky-zoom button { background: rgba(255,248,232,.92); color: #3A2410; border: 1px solid rgba(90,58,24,.25); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sky.book .sky-kicker { font-family: Cinzel, Georgia, serif; color: #8A5A12; font-weight: 700; }
+.sky.book .sky-title b { font-family: Cinzel, Georgia, serif; font-weight: 700; color: #3A2410; letter-spacing: .04em; }
+.sky.book .sky-title small { font-style: italic; font-weight: 400; color: #6A4512; font-size: 13px; }
+.sky.book.pencil .sky-kicker, .sky.book.pencil .sky-title b { font-family: Caveat, cursive; letter-spacing: 0; text-transform: none; color: #3A3833; }
+.sky.book.pencil .sky-kicker { font-size: 16px; } .sky.book.pencil .sky-title b { font-size: 28px; }
+.sky.book.pencil .sky-title small { color: #6A6660; }
+.sky.book .sky-pts { width: 56px; height: 56px; background: radial-gradient(circle at 42% 34%, #F3D98A, #C9962E 55%, #7A5214); color: #3A2410; box-shadow: 0 3px 10px rgba(90,58,24,.35); }
+.sky.book .sky-pts b { font-family: Cinzel, Georgia, serif; }
+.sky.book.pencil .sky-pts { background: #F7F3EA; border: 1.5px solid #57534C; color: #3A3833; box-shadow: none; }
+.sky.book.pencil .sky-pts b { font-family: Caveat, cursive; font-size: 26px; }
+.sky.book .sky-panel { border-radius: 3px; border: 0; color: #3A2410; background: radial-gradient(ellipse at 40% 30%, #F6E6BE, #E2C68E 85%); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 10px 28px rgba(60,36,10,.4), inset 0 0 22px rgba(120,80,20,.3); transform: rotate(-.6deg); }
+.sky.book.pencil .sky-panel { background: #F7F3EA; box-shadow: 0 8px 24px rgba(40,38,34,.3); }
+.sky.book .sky-panel h3 { font-family: Cinzel, Georgia, serif; font-weight: 700; color: #3A2410; }
+.sky.book.pencil .sky-panel h3 { font-family: Caveat, cursive; font-size: 30px; font-weight: 600; color: #3A3833; }
+.sky.book .sky-panel p { color: #4A3018; font-style: italic; font-weight: 400; font-size: 15px; }
+.sky.book .sky-panel ul { color: #3A2410; font-weight: 400; font-size: 14px; }
+.sky.book .sky-meta, .sky.book .sky-row small { color: #6A4512; font-weight: 400; font-style: italic; font-size: 13px; }
+.sky.book .sky-hint { color: #3A2410 !important; font-weight: 400 !important; font-style: italic; font-size: 16px !important; }
+.sky.book .sky-chip { font-family: Cinzel, Georgia, serif; }
+.sky.book .sky-go { position: relative; overflow: hidden; font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 14px; letter-spacing: .06em; color: #F6D2C8; background: radial-gradient(circle at 38% 30%, #D2503F, #8E1F1C 60%, #5A0F0D); box-shadow: 0 4px 10px rgba(80,16,10,.4); touch-action: none; -webkit-user-select: none; user-select: none; }
+.sky.book .sky-go i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); background: rgba(255,231,160,.45); }
+.sky.book .sky-go span { position: relative; }
+.sky.book.pencil .sky-go { font-family: Caveat, cursive; font-size: 21px; letter-spacing: 0; color: #F7F3EA; background: #57534C; box-shadow: none; }
+.sky.book .sky-go:disabled { background: rgba(90,58,24,.14); color: #8A6A3A; box-shadow: none; }
+.sky-diary { align-self: center; margin-top: 6px; padding: 8px 18px; border-radius: 999px; border: 1px solid rgba(90,58,24,.35); background: transparent; color: #6A4512; font-family: Cinzel, Georgia, serif !important; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.sky.book.pencil .sky-diary { font-family: Caveat, cursive !important; font-size: 18px; letter-spacing: 0; text-transform: none; color: #3A3833; border-color: #9A968E; }
 @keyframes skyUp { from { transform: translateY(16px); opacity: 0; } }
 .fxl { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); font-weight: 600; }
 #lifeBtn { position: relative; }
@@ -1253,65 +1285,6 @@ svg { stroke: currentColor; }
 .bk-closed:active { transform: scale(.98); }
 .bk-cover-svg { display: block; width: 100%; height: auto; }
 .bk-hint { position: absolute; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); left: 24px; right: 24px; text-align: center; font-style: italic; font-size: 16px; color: #F4E6C0; text-shadow: 0 1px 4px rgba(0,0,0,.8); margin: 0; }
-.bk-open { position: relative; padding: 12px 12px 14px 12px; border-radius: 8px 14px 14px 8px; background: radial-gradient(ellipse at 50% 45%, var(--l1), var(--l2)); box-shadow: inset 0 0 0 1px rgba(232,196,106,.5), 0 24px 40px rgba(0,0,0,.7); touch-action: pan-y; }
-.bk-page { position: relative; width: min(84vw, 320px); aspect-ratio: 300 / 440; border-radius: 2px 6px 6px 2px; overflow: hidden; background: radial-gradient(ellipse at 55% 42%, #F2E2B8 0%, #E0C690 50%, #B8955A 85%, #8E6A34 100%); box-shadow: inset 0 0 44px rgba(70,40,8,.55), inset 14px 0 20px rgba(40,20,2,.5), 3px 4px 0 #C9AE7C, 5px 7px 0 #A88C58; container-type: inline-size; }
-.bk-page.pencil { background: radial-gradient(ellipse at 55% 42%, #FBF7EE 0%, #EFE8DA 70%, #D8CFBE 100%); box-shadow: inset 12px 0 18px rgba(60,50,40,.25), 3px 4px 0 #E2DACB, 5px 7px 0 #C9C0AE; color: #4A4640; font-family: Caveat, cursive; }
-.bk-page svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.bk-page > div { position: absolute; font-size: 4.6cqw; line-height: 1.25; }
-.bk-page .bk-t { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 3.6cqw; font-weight: 700; letter-spacing: .24em; color: #7A1E14; }
-.bk-page .bk-h { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 9cqw; font-weight: 700; }
-.bk-page .bk-i, .bk-page .bk-p, .bk-page .bk-r { left: 11%; right: 7%; text-align: center; font-style: italic; }
-.bk-page .bk-p { font-size: 5.2cqw; color: #3E2A12; }
-.bk-page .bk-r { color: #7A1E14; font-size: 4.3cqw; }
-.bk-page .bk-n { display: flex; align-items: baseline; gap: 2.4cqw; white-space: nowrap; }
-.bk-page .bk-n b { font-family: Cinzel, serif; font-size: 4.2cqw; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
-.bk-page .bk-gt { left: 0; right: 0; text-align: center; font-family: Cinzel, serif; font-size: 3cqw; letter-spacing: .18em; text-transform: uppercase; color: rgba(110,70,20,.7); }
-.bk-page.pencil .bk-gt { font-family: Caveat, cursive; font-size: 4.6cqw; letter-spacing: 0; text-transform: none; color: #7A7670; }
-.bk-page.pencil .bk-n b, .bk-page.pencil .bk-g, .bk-page.pencil .bk-title b, .bk-page.pencil .bk-seal b { font-family: Caveat, cursive; font-size: 5.6cqw; font-weight: 600; letter-spacing: 0; }
-.bk-page .bk-n i { font-size: 3.8cqw; opacity: .8; flex: none; }
-.bk-page .bk-n.nx { color: #7A1E14; }
-.bk-page.pencil .bk-n.nx { color: #5A5650; }
-.bk-page .bk-g { text-align: center; font-family: Cinzel, serif; font-size: 3.3cqw; line-height: 1.15; font-weight: 700; color: #6A4512; }
-.bk-page .bk-fog { left: 0; right: 0; text-align: center; font-style: italic; font-size: 4cqw; color: rgba(110,29,20,.55); }
-.bk-page .bk-cap { left: 11%; top: 6%; width: 17%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 70%, #000), color-mix(in srgb, var(--rc) 35%, #000)); box-shadow: inset 0 0 0 2px #1A0F08, inset 0 0 0 3px #C9962E, 0 2px 6px rgba(40,20,0,.5); }
-.bk-page .bk-cap span { font-family: Cinzel, serif; font-size: 10cqw; font-weight: 700; background: linear-gradient(160deg, #8A5E18, #FFF0B8 40%, #E8C46A 60%, #8A5E18); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.bk-page.pencil .bk-cap { background: none; box-shadow: inset 0 0 0 1.5px #7A7670; }
-.bk-page.pencil .bk-cap span { background: none; color: #5A5650; font-family: Caveat, cursive; font-size: 11cqw; }
-.bk-page .bk-title { left: 31%; top: 7%; right: 6%; display: flex; flex-direction: column; }
-.bk-page .bk-title b { font-family: Cinzel, serif; font-size: 7.6cqw; line-height: 1; letter-spacing: .04em; }
-.bk-page .bk-title i { font-size: 4.3cqw; color: #6E1D14; padding-top: 4px; }
-.bk-page.pencil .bk-title i { color: #6A6660; }
-.bk-page.pencil .bk-title { left: 11%; }
-.bk-page .bk-seal { left: 11%; right: 6%; bottom: 8%; display: flex; align-items: center; gap: 10px; }
-.bk-page .bk-seal .wax { flex: none; width: 15cqw; height: 15cqw; border-radius: 47% 53% 50% 48%; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 7cqw; color: #F0B3A6; background: radial-gradient(circle at 38% 32%, #D2503F, #8E1F1C 55%, #5A0F0D); box-shadow: 0 3px 5px rgba(50,10,4,.5), inset 0 0 0 3px rgba(90,15,13,.6); }
-.bk-page .bk-seal .wax.warm { opacity: .55; background: radial-gradient(circle at 38% 32%, #C77A6E, #9A4A40 60%, #6E3028); }
-.bk-page .bk-seal span { display: flex; flex-direction: column; }
-.bk-page .bk-seal b { font-family: Cinzel, serif; font-size: 3.6cqw; letter-spacing: .08em; color: #7A1E14; }
-.bk-page .bk-seal i { font-size: 4.6cqw; }
-.bk-curl { position: absolute; right: 12px; bottom: 14px; width: 40px; height: 40px; border: 0; padding: 0; background: linear-gradient(135deg, transparent 50%, #E8D4A4 50%, #CDB383 70%, var(--l2) 70.5%); border-radius: 0 0 6px 0; }
-.bk-page .bk-now { left: 8%; right: 4%; text-align: center; display: flex; flex-direction: column; align-items: center; }
-.bk-page .bk-now small { font-family: Cinzel, serif; font-size: 3cqw; letter-spacing: .24em; text-transform: uppercase; color: #8A5A12; }
-.bk-page .bk-now b { font-family: Cinzel, serif; font-size: 9.4cqw; line-height: 1.05; font-weight: 700; }
-.bk-page.pencil .bk-now small { font-family: Caveat, cursive; font-size: 5cqw; letter-spacing: 0; text-transform: none; color: #7A7670; }
-.bk-page.pencil .bk-now b { font-family: Caveat, cursive; font-size: 11cqw; font-weight: 600; }
-.bk-page .bk-steps { left: 8%; right: 4%; text-align: center; font-style: italic; font-size: 3.8cqw; opacity: .7; }
-.bk-page .bk-next { left: 14%; right: 10%; text-align: center; padding-top: 2.4cqw; border-top: 1px solid rgba(120,80,20,.3); font-size: 4.8cqw; color: #7A1E14; }
-.bk-page .bk-next span { font-family: Cinzel, serif; font-size: 3.2cqw; letter-spacing: .18em; text-transform: uppercase; }
-.bk-page .bk-next b { font-family: Cinzel, serif; font-weight: 700; }
-.bk-page .bk-next i { font-size: 3.8cqw; opacity: .8; }
-.bk-page.pencil .bk-next { color: #5A5650; border-color: #B8B0A0; }
-.bk-page.pencil .bk-next span, .bk-page.pencil .bk-next b { font-family: Caveat, cursive; font-size: 5.4cqw; letter-spacing: 0; text-transform: none; }
-.bk-page .bk-goals { left: 14%; right: 10%; text-align: center; font-style: italic; font-size: 3.8cqw; opacity: .75; }
-.bk-page .bk-left { left: 10%; right: 6%; text-align: center; font-family: Caveat, cursive; font-size: 5cqw; color: #6A6660; }
-.bk-page .bk-star { right: 9%; top: 8%; display: flex; flex-direction: column; align-items: center; gap: 1cqw; font-family: Cinzel, serif; font-size: 2.6cqw; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #7A1E14; }
-.bk-page .bk-star .wax { width: 11cqw; height: 11cqw; border-radius: 47% 53% 50% 48%; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 5cqw; color: #F0B3A6; background: radial-gradient(circle at 38% 32%, #D2503F, #8E1F1C 55%, #5A0F0D); box-shadow: 0 2px 4px rgba(50,10,4,.5); }
-.bk-page .bk-p.lead { font-size: 5.4cqw; }
-.bk-nav { margin-top: 18px; display: flex; align-items: center; gap: 14px; }
-.bk-nav button { width: 40px; height: 40px; border-radius: 20px; border: 0; background: rgba(255,248,232,.92); color: #3A2A18; font-size: 22px; line-height: 1; }
-.bk-nav button:disabled { opacity: .35; }
-.bk-nav span { display: flex; gap: 6px; }
-.bk-nav span i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,248,232,.45); }
-.bk-nav span i.on { background: #FFF3D0; }
 .bk-rit { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(6,5,10,.96); padding: 24px; }
 .bk-rit-book { position: relative; width: min(64vw, 260px); aspect-ratio: 270 / 370; }
 .bk-rit-book > div { position: absolute; inset: 0; transition: opacity 2.2s ease 1s, transform 2.2s ease 1s, filter 2.2s ease 1s; }

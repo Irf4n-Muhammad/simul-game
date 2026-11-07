@@ -1,6 +1,6 @@
 // ---- Buku Bintang (rasi.js): rapor + skill dalam bentuk buku. Sampai umur 30 hari bukunya buku catatan pensil;
 // malam pembacaan di umur 30 mengubah wujudnya: sampul warna bintang makhluk itu, tinta emas, segel bakat.
-// Satu halaman per akar (Body, Mind, Spark, Heart) yang sudah dimulai; jalurnya dari pohon bakat (tree.js).
+// Membuka buku = peta bintang (ui/16-stars.js): pohon bakat sebagai satu peta yang digeser, dibaca dari tengah.
 // Dibuka dari tombol buku di HUD; diary keluarga tetap bisa dibuka dari dalam buku.
 let bk = null;
 const BK_FIG = {
@@ -76,77 +76,14 @@ function bkCover(S) {
   </svg>`;
 }
 
-// ---------------------------------------------------------------- halaman
-function bkPages(S) {
-  const pages = [];
-  if (S.read) pages.push({ kind: "star" });
-  const v = Tree.view(S.c, game.home, S.day);
-  for (const r of Rasi.ORDER) {
-    const owned = v.have.filter(id => Tree.NODES[id].root === r && id !== r).sort((a, b) => (v.nodes[a].day || 0) - (v.nodes[b].day || 0));
-    const skill = Math.round(S.c.st.skills[Rasi.ROOTS[r]] || 0);
-    if (!owned.length && !v.have.includes(r) && skill < 3) continue;
-    pages.push({ kind: "root", r, owned, skill, v });
-  }
-  if (pages.length === (S.read ? 1 : 0)) pages.push({ kind: "empty" });
-  return pages;
-}
-function bkPageHTML(S, p, i, n) {
-  const W = 300, H = 440, gold = S.read ? "url(#bkGold)" : "#8A8680";
-  const defs = `<defs><linearGradient id="bkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6E4A10"/><stop offset="0.35" stop-color="#E8C46A"/><stop offset="0.55" stop-color="#FFF0B8"/><stop offset="0.75" stop-color="#C9962E"/><stop offset="1" stop-color="#6E4A10"/></linearGradient>
-    <filter id="bkGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
-  const frame = S.read ? `<rect x="22" y="12" width="${W - 34}" height="${H - 24}" fill="none" stroke="url(#bkGold)" stroke-width="1.3"/><rect x="27" y="17" width="${W - 44}" height="${H - 34}" fill="none" stroke="#7A5212" stroke-width="0.5" opacity="0.6"/>`
-    : `<path d="M24 ${H - 30} H${W - 14}" stroke="#B8B0A0" stroke-width="0.6"/>${Array.from({ length: 15 }, (_, k) => `<path d="M24 ${70 + k * 24} H${W - 14}" stroke="#C9C2B4" stroke-width="0.5"/>`).join("")}`;
-  const wm = S.read ? `<path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="#5A3A18" opacity="0.035"/><path d="${bkSpark(W / 2 + 6, H / 2, 100)}" fill="none" stroke="#5A3A18" stroke-width="0.9" opacity="0.08"/>` : "";
-  const num = `<text x="${W / 2 + 6}" y="${H - 18}" text-anchor="middle" font-family="${S.read ? "Cinzel, serif" : "Caveat, cursive"}" font-size="${S.read ? 10 : 15}" letter-spacing="2" fill="${S.read ? "#6A4512" : "#6A6660"}">${S.read ? Rasi.roman(i + 1) : i + 1}</text>`;
-  let body = "", html = "";
-  if (p.kind === "star") {
-    const s = S.star;
-    body = `<circle cx="${W / 2 + 6}" cy="128" r="62" fill="#FFE9A8" opacity="0.5" filter="url(#bkGlow)"/><path d="${bkSpark(W / 2 + 6, 128, 70)}" fill="none" stroke="url(#bkGold)" stroke-width="1.6"/>
-      <g transform="translate(${W / 2 + 6 - 42} 86) scale(0.84)">${bkFig(s.fig, "#6A4512", 3.6)}</g>`;
-    html = `<div class="bk-t" style="top:28px">BORN UNDER</div>
-      <div class="bk-h" style="top:220px">${esc(s.name)}</div>
-      <div class="bk-i" style="top:262px">${esc(s.figName)}, in ${esc(s.con)}</div>
-      <div class="bk-p lead" style="top:310px">${esc(Rasi.plain(s))}</div>`;
-  } else if (p.kind === "empty") {
-    html = `<div class="bk-i" style="top:180px">${S.read ? "The pages are waiting." : "Nothing written yet."} Pages appear once ${esc(S.c.name)} starts on something.</div>`;
-  } else {
-    const r = p.r, root = Tree.NODES[r], col = root.color || "#3A2A58";
-    const nexts = Tree.ORDER.filter(id => Tree.NODES[id].root === r && p.v.nodes[id].s === "open" && Tree.NODES[id].tier !== "secret").sort((a, b) => p.v.nodes[a].cost - p.v.nodes[b].cost);
-    const next = nexts[0] || null;
-    const ownedSet = new Set(p.v.have);
-    const fields = (p.owned.filter(id => Tree.NODES[id].tier === "field").length ? p.owned.filter(id => Tree.NODES[id].tier === "field") : root.kids.filter(k => Tree.NODES[k].tier === "field"));
-    const goals = [];
-    for (const f of fields) for (const sp of Tree.NODES[f].kids) if (Tree.NODES[sp].tier === "spec") for (const ni of Tree.NODES[sp].kids) if (Tree.NODES[ni].tier === "niche" && !ownedSet.has(ni) && goals.length < 3 && !goals.includes(ni)) goals.push(ni);
-    // satu poin per halaman: "sekarang dia sudah jadi apa di bidang ini". Sisanya kecil.
-    const now = p.owned[p.owned.length - 1] || null, cx = W / 2 + 6, cy = 156;
-    if (now) body += (S.read ? `<circle cx="${cx}" cy="${cy}" r="34" fill="#FFE9A8" opacity="0.45" filter="url(#bkGlow)"/>` : "")
-      + `<path d="M${cx} ${cy - 26} L${cx + 26} ${cy} L${cx} ${cy + 26} L${cx - 26} ${cy} Z" fill="${gold}" stroke="${S.read ? "#5A3A0E" : "#5A5650"}" stroke-width="1.4"/><path d="M${cx} ${cy - 10} L${cx + 10} ${cy} L${cx} ${cy + 10} L${cx - 10} ${cy} Z" fill="${S.read ? "#FFF3D0" : "#F4F0E6"}"/>`;
-    else body += `<path d="M${cx} ${cy - 22} L${cx + 22} ${cy} L${cx} ${cy + 22} L${cx - 22} ${cy} Z" fill="none" stroke="${S.read ? "#9A6E1C" : "#8A8680"}" stroke-width="1.4" stroke-dasharray="4 4"/>`;
-    // jejak: satu wajik kecil per langkah yang sudah dipelajari, tanpa tulisan
-    const steps = Math.min(p.owned.length, 8);
-    for (let k = 0; k < steps; k++) { const x = cx + (k - (steps - 1) / 2) * 16, y = 274; body += `<path d="M${x} ${y - 4} L${x + 4} ${y} L${x} ${y + 4} L${x - 4} ${y} Z" fill="${S.read ? "#B8862A" : "#8A8680"}"/>`; }
-    html += `<div class="bk-now" style="top:196px"><small>${now ? (S.read ? "Now" : "now") : ""}</small><b>${now ? esc(Tree.NODES[now].label) : (S.read ? "Not begun" : "Not started yet")}</b></div>`;
-    if (steps) html += `<div class="bk-steps" style="top:284px">${p.owned.length} step${p.owned.length === 1 ? "" : "s"} learned</div>`;
-    if (next) html += `<div class="bk-next" style="top:314px"><span>Next</span> <b>${esc(Tree.NODES[next].label)}</b> <i>${p.v.nodes[next].cost} point${p.v.nodes[next].cost === 1 ? "" : "s"}</i></div>`;
-    if (goals.length) html += `<div class="bk-goals" style="top:${S.read ? 352 : 346}px">Could become ${goals.map(id => esc(Tree.NODES[id].label)).join(", ").replace(/, ([^,]*)$/, " or $1")}.</div>`;
-    const seal = Rasi.seal(S.c.st, r, S.c.born, S.day);
-    html += (S.read ? `<div class="bk-cap" style="--rc:${col}"><span>${esc(root.label[0])}</span></div>` : "") + `
-      <div class="bk-title"><b>${esc(S.read ? root.label.toUpperCase() : root.label)}</b><i>${esc(Rasi.ROOT_PLAIN[r])}</i></div>`;
-    if (seal === "first" || seal === "second") html += `<div class="bk-star"><em class="wax">✦</em><span>${seal === "first" ? "Strongest gift" : "Second gift"}</span></div>`;
-    if (seal === "none" && S.left) html += `<div class="bk-left" style="top:384px">The stars read this book in ${S.left} day${S.left === 1 ? "" : "s"}.</div>`;
-  }
-  // koordinat label ditulis dalam satuan viewBox; ubah ke persen supaya ikut skala halaman
-  html = html.replace(/(left|top|width):(-?[\d.]+)px/g, (m, k, v) => `${k}:${(+v / (k === "top" ? H : W) * 100).toFixed(2)}%`);
-  return `<div class="bk-page${S.read ? "" : " pencil"}"><svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${defs}${wm}${frame}${body}${num}</svg>${html}</div>`;
-}
-
 // ---------------------------------------------------------------- layar
 function showBook(id = cur && cur.id, ritual = false) {
   const S = bkSnap(id); if (!S) return;
   closeSheet(); if (PH) closePhone(true); Tele.layar("app", "book");
   if (bk) bk.el.remove();
   const el = document.createElement("div"); el.className = "bk"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `${S.c.name}'s book`);
-  bk = { el, S, open: false, page: 0, pages: bkPages(S) };
+  if (sky) closeSky();
+  bk = { el, S };
   $("app").appendChild(el);
   bkDraw();
   requestAnimationFrame(() => el.classList.add("on"));
@@ -155,26 +92,15 @@ function showBook(id = cur && cur.id, ritual = false) {
 function bkDraw() {
   const { el, S } = bk, s = S.star;
   const top = `<div class="bk-top"><button class="bk-x" aria-label="Close">✕</button><span class="bk-cap-t">${S.read ? `Born under ${esc(s.name)}` : `${esc(S.c.name)}'s notebook`}</span><button class="bk-diary">Family diary</button></div>`;
-  if (!bk.open) {
-    el.innerHTML = `${top}<button class="bk-closed" aria-label="Open the book">${bkCover(S)}</button>
-      <p class="bk-hint">${S.read ? "" : S.left ? `In ${S.left} day${S.left === 1 ? "" : "s"}, the stars read this book.` : ""}</p>`;
-    el.querySelector(".bk-closed").onclick = () => { bk.open = true; bkDraw(); };
-  } else {
-    const n = bk.pages.length, p = bk.pages[bk.page];
-    const leather = S.read ? s.pal : ["#B08A5C", "#8E6A40"];
-    el.innerHTML = `${top}<div class="bk-open" style="--l1:${leather[0]};--l2:${leather[1]}">${bkPageHTML(S, p, bk.page, n)}
-      ${bk.page < n - 1 ? `<button class="bk-curl" aria-label="Next page"></button>` : ""}</div>
-      <div class="bk-nav"><button class="bk-prev" aria-label="Previous page" ${bk.page ? "" : "disabled"}>‹</button><span>${bk.pages.map((_, k) => `<i class="${k === bk.page ? "on" : ""}"></i>`).join("")}</span><button class="bk-next" aria-label="Next page" ${bk.page < n - 1 ? "" : "disabled"}>›</button></div>`;
-    const go = d => { const k = bk.page + d; if (k < 0 || k >= n) return; bk.page = k; bkDraw(); };
-    el.querySelector(".bk-prev").onclick = () => go(-1);
-    el.querySelector(".bk-next").onclick = () => go(1);
-    const curl = el.querySelector(".bk-curl"); if (curl) curl.onclick = () => go(1);
-    const pg = el.querySelector(".bk-open"); let x0 = null;
-    pg.addEventListener("pointerdown", e => { x0 = e.clientX; });
-    pg.addEventListener("pointerup", e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); });
-  }
+  el.innerHTML = `${top}<button class="bk-closed" aria-label="Open the book">${bkCover(S)}</button>
+    <p class="bk-hint">${S.read ? "" : S.left ? `In ${S.left} day${S.left === 1 ? "" : "s"}, the stars read this book.` : ""}</p>`;
+  // buka buku = peta bintang (ui/16-stars.js)
+  el.querySelector(".bk-closed").onclick = () => bkOpen(false);
   el.querySelector(".bk-x").onclick = closeBook;
   el.querySelector(".bk-diary").onclick = () => { closeBook(); showDiary(); };
+}
+function bkOpen(spread) {
+  const id = bk.S.c.id; closeBook(); showTree(id, null, spread);
 }
 function closeBook() {
   if (!bk) return; const b = bk; bk = null;
@@ -192,7 +118,7 @@ function bkRitual() {
     <em>Not from a birthday: the stars read it from how ${esc(S.c.name)} grew this month.</em><button>Open the book</button></div>`;
   el.appendChild(r);
   requestAnimationFrame(() => r.classList.add("go"));
-  r.querySelector("button").onclick = () => { r.remove(); bk.open = true; bkDraw(); };
+  r.querySelector("button").onclick = () => bkOpen(true);
 }
 // sekali per makhluk: begitu umurnya sampai 30 hari dan pemain sedang di rumah, bukunya dibaca
 function bkCheck() {
