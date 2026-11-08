@@ -40,9 +40,15 @@ function lesWeek(c, d) {
   const head = `<div class="wk-h"></div>${Ilmu.BLOK.map(b => `<div class="wk-h">${Ilmu.BLOK_LBL[b]}</div>`).join("")}`;
   // v83: blok bebas bisa di-tap buat milih kegiatan (ui/31d-jadwal.js)
   const W = Jadwal.week(c, mon, d);
-  const cell = x => x.kind === "free" ? `<button class="wk-c free${x.plan ? " plan" : ""}" data-blok="${x.key}">${esc(x.plan ? x.tx : "Free")}</button>` : `<div class="wk-c ${x.kind}">${esc(x.tx)}</div>`;
+  const MK = { nurut: "✓", sendiri: "✓", kabur: "✗", capek: "💤" };
+  const cell = x => {
+    if (x.kind !== "free") return `<div class="wk-c ${x.kind}${x.day < d ? " past" : ""}">${esc(x.tx)}</div>`;
+    // hari yang udah lewat: apa yang beneran terjadi; hari ini dan ke depan: rencananya
+    const dn = x.day <= d ? x.done : null, ic = dn ? dn.ic : x.ic, tx = dn ? dn.label : x.plan ? x.tx : "Free";
+    return `<button class="wk-c free${x.plan ? " plan" : ""}${x.day < d ? " past" : ""}" data-blok="${x.key}">${ic ? `<span class="wk-i">${ic}</span>` : ""}<span class="wk-t">${esc(tx)}</span>${dn ? `<em class="wk-m ${dn.how}">${MK[dn.how] || ""}</em>` : ""}</button>`;
+  };
   const rows = W.map((row, i) => `<div class="wk-d${mon + i === d ? " now" : ""}">${AG_WDL[(((mon + i) % 7) + 6) % 7]}</div>${row.map(cell).join("")}`).join("");
-  return `<p class="muted small"><b>${cap}</b> · tap a free block to plan it. The plan repeats every week.</p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so whatever comes after a long school day is the most likely to be skipped.</p>`;
+  return `<p class="muted small"><b>${cap}</b> · tap a free block to plan it. Plans repeat every week.</p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so whatever comes after a long school day is the most likely to be skipped.</p>`;
 }
 let lesOpen = null;   // topik yang lagi dibuka di daftar kelas
 function showLes(id = cur && cur.id) {

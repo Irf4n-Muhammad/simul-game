@@ -16,32 +16,34 @@
 
   // ---------------------------------------------------------------- kegiatan topik
   // id: [label, simpul pohon, teks, energi, umur paling muda (fase)]
-  const K = (label, node, text, energi = -6, from = "anak") => ({ label, node, text, energi, from });
+  const K = (label, node, text, energi = -6, from = "anak", ic = "") => ({ label, node, text, energi, from, ic });
   const TOPIK = {
-    bola: K("Kick a ball around", "ball", "{n} kicks a ball around the park until it's dark.", -10),
-    renang: K("Swim", "water", "{n} splashes up and down the pool.", -10),
-    lari: K("Go for a run", "track", "{n} races around the block, red-faced and grinning.", -10),
-    masak: K("Cook something", "cooking", "{n} makes something in the kitchen. It's mostly edible."),
-    rakit: K("Build something", "building", "{n} hammers together something wobbly out of scrap wood."),
-    kebun: K("Garden", "gardening", "{n} digs in the garden and comes back with muddy knees.", -4),
-    alam: K("Explore outside", "outdoors", "{n} wanders off to explore and comes back with a pocket of rocks.", -8),
-    sains: K("Science kit", "lab", "{n} mixes things in jars to see what fizzes."),
-    tubuh: K("Bug and plant hunt", "medicine", "{n} studies a beetle with a magnifying glass for an hour."),
-    koding: K("Tinker with code", "engineering", "{n} types away, making a little program do a little thing.", -4, "remaja"),
-    catur: K("Play chess", "strategy", "{n} plays chess, frowning at the board.", -3),
-    teka: K("Puzzles & number games", "data", "{n} does puzzle after puzzle.", -3),
-    tulis: K("Write stories", "writing", "{n} fills a notebook with a story.", -3),
-    debat: K("Debate club", "law", "{n} argues the other side of everything, just for practice.", -4, "remaja"),
-    gambar: K("Draw", "painting", "{n} draws all afternoon, tongue sticking out.", -3),
-    desain: K("Make posters", "design", "{n} designs a poster for nothing in particular.", -3, "remaja"),
-    musik: K("Play an instrument", "instrument", "{n} practices an instrument. The neighbours are patient.", -4),
-    nyanyi: K("Sing", "voice", "{n} sings along to everything.", -3),
-    dansa: K("Dance", "rhythm", "{n} dances around the living room.", -8),
-    film: K("Make little films", "film", "{n} films a tiny movie starring the furniture.", -4),
-    game: K("Play video games", "games", "{n} plays games for hours.", -2),
-    pramuka: K("Scout outing", "team", "{n} goes on an outing with the scouts.", -8),
-    pidato: K("Practice speeches", "public", "{n} gives a speech to the mirror.", -3, "remaja"),
+    bola: K("Kick a ball around", "ball", "{n} kicks a ball around the park until it's dark.", -10, "anak", "⚽"),
+    renang: K("Swim", "water", "{n} splashes up and down the pool.", -10, "anak", "🏊"),
+    lari: K("Go for a run", "track", "{n} races around the block, red-faced and grinning.", -10, "anak", "🏃"),
+    masak: K("Cook something", "cooking", "{n} makes something in the kitchen. It's mostly edible.", -6, "anak", "🍳"),
+    rakit: K("Build something", "building", "{n} hammers together something wobbly out of scrap wood.", -6, "anak", "🔨"),
+    kebun: K("Garden", "gardening", "{n} digs in the garden and comes back with muddy knees.", -4, "anak", "🌱"),
+    alam: K("Explore outside", "outdoors", "{n} wanders off to explore and comes back with a pocket of rocks.", -8, "anak", "🧭"),
+    sains: K("Science kit", "lab", "{n} mixes things in jars to see what fizzes.", -6, "anak", "🧪"),
+    tubuh: K("Bug and plant hunt", "medicine", "{n} studies a beetle with a magnifying glass for an hour.", -6, "anak", "🔍"),
+    koding: K("Tinker with code", "engineering", "{n} types away, making a little program do a little thing.", -4, "remaja", "💻"),
+    catur: K("Play chess", "strategy", "{n} plays chess, frowning at the board.", -3, "anak", "♟️"),
+    teka: K("Puzzles & number games", "data", "{n} does puzzle after puzzle.", -3, "anak", "🧩"),
+    tulis: K("Write stories", "writing", "{n} fills a notebook with a story.", -3, "anak", "✍️"),
+    debat: K("Debate club", "law", "{n} argues the other side of everything, just for practice.", -4, "remaja", "🗣️"),
+    gambar: K("Draw", "painting", "{n} draws all afternoon, tongue sticking out.", -3, "anak", "🎨"),
+    desain: K("Make posters", "design", "{n} designs a poster for nothing in particular.", -3, "remaja", "🖍️"),
+    musik: K("Play an instrument", "instrument", "{n} practices an instrument. The neighbours are patient.", -4, "anak", "🎸"),
+    nyanyi: K("Sing", "voice", "{n} sings along to everything.", -3, "anak", "🎤"),
+    dansa: K("Dance", "rhythm", "{n} dances around the living room.", -8, "anak", "💃"),
+    film: K("Make little films", "film", "{n} films a tiny movie starring the furniture.", -4, "anak", "🎬"),
+    game: K("Play video games", "games", "{n} plays games for hours.", -2, "anak", "🎮"),
+    pramuka: K("Scout outing", "team", "{n} goes on an outing with the scouts.", -8, "anak", "🏕️"),
+    pidato: K("Practice speeches", "public", "{n} gives a speech to the mirror.", -3, "remaja", "📣"),
   };
+  const AG_IC = { main: "🧸", dongeng: "📖", jalan: "🚶", tidur_siang: "😴", belajar: "📚", teman: "👫", latihan: "⭐", olahraga: "🤸", bantu_rumah: "🧺", bebas: "🎈",
+    kerja_keras: "💼", cari_kerja: "📨", sosial: "🥂", pasangan: "💞", keluarga: "👨‍👧", hobi: "🎯", istirahat: "🛋️", jalan_pagi: "🌅", cucu: "👵", kenangan: "📷" };
   const ORDER_PH = ["bayi", "anak", "remaja", "dewasa", "tua"];
   const LEARN = 0.45, CAP = 35;              // kegiatan bebas: kecil, dan nggak bisa bawa jalurnya jauh tanpa les
   const SKILL_OF = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
@@ -107,7 +109,12 @@
     return rng.choices(opts, w)[0].id.slice(2);
   }
   // satu blok: rencana pemain (bisa ditolak) atau pilihan sendiri
-  function mark(I, day, b, id, how) { if (!I.blok || I.blok.d !== day) I.blok = { d: day }; I.blok[b] = { id, how }; }
+  // catatan 7 hari terakhir per blok (buat papan minggu: ✓ jalan, ✗ nolak, 💤 capek)
+  function mark(I, day, b, id, how) {
+    const L = (I.blog ||= {});
+    (L[day] ||= {})[b] = { id, how };
+    for (const k of Object.keys(L)) if (+k < day - 7) delete L[k];
+  }
   function runBlock(x, b, main, agendaFn) {
     const c = x.c, plan = (c.info.jadwal || {})[keyOf(x.day, b)], I = IL.il(c.st);
     x._blok = b;
@@ -186,13 +193,26 @@
       return base.map(x => {
         if (x.kind !== "free") return { ...x, day };
         const key = keyOf(day, x.b), plan = (c.info.jadwal || {})[key];
-        const done = I && I.blok && I.blok.d === day && day === today ? I.blok[x.b] : null;
-        return { ...x, day, key, plan: plan || null, tx: plan ? labelOf(plan) : "Up to " + c.name, done: done ? { ...done, label: labelOf(done.id) } : null };
+        const done = I && I.blog && I.blog[day] && day <= today ? I.blog[day][x.b] : null;
+        return { ...x, day, key, plan: plan || null, tx: plan ? labelOf(plan) : "Up to " + c.name, ic: plan ? info(c, plan, day).ic : "", done: done ? { ...done, label: labelOf(done.id), ic: done.id ? info(c, done.id, day).ic : "" } : null };
       });
     });
   }
 
-  const API = { TOPIK, CAP, LEARN, choices, recommend, week, labelOf, freeBlocks, keyOf };
+  // detail satu pilihan buat lembar pilih: ikon, jalurnya, energi, reaksi makhluknya
+  const REACT = (mi, l) => mi >= 75 ? `I love ${l.toLowerCase()}!` : mi >= 55 ? `${l}? Yes!` : mi >= 35 ? "Okay, sure." : mi >= 20 ? "Do I have to?" : "Ugh, no...";
+  function info(c, id, day) {
+    if (!id) return { id: "", ic: "🎲", label: "Up to " + c.name };
+    if (id.startsWith("t.")) {
+      const t = TOPIK[id.slice(2)], I = IL.il(c.st), f = fieldOf(t.node), mi = IL.minatOf(c, f);
+      return { id, ic: t.ic, label: t.label, kind: "topik", root: N[t.node].root, node: t.node, nodeLabel: N[t.node].label, v: Math.round(IL.eff(I, t.node)), cap: CAP,
+        energi: t.energi, minat: mi, word: IL.MINAT_WORD(mi), react: REACT(mi, t.label), love: mi >= 55 };
+    }
+    return { id, ic: AG_IC[id] || "•", label: labelOf(id), kind: "agenda" };
+  }
+  const ALL_KEYS = [1, 2, 3, 4, 5].map(d => d + "sore").concat([6, 0].flatMap(d => ["pagi", "siang", "sore"].map(b => d + b)));
+
+  const API = { TOPIK, CAP, LEARN, AG_IC, ALL_KEYS, choices, recommend, info, week, labelOf, freeBlocks, keyOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Jadwal = API;
 })();
