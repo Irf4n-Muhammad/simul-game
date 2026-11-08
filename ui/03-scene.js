@@ -16,6 +16,43 @@ const sun = new THREE.DirectionalLight(0xffe2c0, 1.6);
 sun.position.set(-4, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
 Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); sun.shadow.radius = 5; scene.add(sun);
 
+// ---- kualitas adaptif: HP yang nggak kuat 60 fps diturunkan bertahap (resolusi kanvas; langkah pertama juga bayangan rumah 2048 -> 1024).
+// Tingkatnya diingat di browser ini, jadi buka berikutnya langsung lancar. Kalau turun satu tingkat nggak bikin lebih cepat
+// (mis. HP dikunci 30 fps oleh mode hemat baterai), tingkat itu dibatalkan dan penurunan berhenti: gambar nggak dibikin buram percuma.
+const QUALITY = [[2, 2048], [1.5, 1024], [1.25, 1024], [1, 1024]];   // [batas rasio piksel, ukuran peta bayangan rumah]
+const Q_KEY = "mk-q";
+let qLevel = (() => { try { return Math.min(QUALITY.length - 1, Math.max(0, Math.floor(+localStorage.getItem(Q_KEY) || 0))); } catch (e) { return 0; } })();
+const qSame = (a, b) => Math.min(devicePixelRatio, QUALITY[a][0]) === Math.min(devicePixelRatio, QUALITY[b][0]) && QUALITY[a][1] === QUALITY[b][1];
+function applyQuality(boot) {
+  const [pr, sh] = QUALITY[qLevel];
+  // resize() (ui/29-town.js) baru boleh dipanggil sesudah semua modul jalan; waktu boot cukup set rasio, resize() awal yang menerapkannya
+  if (renderer.getPixelRatio() !== Math.min(devicePixelRatio, pr)) { renderer.setPixelRatio(Math.min(devicePixelRatio, pr)); if (!boot) resize(); }
+  if (sun.shadow.mapSize.x !== sh) { sun.shadow.mapSize.set(sh, sh); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+}
+applyQuality(true);
+// qFull: frame sebelumnya menggambar adegan dengan kecepatan penuh (bukan dijeda/diperlambat); cuma jeda antar frame seperti itu yang diukur
+let qFull = false, qPrev = 0, qN = 0, qSlow = 0, qSum = 0, qBefore = 0, qFrom = -1, qDone = false;
+function qMeter(t) {
+  const d = t - qPrev, was = qFull; qPrev = t; qFull = false;
+  if (!was || qDone || d > 1000 || document.visibilityState !== "visible") return;
+  qN++; qSum += d; if (d > 24) qSlow++;   // > 24 ms = di bawah ~42 fps
+  if (qN < 20 || (qN < 180 && qSum < 3000)) return;   // ~3 detik atau 180 frame
+  const avg = qSum / qN, slow = qSlow > qN * 0.5;
+  qN = qSlow = qSum = 0;
+  if (!slow) { qBefore = 0; return; }
+  if (qBefore && avg > qBefore * 0.9) {
+    // turun terakhir nggak menolong: balikkan, berhenti
+    qLevel = qFrom; qDone = true;
+  } else {
+    let n = qLevel + 1; while (n < QUALITY.length && qSame(n, qLevel)) n++;
+    if (n >= QUALITY.length) { qDone = true; return; }
+    qFrom = qLevel; qLevel = n; qBefore = avg;
+  }
+  applyQuality();
+  try { localStorage.setItem(Q_KEY, String(qLevel)); } catch (e) { /* ignore */ }
+  if (globalThis.Tele && Tele.teknis) Tele.teknis("kualitas", { lv: qLevel, ms: Math.round(avg) });
+}
+
 const M = (c, o = {}) => {
   const m = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.85, metalness: 0, envMapIntensity: 0.45 }, o));
   m.color.convertSRGBToLinear(); if (o.emissive !== undefined) m.emissive.convertSRGBToLinear(); return m;

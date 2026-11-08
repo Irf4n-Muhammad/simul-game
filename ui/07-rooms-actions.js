@@ -42,15 +42,15 @@ function careItemFor(act) {
 function careUi() {
   dapurChip();
   const v = canCare() ? careView() : null, strip = $("careStrip");
-  strip.hidden = !v;
+  setHidden(strip, !v);
   const r = ROOMS[roomIx];
   if (!v) return;
   const ic = { makan_p: "☀", mandi: "☀", makan_m: "☾", tidur: "☾" };
-  strip.innerHTML = v.items.map((i, k) => {
+  const fresh = setHtml(strip, v.items.map((i, k) => {
     const cls = i.done ? (i.late ? "done late" : "done") : !i.open ? "wait" : i.overdue ? "late now" : "now";
     return `${k && i.half && !v.items[k - 1].half ? '<span class="sep"></span>' : ""}<button class="${cls}" data-care="${i.id}" aria-label="${esc(i.label)}${i.done ? ", done" : i.open ? "" : ", after noon"}"><i>${i.done ? "✓" : ic[i.id]}</i>${esc(i.label)}${!i.done && i.overdue ? " · late" : ""}</button>`;
-  }).join("");
-  strip.querySelectorAll("[data-care]").forEach(b => b.onclick = () => {
+  }).join(""));
+  if (fresh) strip.querySelectorAll("[data-care]").forEach(b => b.onclick = () => {
     const i = careView().items.find(x => x.id === b.dataset.care);
     if (!i.open && !i.done) return say(`${i.label} is after noon.`);
     if (roomIx !== CARE_ROOM[i.id]) setRoom(CARE_ROOM[i.id]);

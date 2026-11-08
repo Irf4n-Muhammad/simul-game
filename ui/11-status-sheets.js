@@ -78,8 +78,8 @@ function drawDice() {
   if (!game) return;
   const d = famStatus().dice, t = d.today;
   const shown = t?.used != null ? t.used : t?.rolled != null ? (t.saved ? 3 : t.rolled) : null;
-  $("diceBtn").innerHTML = (shown ? DIE_FACE[shown] : "?") + (shown ? "" : '<span class="badge"></span>');
-  $("diceBtn").setAttribute("aria-label", shown ? `Today's luck: ${shown}` : "Roll today's dice");
+  setHtml($("diceBtn"), (shown ? DIE_FACE[shown] : "?") + (shown ? "" : '<span class="badge"></span>'));
+  setAttr($("diceBtn"), "aria-label", shown ? `Today's luck: ${shown}` : "Roll today's dice");
 }
 
 // --- big moments
@@ -89,8 +89,8 @@ function nextMoment() {
 }
 function drawMoment() {
   const m = nextMoment(), el = $("momentPill");
-  el.hidden = !m;
-  if (m) el.textContent = `${fmtWhen(m.day)} · ${nameOf(m.cid)}: ${m.label}`;
+  setHidden(el, !m);
+  if (m) setText(el, `${fmtWhen(m.day)} · ${nameOf(m.cid)}: ${m.label}`);
 }
 function scoreRows(p, req) {
   const total = p.skill + p.talent + p.cond + (p.tree || 0) + (p.bonus ?? 0);
