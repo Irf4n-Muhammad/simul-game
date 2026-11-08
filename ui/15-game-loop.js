@@ -40,6 +40,8 @@ function boot() {
   if (state.tut == null) state.tut = oldSave ? 99 : 0;
   // v82: les, ilmu per jalur, dan bintang yang nyala sendiri hidup mulai hari ini buat save lama (riwayatnya tetap sama), dari awal buat yang baru
   if (state.ilmu_from == null) state.ilmu_from = oldSave ? liveDay() : 0;
+  // v85: tawaran kerja pertama di sistem koin (kantor vs magang impian) hidup mulai hari ini buat save lama, dari awal buat yang baru
+  if (state.kerja1_from == null) state.kerja1_from = oldSave ? liveDay() : 0;
   save();
   game = new GameLayer.Game(state);
   // tiap tindakan pemain dicatat jenisnya (bukan ke siapa) buat telemetry

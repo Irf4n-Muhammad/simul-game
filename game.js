@@ -108,6 +108,7 @@
       this.home.found("makhluk-001", state.nama || null);
       this.home.ilmu_from = state.ilmu_from ?? null;
       this.home.agensi_from = state.ilmu_from ?? null;   // v83: pilihan pemain selalu jalan mulai hari yang sama (engine.js ask)   // v82 ilmu.js: les dan bintang yang nyala sendiri hidup mulai hari ini (save lama tetap sama)
+      this.home.kerja1_from = state.kerja1_from ?? null;   // v85: tawaran kerja pertama (kantor vs magang) lewat sistem kerja koin mulai hari ini
       this.pending = null;
       this.half_now = 1; // 0 = pagi, 1 = malam (diisi UI dari jam; simulasi tanpa jam dianggap hari penuh)
       this._half = 0;
