@@ -48,7 +48,7 @@ function lesWeek(c, d) {
     return `<button class="wk-c free${x.plan ? " plan" : ""}${x.day < d ? " past" : ""}" data-blok="${x.key}">${ic ? `<span class="wk-i">${ic}</span>` : ""}<span class="wk-t">${esc(tx)}</span>${dn ? `<em class="wk-m ${dn.how}">${MK[dn.how] || ""}</em>` : ""}</button>`;
   };
   const rows = W.map((row, i) => `<div class="wk-d${mon + i === d ? " now" : ""}">${AG_WDL[(((mon + i) % 7) + 6) % 7]}</div>${row.map(cell).join("")}`).join("");
-  return `<p class="muted small"><b>${cap}</b> · tap a free block to plan it. Plans repeat every week.</p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so whatever comes after a long school day is the most likely to be skipped.</p>`;
+  return `<p class="muted small"><b>${cap}</b> · tap a free block to plan it. Plans repeat every week.</p><div class="wk">${head}${rows}</div>${weekSum(c)}<p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so whatever comes after a long school day is the most likely to be skipped.</p>`;
 }
 let lesOpen = null;   // topik yang lagi dibuka di daftar kelas
 function showLes(id = cur && cur.id) {

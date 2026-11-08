@@ -44,6 +44,15 @@
   };
   const AG_IC = { main: "🧸", dongeng: "📖", jalan: "🚶", tidur_siang: "😴", belajar: "📚", teman: "👫", latihan: "⭐", olahraga: "🤸", bantu_rumah: "🧺", bebas: "🎈",
     kerja_keras: "💼", cari_kerja: "📨", sosial: "🥂", pasangan: "💞", keluarga: "👨‍👧", hobi: "🎯", istirahat: "🛋️", jalan_pagi: "🌅", cucu: "👵", kenangan: "📷" };
+  // efek kegiatan biasa dalam satuan yang sama dengan hobi (dari agenda.js dan GAIN di status.js), buat ditulis di kotaknya
+  const AG_FX = {
+    main: { mood: 4, sk: { creativity: 0.1, fitness: 0.05 } }, dongeng: { sk: { logic: 0.12 } }, jalan: { sk: { fitness: 0.08, charm: 0.04 } }, tidur_siang: { energi: 20 },
+    belajar: { mood: -2, sk: { logic: 0.22 } }, teman: { mood: 4, sk: { charm: 0.22 } }, latihan: { sk: { creativity: 0.25 } }, olahraga: { energi: -8, sk: { fitness: 0.25 } },
+    bantu_rumah: { sk: { fitness: 0.08, charm: 0.05 } }, bebas: { mood: 6, sk: { creativity: 0.12 } }, kerja_keras: { mood: -3 }, cari_kerja: { mood: -1, sk: { charm: 0.05 } },
+    sosial: { mood: 4, sk: { charm: 0.2 } }, pasangan: { sk: { charm: 0.08 } }, keluarga: { sk: { charm: 0.08 } }, hobi: { sk: { creativity: 0.18 } },
+    istirahat: { energi: 15 }, jalan_pagi: { sk: { fitness: 0.06 } }, cucu: { mood: 5, sk: { charm: 0.05 } }, kenangan: { mood: 3 } };
+  const SK_LBL = { logic: "Logic", fitness: "Fitness", charm: "Charm", creativity: "Creativity" };
+  const STAR_AT = { field: 10, spec: 25 };
   const ORDER_PH = ["bayi", "anak", "remaja", "dewasa", "tua"];
   const LEARN = 0.45, CAP = 35;              // kegiatan bebas: kecil, dan nggak bisa bawa jalurnya jauh tanpa les
   const SKILL_OF = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
@@ -144,7 +153,12 @@
     }
     let text;
     if (tid) text = doTopik(x, tid, how);
-    else { const a = (AG.AGENDA[x.phase] || {})[aid]; text = doAgenda(x, aid); if (text && main) x.boost = a.boost; }
+    else {
+      const a = (AG.AGENDA[x.phase] || {})[aid]; text = doAgenda(x, aid);
+      if (text && main) x.boost = a.boost;
+      // blok tambahan: skill dasarnya ditambah di sini (blok utama dapat dari status.js lewat agenda_hari)
+      else if (text && c.st.skills) for (const [k, v] of Object.entries((AG_FX[aid] || {}).sk || {})) if (k in c.st.skills) c.st.skills[k] = Math.min(100, c.st.skills[k] + v);
+    }
     if (!text) return;
     const id = tid ? "t." + tid : aid;
     if (main) c.info.agenda_hari = { hari: x.day, id, label: labelOf(id), how: how === "nurut" ? "nurut" : "sendiri" };
@@ -205,14 +219,31 @@
     if (!id) return { id: "", ic: "🎲", label: "Up to " + c.name };
     if (id.startsWith("t.")) {
       const t = TOPIK[id.slice(2)], I = IL.il(c.st), f = fieldOf(t.node), mi = IL.minatOf(c, f);
-      return { id, ic: t.ic, label: t.label, kind: "topik", root: N[t.node].root, node: t.node, nodeLabel: N[t.node].label, v: Math.round(IL.eff(I, t.node)), cap: CAP,
-        energi: t.energi, minat: mi, word: IL.MINAT_WORD(mi), react: REACT(mi, t.label), love: mi >= 55 };
+      const tal = 0.6 + ((c.st.genes.talent[SKILL_OF[N[t.node].root]] || 5) - 1) / 9, v = IL.eff(I, t.node);
+      const per = v >= CAP ? 0 : Math.round(LEARN * tal * (0.5 + mi / 140) * 10) / 10, mood = mi >= 55 ? 3 : mi >= 35 ? 1 : -2;
+      const star = STAR_AT[N[t.node].tier], left = star && v < star && per > 0 ? Math.ceil((star - v) / per) : null;
+      return { id, ic: t.ic, label: t.label, kind: "topik", root: N[t.node].root, node: t.node, nodeLabel: N[t.node].label, v: Math.round(v), cap: CAP,
+        energi: t.energi, mood, per, star, left, minat: mi, word: IL.MINAT_WORD(mi), react: REACT(mi, t.label), love: mi >= 55,
+        fx: { path: per ? { [N[t.node].label]: per } : {}, energi: t.energi, mood, sk: { [SKILL_OF[N[t.node].root]]: 0.06 } } };
     }
-    return { id, ic: AG_IC[id] || "•", label: labelOf(id), kind: "agenda" };
+    const F = AG_FX[id] || {};
+    return { id, ic: AG_IC[id] || "•", label: labelOf(id), kind: "agenda", fx: { path: {}, energi: F.energi || 0, mood: F.mood || 0, sk: F.sk || {} } };
+  }
+  // total efek seminggu dari rencana yang dipasang (blok kosong nggak dihitung: itu pilihan makhluknya)
+  function weekFx(c, day) {
+    const J = c.info.jadwal || {}, out = { path: {}, energi: 0, mood: 0, sk: {}, n: 0 };
+    for (const k of ALL_KEYS) {
+      if (!J[k]) continue;
+      const f = info(c, J[k], day).fx; out.n++;
+      for (const [a, v] of Object.entries(f.path)) out.path[a] = Math.round(((out.path[a] || 0) + v) * 10) / 10;
+      for (const [a, v] of Object.entries(f.sk)) out.sk[a] = Math.round(((out.sk[a] || 0) + v) * 100) / 100;
+      out.energi += f.energi; out.mood += f.mood;
+    }
+    return out;
   }
   const ALL_KEYS = [1, 2, 3, 4, 5].map(d => d + "sore").concat([6, 0].flatMap(d => ["pagi", "siang", "sore"].map(b => d + b)));
 
-  const API = { TOPIK, CAP, LEARN, AG_IC, ALL_KEYS, choices, recommend, info, week, labelOf, freeBlocks, keyOf };
+  const API = { TOPIK, CAP, LEARN, AG_IC, AG_FX, SK_LBL, ALL_KEYS, choices, recommend, info, weekFx, week, labelOf, freeBlocks, keyOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Jadwal = API;
 })();

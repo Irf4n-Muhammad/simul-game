@@ -1,5 +1,21 @@
 // ================================================================ v83: blok waktu bebas (jadwal.js)
 // Jadwal minggu dari Classes dan Agenda: tap blok bebas, pilih kegiatan (★ tiga rekomendasi, lalu semua), atau "terserah makhluknya".
+// efek satu kegiatan dalam satuan yang sama terus: jalur pohon, skill dasar, ⚡ energi, 😊 mood
+const sgn = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v);
+function fxBits(fx, withSk) {
+  const out = Object.entries(fx.path).map(([a, v]) => `<u class="p">+${v} ${esc(a)}</u>`);
+  if (withSk || !out.length) for (const [k, v] of Object.entries(fx.sk)) out.push(`<u class="s">+${v} ${Jadwal.SK_LBL[k]}</u>`);
+  if (fx.energi) out.push(`<u class="${fx.energi < 0 ? "m" : "g"}">⚡${sgn(fx.energi)}</u>`);
+  if (fx.mood) out.push(`<u class="${fx.mood < 0 ? "m" : "g"}">😊${sgn(fx.mood)}</u>`);
+  return out.join(" ");
+}
+// total seminggu dari rencana yang dipasang
+function weekSum(c) {
+  const W = Jadwal.weekFx(c, today());
+  if (!W.n) return `<div class="wk-sum"><b>No plans yet.</b> ${esc(c.name)} picks everything, going by what ${esc(c.name)} likes. Tap a green block to plan it.</div>`;
+  const fx = { path: W.path, sk: W.sk, energi: W.energi, mood: W.mood };
+  return `<div class="wk-sum"><b>Your plan, every week (${W.n} block${W.n === 1 ? "" : "s"}):</b> ${fxBits(fx, true)}</div>`;
+}
 function wkBind(id, back) {
   sheet.querySelectorAll("[data-blok]").forEach(b => b.onclick = () => showBlok(id, b.dataset.blok, back));
 }
@@ -13,19 +29,20 @@ function showBlok(id, key, back, sel = undefined, keys = undefined) {
   if (sel === undefined) sel = plan;
   if (!keys) keys = new Set([key]);
   const all = Jadwal.choices(c, day), roots = Tree.ROOTS;
-  const tile = o => { const f = Jadwal.info(c, o.id, day); return `<button class="tile${o.id === sel ? " sel" : ""}${o.id === plan ? " on" : ""}" data-pick="${o.id}"><b>${f.ic}</b><span>${esc(f.label)}</span>${f.love ? "<i>♥</i>" : ""}</button>`; };
+  const tile = o => { const f = Jadwal.info(c, o.id, day); return `<button class="tile${o.id === sel ? " sel" : ""}${o.id === plan ? " on" : ""}" data-pick="${o.id}"><b>${f.ic}</b><span>${esc(f.label)}</span>${f.fx ? `<small class="fx">${fxBits(f.fx, false)}</small>` : ""}${f.love ? "<i>♥</i>" : ""}</button>`; };
   const grp = (t, list) => list.length ? `<div class="bk-grp">${t}</div><div class="tiles">${list.map(tile).join("")}</div>` : "";
   const f = Jadwal.info(c, sel, day);
   const det = sel ? (f.kind === "topik" ? `<div class="bk-det"><h4>${f.ic} ${esc(f.label)}</h4><span class="q">${n}: “${esc(f.react)}”</span>
-      <span class="row">Grows ${esc(f.nodeLabel)} · now ${f.v}${f.v >= f.cap ? ` (hobbies stop at ${f.cap}; classes go further)` : ` · hobbies take it up to ${f.cap}`}</span>
-      <span class="row">Energy ${f.energi} · How ${n} feels about it: ${esc(f.word)}${f.minat < 25 ? ", so will often say no" : ""}</span></div>`
-    : `<div class="bk-det"><h4>${f.ic} ${esc(f.label)}</h4><span class="row">An everyday thing for ${n}'s age.</span></div>`)
+      <span class="fx">${fxBits(f.fx, true)} <em>each time</em></span>
+      <span class="row">${esc(f.nodeLabel)} is at ${f.v}.${f.left ? ` Its ⭐ lights at ${f.star}: about ${f.left} more time${f.left === 1 ? "" : "s"}.` : f.star && f.v >= f.star ? " Its ⭐ is lit." : ""}${f.v >= f.cap ? ` Hobbies stop at ${f.cap}; classes go further.` : ` Hobbies take it up to ${f.cap}; past that it's classes.`}</span>
+      <span class="row">How ${n} feels about it: ${esc(f.word)}${f.minat < 25 ? ", so will often say no" : f.minat >= 55 ? ", so mood goes up" : ""}.</span></div>`
+    : `<div class="bk-det"><h4>${f.ic} ${esc(f.label)}</h4><span class="fx">${fxBits(f.fx, true)} <em>each time</em></span><span class="row">An everyday thing. Grows a basic skill, not a star path.</span></div>`)
     : `<div class="bk-det"><h4>🎲 Up to ${n}</h4><span class="row">${n} picks, going by what ${n} likes.</span></div>`;
   const chips = Jadwal.ALL_KEYS.map(k => `<button class="chip${keys.has(k) ? " on" : ""}" data-k="${k}">${WK_SH[+k[0]]} ${WK_B[k.slice(1)]}${J[k] && J[k] === sel && !keys.has(k) ? " ·" : ""}</button>`).join("");
   openSheet("blok", `
     <span class="ribbon">FREE TIME · ${n}</span>
     <h2>${WK_DAYS[dow]} ${esc(Ilmu.BLOK_LBL[b].toLowerCase())}</h2>
-    <p class="muted small">What should ${n} do? ♥ = things ${n} likes. Plans repeat every week; ${n} might still say no, or skip it when too tired.</p>
+    <p class="muted small">Free time grows ${n}'s hobbies (each one a path in the star book, up to ${Jadwal.CAP}), basic skills, energy ⚡ and mood 😊. ♥ = things ${n} likes. Plans repeat every week; ${n} might still say no, or skip it when too tired.</p>
     <div class="tiles">${tile({ id: "" })}</div>
     ${roots.map(r => grp(esc(Tree.NODES[r].label), all.filter(o => o.kind === "topik" && Tree.NODES[o.node].root === r))).join("")}
     ${grp("Everyday", all.filter(o => o.kind === "agenda"))}
