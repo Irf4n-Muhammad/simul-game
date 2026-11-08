@@ -65,18 +65,18 @@ test("katalog: Senior belum kelihatan buat Junior, rekomendasi kelas yang pas", 
   assert.ok(!cat.some(k => k.lvl === 2), "panggilan belum muncul");
   const R = Ilmu.recommend(c, c.born + 70);
   assert.ok(R.length && R.every(k => k.lvl === 0));
-  assert.equal(Object.keys(Ilmu.COURSES).length, 10 + 20 + 40);
+  assert.equal(Object.keys(Ilmu.COURSES).length, 10 + 20, "les cuma sampai Intermediate");
   assert.equal(Tree.NODES.inventor.label, "Organic chemist");
 });
 
-test("Organic chemist ikut les Chemistry: poin ke Organic chemist, ×0,05; les Science ×0; les Biology nggak ngaruh", () => {
+test("Organic chemist ikut les Chemistry: nggak dapat apa-apa (les berhenti di Intermediate); les Science ×0; les Biology jalan sendiri", () => {
   const c = { id: "x", st: { genes: { talent: { logic: 5, fitness: 5, charm: 5, creativity: 5 } }, ilmu: I0({ science: 25, lab: 30, inventor: 60 }) } };
   const a = Ilmu.preview(c, "lab");
-  assert.equal(a.target, "inventor"); assert.equal(a.match, 0.05);
+  assert.equal(a.target, null); assert.equal(a.per, 0);
   assert.equal(Ilmu.preview(c, "science").match, 0);
   const b = Ilmu.preview(c, "medicine");
   assert.equal(b.target, "medicine", "Biology jalan sendiri dari 25"); assert.equal(b.v, 25);
-  assert.equal(Ilmu.preview(c, "inventor").match, 1);
+  assert.equal(Ilmu.COURSES.inventor, undefined, "nggak ada les Senior");
 });
 
 test("dilema berhenti les: minat jatuh, makhluk minta keluar sekali per kursus; berhenti = sisa sesi hangus", () => {
@@ -100,4 +100,28 @@ test("dilema berhenti les: minat jatuh, makhluk minta keluar sekali per kursus; 
   else assert.ok(!quit.stop, "kalau lanjut, kursusnya selesai biasa");
   const b = go();
   assert.deepEqual(b.K, K, "replay sama");
+});
+
+test("Senior dari kuliah dan kerja: pilih jurusan dari jalur yang dijalani, kuliah naik pelan, kerja dan promosi nambah", () => {
+  const c = { id: "y", info: {}, st: { genes: { talent: { logic: 7, fitness: 5, charm: 5, creativity: 5 } }, ilmu: I0({ science: 25, lab: 55, data: 30 }) } };
+  const M = Ilmu.majors(c);
+  assert.equal(M[0].spec, "lab"); assert.equal(M.length, 3);
+  assert.ok(["inventor", "naturalist"].includes(M[0].id));
+  c.st.ilmu.jur = M[0].id;
+  assert.equal(Ilmu.workNiche(c, "software") !== null, true);
+});
+
+test("pilih_jurusan muncul sekali waktu kuliah, nilai jurusan naik selama kuliah, replay sama", () => {
+  const go = () => {
+    const st = fresh("akun-il5"), g = new G.Game(st), c = g.home.members[0];
+    g.advance(c.born + 280, null);
+    c.st.ilmu = c.st.ilmu || I0({}); Object.assign(c.st.ilmu.v, { science: 25, lab: 55 });
+    c.info.kuliah_aktif = true; c.info.siap_kerja = c.born + 600;
+    for (let d = c.born + 281; d <= c.born + 380; d++) { Object.assign(c.needs, { lapar: 80, energi: 80, kebersihan: 80, mood: 80 }); g.advance(d, null); }
+    return c.st.ilmu;
+  };
+  const I = go();
+  assert.ok(I.jur, "jurusan kepilih");
+  assert.ok(I.v[I.jur] > 60 && I.v[I.jur] <= 84, `naik dari kuliah: ${I.v[I.jur]}`);
+  assert.deepEqual(go().v, I.v);
 });

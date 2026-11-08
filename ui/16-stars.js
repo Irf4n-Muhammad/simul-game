@@ -181,8 +181,9 @@ function skyPanel() {
     const tier = now != null ? Ilmu.TIER[now >= 85 ? 3 : now >= 55 ? 2 : now >= 25 ? 1 : 0] : "";
     const where = LV ? (st.s === "owned" ? `${esc(c.name)} is at ${now} on this path · ${tier}.` : `Lights up on its own at ${LV[0]} (${LV[1]}). ${esc(c.name)} is at ${now} on this path.`)
       : st.s === "owned" ? "" : n.tier === "combo" ? "Lights up on its own once both stars it joins are lit." : n.reqAny ? "Lights up on its own after a star below it, if the talent is there." : "Lights up on its own when the time comes.";
+    const grow = n.tier === "niche" || n.tier === "legend" ? `<small class="sky-meta">${I.jur === node ? `${esc(c.name)}'s major. ` : ""}No classes for this one: it grows from a college major in ${esc(N[n.spec].label)} and from working in the field.</small>` : "";
     const mi = K && I.minat[K.field] != null ? `${esc(c.name)} on ${esc(N[K.field].label)}: ${Ilmu.MINAT_WORD(I.minat[K.field])}${I.ucap && I.ucap.field === K.field ? ` · “${esc(I.ucap.tx)}”` : ""}` : "";
-    panel.insertAdjacentHTML("beforeend", `${where ? `<small class="sky-meta">${where}</small>` : ""}${mi ? `<small class="sky-meta">${mi}</small>` : ""}${K && alive && c.age(today()) >= Ilmu.MIN_AGE ? `<button class="sky-diary" id="skyLes">${esc(K.name)} classes</button>` : ""}`);
+    panel.insertAdjacentHTML("beforeend", `${where ? `<small class="sky-meta">${where}</small>` : ""}${grow}${mi ? `<small class="sky-meta">${mi}</small>` : ""}${K && alive && c.age(today()) >= Ilmu.MIN_AGE ? `<button class="sky-diary" id="skyLes">${esc(K.name)} classes</button>` : ""}`);
     const lb = $("skyLes"); if (lb) lb.onclick = () => { closeSky(); showLes(c.id); };
     return;
   }

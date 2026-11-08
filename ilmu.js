@@ -28,7 +28,7 @@
   const matchOf = (cls, lrn) => { const d = cls - Math.min(lrn, 2); return d >= 2 ? MATCH[2] : d <= -2 ? 0 : MATCH[d]; };
 
   // ---------------------------------------------------------------- kursus
-  // Junior: satu kursus per cabang (topik umum). Intermediate: 20 les. Senior: dua panggilan di bawah tiap les.
+  // Junior: satu kursus per cabang (topik umum). Intermediate: 20 les. Senior nggak ada lesnya: jurusan kuliah dan kerja (lihat bawah).
   const JUNIOR = { sport: "Junior sports club", vital: "Junior first aid", hands: "Little makers", science: "Junior science", numbers: "Junior maths",
     words: "Junior reading & writing", art: "Junior art class", music: "Junior music", media: "Junior film club", lead: "Junior scouts" };
   const LES = { water: "Swimming", ball: "Football", track: "Athletics", cooking: "Cooking class", building: "Woodwork", firstaid: "First aid",
@@ -42,7 +42,7 @@
   const COURSES = {};
   const addC = (id, name, lvl) => { COURSES[id] = { id, node: id, name, lvl, price: PRICE[lvl], field: fieldOf(id), root: N[id].root, sport: N[id].root === "body" && fieldOf(id) === "sport" }; };
   for (const [id, name] of Object.entries(JUNIOR)) addC(id, name, 0);
-  for (const [id, name] of Object.entries(LES)) { addC(id, name, 1); for (const k of kidsOf(id)) addC(k, N[k].label, 2); }
+  for (const [id, name] of Object.entries(LES)) addC(id, name, 1);   // v82b: les berhenti di Intermediate; Senior dari kuliah dan kerja
   const SKILL_OF = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
 
   // kegiatan sehari-hari yang dipilih makhluknya sendiri (agenda.js) ngasih sedikit ilmu ke simpul yang nyambung.
@@ -94,7 +94,7 @@
     const capped = v >= HI[K.lvl] - 0.001, deep = capped ? deepest(I, K.node) : null;
     // tingkat makhluk di jalur ini = yang paling dalam (Organic chemist 60 di kelas Science tetap dihitung Senior)
     const lrn = tierOf(deep ? eff(I, deep) : v), m = matchOf(K.lvl, lrn);
-    const target = deep || (capped ? null : K.node);
+    const target = capped ? (K.lvl === 0 ? deep : null) : K.node;   // les Intermediate yang mentok: nggak ada lagi yang bisa diajarin
     const mi = minatOf(c, K.field);
     const per = target ? BASE[K.lvl] * talentF(c, K.node) * m * minatF(mi) * ((I.v[target] ?? 0) >= MASTER ? 0.5 : 1) : 0;
     const room = target ? HI[LEVEL[N[target].tier]] - (I.v[target] ?? eff(I, target)) : 0;
@@ -133,7 +133,7 @@
       x.say(`_${x.n} skips ${K.name} today (${k.n}/${SESI.length})._`);
       return;
     }
-    const v = eff(I, K.node), capped = v >= HI[K.lvl] - 0.001, target = capped ? deepest(I, K.node) : K.node;
+    const v = eff(I, K.node), capped = v >= HI[K.lvl] - 0.001, target = capped ? (K.lvl === 0 ? deepest(I, K.node) : null) : K.node;
     const lrn = tierOf(capped && target ? eff(I, target) : v), m = matchOf(K.lvl, lrn);
     let g = target ? BASE[K.lvl] * talentF(c, K.node) * m * minatF(mi) : 0;
     if (target && (I.v[target] ?? 0) >= MASTER) g *= 0.5;
@@ -159,7 +159,7 @@
     I.selesai.push({ id: k.id, d: x.day, gain: k.gain, bolos: k.bolos });
     const t0 = tierOf(k.v0), t1 = tierOf(v);
     const where = k.gain > 0 ? labelAt(I, K.node) : null;
-    const up = t1 > t0 ? ` That's ${TIER[t1]} now: ${x.n} passes the end-of-course test.` : v >= HI[K.lvl] - 0.001 && !deepest(I, K.node) && K.lvl < 2 ? ` To keep growing, ${x.n} needs one of the next courses: ${kidsOf(K.node).filter(id => COURSES[id]).map(id => COURSES[id].name).join(" or ")}.` : "";
+    const up = t1 > t0 ? ` That's ${TIER[t1]} now: ${x.n} passes the end-of-course test.` : v >= HI[K.lvl] - 0.001 && !deepest(I, K.node) ? (K.lvl === 0 ? ` To keep growing, ${x.n} needs one of the next courses: ${kidsOf(K.node).filter(id => COURSES[id]).map(id => COURSES[id].name).join(" or ")}.` : ` Classes stop here. To go further, ${x.n} needs college or a job in this field.`) : "";
     x.say(`${x.n} finishes ${K.name}: ${k.gain > 0 ? `+${r1(k.gain)} ${where.label}, now ${Math.round(where.v)} · ${TIER[tierOf(where.v)]}` : "no progress this time"}${k.bolos ? `, after skipping ${k.bolos} of ${SESI.length}` : ""}.${up}`);
     x.remember(`Finished ${K.name}${up ? `, ${TIER[t1]}` : ""}.`);
   }
@@ -210,6 +210,7 @@
       if (x.day - k.mulai === SESI[k.n]) { sesi(x, k); if (k.n >= SESI.length) selesai(x, k); }
       else if (x.day > k.mulai + SESI[k.n]) { k.n += 1; k.bolos += 1; if (k.n >= SESI.length) selesai(x, k); }   // hari yang kelewat (misal sakit)
     }
+    lifeWork(x);
     // nyalain bintang cuma kalau ilmunya berubah (rahasia dan kombinasi dicek seminggu sekali)
     if (I.ver === I.lit && x.day % 7) return;
     I.lit = I.ver;
@@ -227,6 +228,61 @@
     if (pay === "dompet" && !["dewasa", "tua"].includes(phase_of(c.age(day)))) return false;
     return enrol(home, c, id, day, pay === "dompet" ? "dompet" : "dapur");
   };
+
+  // ---------------------------------------------------------------- Senior dan Master: kuliah dan kerja (v82b, diputusin 8 Nov)
+  // Les cuma sampai Intermediate (55). Jadi profesional = kuliah dengan jurusan yang nyambung, lalu kerja di bidangnya.
+  const NICHES = T.ORDER.filter(id => N[id].tier === "niche" && N[N[id].spec] && LES[N[id].spec]);
+  const UNI_G = 0.1, UNI_CAP = 84, WORK_G = 0.04, PROMO_G = 2;
+  // pilihan jurusan: tiga ranting yang paling jauh dia jalani (seri: yang paling disukai), tiap ranting ke panggilan yang paling dekat
+  function majors(c) {
+    const I = il(c.st);
+    const sp = Object.keys(LES).map(s => ({ s, v: eff(I, s), m: minatOf(c, fieldOf(s)) })).sort((a, b) => (b.v - a.v) || (b.m - a.m) || (a.s < b.s ? -1 : 1)).slice(0, 3);
+    return sp.map(({ s, v, m }) => {
+      const ks = kidsOf(s).filter(k => N[k].tier === "niche").sort((a, b) => (eff(I, b) - eff(I, a)) || (a < b ? -1 : 1));
+      return { id: ks[0], spec: s, v, m, label: `${LES[s]}, toward ${N[ks[0]].label}` };
+    });
+  }
+  // panggilan yang tumbuh dari kerjaan ini: jurusannya kalau nyambung, lalu yang sudah paling jauh, lalu yang rantingnya paling kuat
+  function workNiche(c, job) {
+    const I = il(c.st), ok = NICHES.filter(id => (N[id].fx.job || {})[job] > 0);
+    if (!ok.length) return null;
+    if (I.jur && ok.includes(I.jur)) return I.jur;
+    return ok.slice().sort((a, b) => ((I.v[b] ?? -1) - (I.v[a] ?? -1)) || (eff(I, N[b].spec) - eff(I, N[a].spec)) || (N[b].fx.job[job] - N[a].fx.job[job]) || (a < b ? -1 : 1))[0];
+  }
+  function grow(I, id, g, cap = 100) {
+    const cur = I.v[id] ?? eff(I, id);
+    if (cur >= MASTER) g *= 0.5;
+    const nv = Math.round(Math.min(cap, cur + g) * 100) / 100;   // dua desimal: gain harian kecil nggak boleh hilang dibulatkan
+    if (nv > cur || I.v[id] == null) { I.v[id] = Math.max(nv, cur); I.ver = (I.ver || 0) + 1; }
+  }
+  function lifeWork(x) {
+    const c = x.c, I = il(c.st);
+    if (c.info.kuliah_aktif && I.jur) {
+      grow(I, I.jur, UNI_G * talentF(c, I.jur) * minatF(minatOf(c, fieldOf(I.jur))), UNI_CAP);
+    }
+    const j = c.st.job;
+    if (j && !c.info.pensiun && !c.info.kuliah_aktif) {
+      if (!I.kerja || I.kerja.job !== j.id) I.kerja = { job: j.id, n: workNiche(c, j.id), lv: j.level };
+      const n = I.kerja.n;
+      if (n) {
+        grow(I, n, WORK_G * talentF(c, n));
+        if (j.level > I.kerja.lv) { grow(I, n, PROMO_G); x.say(`_${x.n} learns a lot from the new role: ${N[n].label} ${Math.round(eff(I, n))}._`); }
+      }
+      I.kerja.lv = j.level;
+    }
+  }
+  storylet("pilih_jurusan", ["remaja", "dewasa"], "sedang", { once: true, priority: true,
+    cond: x => on(x.home, x.day) && !!x.c.info.kuliah_aktif && !!x.c.st && !il(x.c.st).jur }, x => {
+    const M = majors(x.c), I = il(x.c.st);
+    const opts = Object.fromEntries(M.map(o => [o.id, o.label]));
+    const self = M.slice().sort((a, b) => (b.m - a.m) || (b.v - a.v))[0].id;
+    x.say(`${x.n} spreads the college brochures across the floor. Time to pick a major.`);
+    const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id });
+    I.jur = final; I.ver = (I.ver || 0) + 1;
+    x.c.info.jurusan = LES[N[final].spec];
+    x.say(`${x.n} signs up for ${LES[N[final].spec]}. The path ahead: ${N[final].label}.`);
+    x.remember(`Majored in ${LES[N[final].spec]}.`);
+  });
 
   // ---------------------------------------------------------------- dilema: mau berhenti les
   // Minat jatuh di bawah 25 sesudah paling nggak 2 sesi: makhluknya minta keluar. Sekali per kursus.
@@ -298,7 +354,7 @@
   function schedule(k) { return SESI.map(s => k.mulai + s); }
 
   const API = { TIER, LEVEL, LO, HI, MASTER, MATCH, COURSES, JUNIOR, LES, PRICE, SESI, WAVE, MIN_AGE, tierOf, matchOf, eff, down, deepest, il, preview,
-    minatOf, MINAT_WORD, nextWave, active, canEnrol, book, catalog, recommend, schedule, labelAt, light, kidsOf };
+    minatOf, MINAT_WORD, majors, workNiche, nextWave, active, canEnrol, book, catalog, recommend, schedule, labelAt, light, kidsOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Ilmu = API;
 })();

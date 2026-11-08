@@ -7,7 +7,7 @@ const lesTier = t => `<span class="les-tier" style="--c:${LES_TIER_C[t]}">${Ilmu
 const lesGrown = c => ["dewasa", "tua"].includes(Engine.phase_of(c.age(today())));
 // kalimat "kenapa kelas ini": pengali level match dalam bahasa orang tua
 function lesMatchTx(k, n) {
-  if (k.capped) return `${n} has gone as far as this class goes. The next step is one of the classes under it.`;
+  if (k.capped) return k.lvl === 0 ? `${n} has gone as far as this class goes. The next step is one of the classes under it.` : `${n} has gone as far as classes go. From here it's college (as a major) or a job in this field.`;
   if (k.match >= 1) return `Right level for ${n} (${Ilmu.TIER[k.tier]}): full progress.`;
   if (k.match === 0.5) return `One level above ${n}. The basics aren't there yet, so progress is half speed.`;
   if (k.match === 0.2) return `Two levels above ${n}. Most of it goes over their head: progress ×0.2.`;
@@ -57,7 +57,7 @@ function showLes(id = cur && cur.id) {
     <p class="muted">A new round starts every two weeks (next: ${esc(agDay(Ilmu.nextWave(d)))}). ${lesGrown(c) ? `Pay with kitchen coins or ${n}'s own wallet.` : "Paid with kitchen coins."} You have ${coinTxt(w ? w.koin : 0)}.</p>
     ${act.length ? `<h3>Taking now</h3><div class="list">${act.map(k => { const K = Ilmu.COURSES[k.id], nx = Ilmu.schedule(k)[k.n]; return `<div class="line"><span class="grow"><b>${esc(K.name)} ${lesTier(K.lvl)}</b><small class="sub">${k.n}/${Ilmu.SESI.length} sessions${k.gain ? ` · +${k.gain} so far` : ""}${nx != null ? ` · next ${esc(agDay(nx))}` : ""}</small></span></div>`; }).join("")}</div>` : ""}
     <h3>Pick a topic</h3>
-    <p class="muted small">Each class is one step on a path: general topic (Junior), then the class itself (Intermediate), then a real job (Senior). Classes far above or below ${n}'s level teach very little.</p>
+    <p class="muted small">Classes take ${n} from a general topic (Junior) to one subject (Intermediate, up to 55). Senior and Master come later, from a college major and from working in the field. Classes far above or below ${n}'s level teach very little.</p>
     ${fields.map(grp).join("")}
     <button class="close" data-close="1">Close</button>`);
   sheet.querySelectorAll("[data-lesg]").forEach(b => b.onclick = () => { lesOpen = lesOpen === b.dataset.lesg ? "" : b.dataset.lesg; showLes(id); });
