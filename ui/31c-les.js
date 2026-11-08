@@ -35,11 +35,14 @@ function lesCard(c, k, star, ix) {
 function lesWeek(c, d) {
   // minggu ini; kalau les yang baru didaftar mulainya minggu depan, tunjukin minggu itu biar kelihatan blok yang kepakai
   const I = Ilmu.il(c.st), nx = I.kursus.filter(k => k.n < Ilmu.SESI.length).map(k => Ilmu.schedule(k)[k.n]).filter(x => x != null && x >= d), a = nx.length ? Math.min(...nx) : d;
-  const mon0 = d - ((d % 7) + 6) % 7, monA = a - ((a % 7) + 6) % 7, mon = a - d <= 13 ? monA : mon0, days = [...Array(7)].map((_, i) => mon + i);
+  const mon0 = d - ((d % 7) + 6) % 7, monA = a - ((a % 7) + 6) % 7, mon = a - d <= 13 ? monA : mon0;
   const cap = mon === mon0 ? "This week" : `Week of ${esc(agDay(mon))}`;
   const head = `<div class="wk-h"></div>${Ilmu.BLOK.map(b => `<div class="wk-h">${Ilmu.BLOK_LBL[b]}</div>`).join("")}`;
-  const rows = days.map(gd => `<div class="wk-d${gd === d ? " now" : ""}">${AG_WDL[((gd % 7) + 6) % 7]}</div>${Ilmu.dayBlocks(c, gd).map(x => `<div class="wk-c ${x.kind}">${esc(x.tx)}</div>`).join("")}`).join("");
-  return `<p class="muted small"><b>${cap}</b></p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so a class after a long school day is the one ${esc(c.name)} is most likely to skip.</p>`;
+  // v83: blok bebas bisa di-tap buat milih kegiatan (ui/31d-jadwal.js)
+  const W = Jadwal.week(c, mon, d);
+  const cell = x => x.kind === "free" ? `<button class="wk-c free${x.plan ? " plan" : ""}" data-blok="${x.key}">${esc(x.plan ? x.tx : "Free")}</button>` : `<div class="wk-c ${x.kind}">${esc(x.tx)}</div>`;
+  const rows = W.map((row, i) => `<div class="wk-d${mon + i === d ? " now" : ""}">${AG_WDL[(((mon + i) % 7) + 6) % 7]}</div>${row.map(cell).join("")}`).join("");
+  return `<p class="muted small"><b>${cap}</b> · tap a free block to plan it. The plan repeats every week.</p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so whatever comes after a long school day is the most likely to be skipped.</p>`;
 }
 let lesOpen = null;   // topik yang lagi dibuka di daftar kelas
 function showLes(id = cur && cur.id) {
@@ -71,6 +74,7 @@ function showLes(id = cur && cur.id) {
     <p class="muted small">Classes take ${n} from a general topic (Junior) to one subject (Intermediate, up to 55). Senior and Master come later, from a college major and from working in the field. Classes far above or below ${n}'s level teach very little.</p>
     ${fields.map(grp).join("")}
     <button class="close" data-close="1">Close</button>`);
+  wkBind(c.id, () => showLes(id));
   sheet.querySelectorAll("[data-lesg]").forEach(b => b.onclick = () => { lesOpen = lesOpen === b.dataset.lesg ? "" : b.dataset.lesg; showLes(id); });
   sheet.querySelectorAll("[data-les]").forEach(b => b.onclick = () => {
     const k = all[+b.dataset.les], pay = b.dataset.pay; if (!k) return;

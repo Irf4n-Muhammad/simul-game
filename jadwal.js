@@ -1,0 +1,198 @@
+// jadwal.js (v83): pemain ngisi blok waktu bebas makhluknya. Diputusin 8 Nov.
+// Hari dibagi 4 blok (ilmu.js): hari sekolah/kerja cuma Sore yang bebas, akhir pekan Pagi, Siang, Sore bebas, Malam selalu di rumah.
+// Pemain pasang rencana mingguan per blok ("jadwal:<hari><blok>:<kegiatan>", berlaku terus sampai diganti, seperti aturan rumah).
+// Kegiatan = kegiatan agenda biasa (Play with friends, Rest, ...) atau kegiatan topik pohon (Draw, Play chess, Cook, ...).
+// Makhluknya bisa nolak (peluang nurut, makin kecil kalau dia nggak suka topiknya), dan blok yang kosong dia isi sendiri sesuai minatnya.
+// Kegiatan topik nambah sedikit ke jalurnya di pohon (jauh lebih kecil dari les, mentok di 35) dan pelan-pelan ngubah minatnya.
+// Blok yang kepakai les nggak bisa diisi. Hidup cuma kalau home.ilmu_from aktif, jadi save lama nggak berubah.
+"use strict";
+(function () {
+  const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
+  const T = (typeof module !== "undefined") ? require("./tree.js") : globalThis.Tree;
+  const AG = (typeof module !== "undefined") ? require("./agenda.js") : globalThis.Agenda;
+  const IL = (typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu;
+  const { HOOKS, seed_rng, phase_of } = E;
+  const N = T.NODES;
+
+  // ---------------------------------------------------------------- kegiatan topik
+  // id: [label, simpul pohon, teks, energi, umur paling muda (fase)]
+  const K = (label, node, text, energi = -6, from = "anak") => ({ label, node, text, energi, from });
+  const TOPIK = {
+    bola: K("Kick a ball around", "ball", "{n} kicks a ball around the park until it's dark.", -10),
+    renang: K("Swim", "water", "{n} splashes up and down the pool.", -10),
+    lari: K("Go for a run", "track", "{n} races around the block, red-faced and grinning.", -10),
+    masak: K("Cook something", "cooking", "{n} makes something in the kitchen. It's mostly edible."),
+    rakit: K("Build something", "building", "{n} hammers together something wobbly out of scrap wood."),
+    kebun: K("Garden", "gardening", "{n} digs in the garden and comes back with muddy knees.", -4),
+    alam: K("Explore outside", "outdoors", "{n} wanders off to explore and comes back with a pocket of rocks.", -8),
+    sains: K("Science kit", "lab", "{n} mixes things in jars to see what fizzes."),
+    tubuh: K("Bug and plant hunt", "medicine", "{n} studies a beetle with a magnifying glass for an hour."),
+    koding: K("Tinker with code", "engineering", "{n} types away, making a little program do a little thing.", -4, "remaja"),
+    catur: K("Play chess", "strategy", "{n} plays chess, frowning at the board.", -3),
+    teka: K("Puzzles & number games", "data", "{n} does puzzle after puzzle.", -3),
+    tulis: K("Write stories", "writing", "{n} fills a notebook with a story.", -3),
+    debat: K("Debate club", "law", "{n} argues the other side of everything, just for practice.", -4, "remaja"),
+    gambar: K("Draw", "painting", "{n} draws all afternoon, tongue sticking out.", -3),
+    desain: K("Make posters", "design", "{n} designs a poster for nothing in particular.", -3, "remaja"),
+    musik: K("Play an instrument", "instrument", "{n} practices an instrument. The neighbours are patient.", -4),
+    nyanyi: K("Sing", "voice", "{n} sings along to everything.", -3),
+    dansa: K("Dance", "rhythm", "{n} dances around the living room.", -8),
+    film: K("Make little films", "film", "{n} films a tiny movie starring the furniture.", -4),
+    game: K("Play video games", "games", "{n} plays games for hours.", -2),
+    pramuka: K("Scout outing", "team", "{n} goes on an outing with the scouts.", -8),
+    pidato: K("Practice speeches", "public", "{n} gives a speech to the mirror.", -3, "remaja"),
+  };
+  const ORDER_PH = ["bayi", "anak", "remaja", "dewasa", "tua"];
+  const LEARN = 0.45, CAP = 35;              // kegiatan bebas: kecil, dan nggak bisa bawa jalurnya jauh tanpa les
+  const SKILL_OF = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
+  const fieldOf = id => N[id].tier === "field" ? id : N[id].field;
+
+  // ---------------------------------------------------------------- blok
+  const on = (home, day) => home.ilmu_from != null && day >= home.ilmu_from;
+  const wk = day => day % 7 >= 1 && day % 7 <= 5;
+  const MAIN = day => wk(day) ? "sore" : "siang";          // blok yang sama dengan "kegiatan hari ini" di agenda.js
+  const freeBlocks = day => wk(day) ? ["sore"] : ["pagi", "siang", "sore"];
+  const keyOf = (day, b) => `${day % 7}${b}`;
+  const classIn = (c, day, b) => {
+    const I = c.st && c.st.ilmu; if (!I) return null;
+    return I.kursus.find(k => k.n < IL.SESI.length && k.slot != null && IL.SLOTS[k.slot].blok === b && IL.schedule(k).includes(day)) || null;
+  };
+
+  // pilihan yang boleh dipasang di blok ini buat makhluk ini (agenda umurnya + topik yang umurnya cukup)
+  function choices(c, day) {
+    const ph = phase_of(c.age(day)), A = AG.AGENDA[ph] || {};
+    const ag = Object.entries(A).filter(([id]) => !["kerja_sambilan"].includes(id)).map(([id, a]) => ({ id, label: a.label, kind: "agenda" }));
+    if (ph === "bayi") return ag;
+    const tp = Object.entries(TOPIK).filter(([, t]) => N[t.node] && ORDER_PH.indexOf(ph) >= ORDER_PH.indexOf(t.from)).map(([id, t]) => ({ id: "t." + id, label: t.label, kind: "topik", node: t.node }));
+    return ag.concat(tp);
+  }
+  // rekomendasi buat pemain: topik yang dia suka dan yang lagi jalan (les, nilai jalur), dikurangi kalau capek (sore sesudah sekolah)
+  function recommend(c, day, b, n = 3) {
+    const I = IL.il(c.st), after = wk(day) && b === "sore";
+    const les = new Set(I.kursus.filter(k => k.n < IL.SESI.length).map(k => IL.COURSES[k.id].field));
+    return choices(c, day).filter(o => o.kind === "topik").map(o => {
+      const t = TOPIK[o.id.slice(2)], f = fieldOf(t.node), mi = IL.minatOf(c, f), v = IL.eff(I, t.node);
+      const s = mi + Math.min(v, CAP) * 0.6 + (les.has(f) ? 12 : 0) + (after && t.energi <= -8 ? -10 : 0);
+      const why = les.has(f) ? `goes with the ${N[f].label.toLowerCase()} class` : mi >= 55 ? `${IL.MINAT_WORD(mi)}` : v >= 10 ? `already at ${Math.round(v)} in ${N[t.node].label}` : `${IL.MINAT_WORD(mi)}`;
+      return { ...o, score: s, minat: mi, v: Math.round(v), why };
+    }).sort((a, b2) => (b2.score - a.score) || (a.id < b2.id ? -1 : 1)).filter((o, i, A) => A.findIndex(p => fieldOf(p.node) === fieldOf(o.node)) === i).slice(0, n);   // satu per topik umum biar beragam
+  }
+
+  // ---------------------------------------------------------------- jalanin satu blok
+  function doTopik(x, tid, how) {
+    const c = x.c, t = TOPIK[tid], I = IL.il(c.st), f = fieldOf(t.node), mi = IL.minatOf(c, f);
+    x.need("energi", t.energi);
+    x.need("mood", mi >= 55 ? 3 : mi >= 35 ? 1 : -2);
+    const cur = I.v[t.node] ?? IL.eff(I, t.node);
+    if (cur < CAP) {
+      const tal = 0.6 + ((c.st.genes.talent[SKILL_OF[N[t.node].root]] || 5) - 1) / 9;
+      I.v[t.node] = Math.round(Math.min(CAP, cur + LEARN * tal * (0.5 + mi / 140)) * 100) / 100; I.ver = (I.ver || 0) + 1;
+    }
+    const sk = SKILL_OF[N[t.node].root]; if (c.st.skills && sk in c.st.skills) c.st.skills[sk] = Math.min(100, c.st.skills[sk] + 0.06);
+    // minat: dipilih sendiri bikin makin suka, disuruh padahal nggak suka bikin makin males
+    I.minat[f] = Math.max(0, Math.min(100, mi + (how === "sendiri" ? 0.6 : mi < 30 ? -0.8 : 0.3)));
+    return t.text.replace("{n}", x.n);
+  }
+  function doAgenda(x, id) {
+    const a = (AG.AGENDA[x.phase] || {})[id]; if (!a || !a.cond(x)) return null;
+    a.effect(x);
+    return a.text.replace("{n}", x.n);
+  }
+  // pilihan sendiri buat blok tambahan akhir pekan: topik yang paling dia suka, atau istirahat kalau capek
+  function selfTopik(x) {
+    const c = x.c, rng = seed_rng(c.id, x.day, "blok", x._blok || "");
+    const opts = choices(c, x.day).filter(o => o.kind === "topik");
+    if (!opts.length) return null;
+    const w = opts.map(o => { const m = IL.minatOf(c, fieldOf(o.node)); return Math.max(1, m - 20) ** 1.6; });
+    return rng.choices(opts, w)[0].id.slice(2);
+  }
+  // satu blok: rencana pemain (bisa ditolak) atau pilihan sendiri
+  function mark(I, day, b, id, how) { if (!I.blok || I.blok.d !== day) I.blok = { d: day }; I.blok[b] = { id, how }; }
+  function runBlock(x, b, main, agendaFn) {
+    const c = x.c, plan = (c.info.jadwal || {})[keyOf(x.day, b)], I = IL.il(c.st);
+    x._blok = b;
+    const tired = c.needs.energi < 15;
+    let tid = null, aid = null, how = "sendiri";
+    if (plan && tired) how = "capek";
+    else if (plan) {
+      const isT = plan.startsWith("t."), mi = isT ? IL.minatOf(c, fieldOf(TOPIK[plan.slice(2)].node)) : 50;
+      const ob = Math.min(0.95, x.obey_chance() * (mi < 25 ? 0.5 : mi < 40 ? 0.8 : 1) + 0.2);
+      if (seed_rng(c.id, x.day, "nurut", b).random() < ob) { how = "nurut"; if (isT) tid = plan.slice(2); else aid = plan; }
+      else how = "kabur";
+    }
+    const miss = how === "kabur" ? ` The plan was "${labelOf(plan)}", but ${x.n} wanted something else.` : how === "capek" ? ` Too tired for "${labelOf(plan)}".` : "";
+    if (main && !tid && !aid) {
+      // blok utama tanpa rencana yang jalan: agenda.js yang milih sesuai sifatnya
+      const keep = c.info.rencana; c.info.rencana = null;
+      agendaFn(x);
+      c.info.rencana = keep;
+      if (miss) x.say(`_${miss.trim()}_`);
+      mark(I, x.day, b, c.info.agenda_hari && c.info.agenda_hari.hari === x.day ? c.info.agenda_hari.id : null, how);
+      return;
+    }
+    if (!tid && !aid) {
+      if (tired) { x.need("energi", 6); mark(I, x.day, b, "istirahat", how); if (miss) x.say(`_${BLOK_CAP[b]}:${miss}_`); return; }
+      tid = selfTopik(x);
+      if (!tid) return;
+    }
+    let text;
+    if (tid) text = doTopik(x, tid, how);
+    else { const a = (AG.AGENDA[x.phase] || {})[aid]; text = doAgenda(x, aid); if (text && main) x.boost = a.boost; }
+    if (!text) return;
+    const id = tid ? "t." + tid : aid;
+    if (main) c.info.agenda_hari = { hari: x.day, id, label: labelOf(id), how: how === "nurut" ? "nurut" : "sendiri" };
+    x.say(`_${BLOK_CAP[b]}: ${text}${miss}_`);
+    mark(I, x.day, b, id, how);
+  }
+  const BLOK_CAP = { pagi: "Morning", siang: "Midday", sore: "Afternoon" };
+  function labelOf(id) {
+    if (!id) return "";
+    if (id.startsWith("t.")) return TOPIK[id.slice(2)] ? TOPIK[id.slice(2)].label : id;
+    for (const ph of ORDER_PH) if (AG.AGENDA[ph] && AG.AGENDA[ph][id]) return AG.AGENDA[ph][id].label;
+    return id;
+  }
+
+  // ---------------------------------------------------------------- hook harian
+  const _agenda = HOOKS.agenda;
+  HOOKS.agenda = x => {
+    const c = x.c;
+    if (!c.st || !on(x.home, x.day) || x.phase === "bayi" || (x.phase === "anak" && x.has("libur")) || (x.phase === "remaja" && (x.has("study_tour") || x.has("ujian_pekan")))) return _agenda && _agenda(x);
+    const main = MAIN(x.day);
+    for (const b of freeBlocks(x.day)) {
+      if (classIn(c, x.day, b)) { if (b === main && _agenda) _agenda(x); continue; }   // ilmu.js yang ngurus blok les (Sore hari kerja)
+      runBlock(x, b, b === main, y => { if (_agenda) _agenda(y); });
+    }
+  };
+
+  // tindakan pemain "jadwal:<hari><blok>:<kegiatan>" (kegiatan kosong = terserah makhluknya)
+  const _act = HOOKS.act;
+  HOOKS.act = (home, cid, kind, day) => {
+    if (!kind.startsWith("jadwal:")) return _act ? _act(home, cid, kind, day) : undefined;
+    const c = home.get(cid), [, key, id] = kind.split(":");
+    if (!c || !c.st || !on(home, day) || !/^[0-6](pagi|siang|sore)$/.test(key)) return false;
+    const dow = +key[0], b = key.slice(1);
+    if (!(dow >= 1 && dow <= 5 ? ["sore"] : ["pagi", "siang", "sore"]).includes(b)) return false;
+    if (id && !choices(c, day).some(o => o.id === id)) return false;
+    const J = (c.info.jadwal ||= {});
+    if (id) J[key] = id; else delete J[key];
+    return true;
+  };
+
+  // ---------------------------------------------------------------- tampilan: minggu (7 hari × 4 blok)
+  function week(c, mon, today) {
+    const I = c.st && c.st.ilmu;
+    return [...Array(7)].map((_, i) => {
+      const day = mon + i, base = IL.dayBlocks(c, day);
+      return base.map(x => {
+        if (x.kind !== "free") return { ...x, day };
+        const key = keyOf(day, x.b), plan = (c.info.jadwal || {})[key];
+        const done = I && I.blok && I.blok.d === day && day === today ? I.blok[x.b] : null;
+        return { ...x, day, key, plan: plan || null, tx: plan ? labelOf(plan) : "Up to " + c.name, done: done ? { ...done, label: labelOf(done.id) } : null };
+      });
+    });
+  }
+
+  const API = { TOPIK, CAP, LEARN, choices, recommend, week, labelOf, freeBlocks, keyOf };
+  if (typeof module !== "undefined") module.exports = API;
+  else globalThis.Jadwal = API;
+})();
