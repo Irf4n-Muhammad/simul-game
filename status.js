@@ -168,7 +168,7 @@
 
   // ---------------------------------------------------------------- skor momen penting
   // Titik sambung untuk pohon bakat (tree.js): kecepatan belajar dan bonus skor momen
-  const EXT = { care: null, gain: null, score: null, title: null, pay: null, pick: null, coName: null, itemPts: null };
+  const EXT = { care: null, gain: null, score: null, title: null, pay: null, pick: null, coName: null, itemPts: null, crowd: null };
   function talentMult(st, k) {
     let m = 0.6 + (st.genes.talent[k] - 1) / 9;
     if (k === "logic" && st.genes.rares.includes("genius")) m *= 1.25;
@@ -207,8 +207,13 @@
 
   // ---------------------------------------------------------------- karier
   // perusahaan (career.js) bisa punya nama jabatan dan gaji sendiri
-  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1) * (job.crowd || 1)); }
-  function title(job, level = job.level) { return job.co && EXT.title ? EXT.title(job, level) : JOBS[job.id].ladder[level]; }
+  // v85: magang (job.intern = hari selesai) dibayar INTERN_PAY dari gaji penuh dan judulnya dikasih "(intern)"
+  const INTERN_PAY = 0.3, INTERN_DAYS = 60;
+  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1) * (job.crowd || 1) * (job.intern ? INTERN_PAY : 1)); }
+  function title(job, level = job.level) {
+    const t = job.co && EXT.title ? EXT.title(job, level) : JOBS[job.id].ladder[level];
+    return job.intern && level === job.level ? `${t} (intern)` : t;
+  }
   // ekonomi lesu: perusahaan menahan promosi, jadi skor yang dibutuhkan naik (makro.js)
   function reviewReq(job, day) { return JOBS[job.id].req + 8 * (job.level + 1) + (day == null ? 0 : MK.promoHarder(day)); }
   // harga rumah hari ini: harga dasar x indeks rumah (makro.js), dibulatkan ke 100
@@ -227,6 +232,62 @@
     if (!prev) achieve(x, "first_job", `First job: ${JOBS[id].label}.`);
     if (JOBS[id].pop < 0.05) achieve(x, "job_" + id, `Became a ${JOBS[id].label}. Only ${pct(JOBS[id].pop)} of creatures get there.`);
     if (id === "founder") achieve(x, "founded", "Founded a company.");
+  }
+
+  // ---------------------------------------------------------------- tawaran kerja pertama (v85)
+  // Storylet kerja_pertama (storylets.js): pas pertama kali siap kerja, makhluknya dapat dua tawaran beneran dari sistem kerja:
+  // kantor (Office staff, level 0) atau magang di bidang impiannya. Magang = kerjaan impian level 0 tanpa wawancara, gaji INTERN_PAY
+  // selama INTERN_DAYS, lalu otomatis jadi pegawai biasa gaji penuh (economy). Angka di kartu dihitung dari fungsi yang sama dengan gajinya.
+  const CITA_JOB = { illustrator: "designer", musician: "influencer", athlete: "athlete", scientist: "software", doctor: "doctor", youtuber: "influencer" };
+  const DREAM_SKIP = ["office", "fastfood", "founder"];
+  const ilmuMod = () => (typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu;
+  const treeMod = () => (typeof module !== "undefined") ? require("./tree.js") : globalThis.Tree;
+  // bidang impian: jurusan kuliahnya dulu, lalu cita-citanya (remaja.js), lalu ranting les yang paling jauh dia jalani
+  function dreamJob(c, home, day) {
+    const ok = id => !!(id && JOBS[id] && !JOBS[id].internal && !DREAM_SKIP.includes(id));
+    const IL = home.ilmu_from != null && day >= home.ilmu_from && c.st ? ilmuMod() : null, T = IL ? treeMod() : null;
+    const top = node => {
+      const j = Object.entries(T.NODES[node].fx.job || {}).filter(([id]) => ok(id)).sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1))[0];
+      return j ? j[0] : null;
+    };
+    const I = IL ? IL.il(c.st) : null;
+    if (I && I.jur && top(I.jur)) return top(I.jur);
+    if (ok(CITA_JOB[c.info.cita])) return CITA_JOB[c.info.cita];
+    if (I) {
+      const specs = Object.keys(IL.LES).map(s => ({ s, v: IL.eff(I, s) })).filter(o => o.v >= IL.LO[1]).sort((a, b) => (b.v - a.v) || (a.s < b.s ? -1 : 1));
+      for (const { s } of specs) { const j = top(s) || IL.kidsOf(s).map(top).find(Boolean); if (j) return j; }
+    }
+    return null;
+  }
+  // biaya hidup kalau pemasukan rutinnya nambah `pay` sehari (rumus livingCost)
+  function livingWith(c, day, pay) {
+    const inc = Money.daily(c, ROUTINE, day) + pay;
+    const [cut, extra] = CFG.LIFESTYLE_RICH;
+    return Math.round(LIVING_COST + CFG.LIFESTYLE * Math.max(0, inc - LIVING_COST) + extra * Math.max(0, inc - cut));
+  }
+  function firstOffer(c, home, day) {
+    const dream = dreamJob(c, home, day);
+    if (!dream) return null;
+    const mk = id => {
+      const co = EXT.pick ? EXT.pick(id, day, home.id + c.id) : null, crowd = EXT.crowd ? EXT.crowd(id, day) : 1;
+      const job = { id, level: 0, co, crowd }, pay = salary(job);
+      return { id, co, crowd, pay, live: livingWith(c, day, pay), title: title(job), label: JOBS[id].label, at: co && EXT.coName ? EXT.coName(co) : null };
+    };
+    const office = mk("office"), d = mk(dream);
+    d.internPay = salary({ id: dream, level: 0, co: d.co, crowd: d.crowd, intern: 1 });
+    d.internLive = livingWith(c, day, d.internPay);
+    d.days = INTERN_DAYS;
+    d.req = JOBS[dream].req;
+    return { office, dream: d };
+  }
+  function takeOffer(x, o, intern) {
+    setJob(x, o.id, x.day, { co: o.co, crowd: o.crowd });
+    const st = x.c.st;
+    if (intern) {
+      st.job.intern = x.day + INTERN_DAYS;
+      st.next_review = st.job.intern + 75;
+      x.c.info.kerja = title(st.job);
+    }
   }
   function bestJob(st) {
     const j = st.job;
@@ -481,7 +542,7 @@
     }
   }
 
-  function economy(x) {
+  function economy(x, dramas = [], events = []) {
     const c = x.c, st = c.st, ph = x.phase;
     if (st.job && !c.info.kerja) {
       // dipecat atau pensiun lewat cerita
@@ -491,6 +552,13 @@
     }
     if (ph === "dewasa" || ph === "tua") {
       if (!st.started) { st.started = true; Money.move(c, CFG.START_BONUS, "mulai", x.day); }
+      if (st.job && st.job.intern && x.day >= st.job.intern) {   // v85: magang selesai, jadi pegawai biasa
+        delete st.job.intern;
+        c.info.kerja = title(st.job);
+        x.say(`${c.name} finishes the internship and gets hired for real: ${title(st.job)}. Full pay from today, ${salary(st.job)} coins a day.`);
+        x.remember(`Internship done, hired as ${title(st.job)}.`);
+        dramas.push("sedang"); events.push("magang_selesai");
+      }
       if (st.job) Money.move(c, salary(st.job), "gaji", x.day);
       else if (c.info.pensiun) Money.move(c, st.pension, "pensiun", x.day);
       if (!c.info.kuliah_aktif) {  // selama kuliah biaya hidup ditanggung keluarga
@@ -514,11 +582,7 @@
   // Biaya hidup harian (tahap 6): bagian tetap + sebagian pemasukan rutin. Gaya hidup ikut naik dengan penghasilan,
   // jadi yang kaya tetap menabung lebih banyak, tapi tidak semua kenaikan gaji jadi tumpukan koin.
   const ROUTINE = ["gaji", "pensiun", "bisnis_ambil"];
-  function livingCost(c, day) {
-    const inc = Money.daily(c, ROUTINE, day);
-    const [cut, extra] = CFG.LIFESTYLE_RICH;
-    return Math.round(LIVING_COST + CFG.LIFESTYLE * Math.max(0, inc - LIVING_COST) + extra * Math.max(0, inc - cut));
-  }
+  function livingCost(c, day) { return livingWith(c, day, 0); }
   // Biaya pegang rumah: sekali sehari per keluarga, dibayar anggota dewasa terkaya. Rumah besar bukan cuma lambang tapi juga ongkos.
   // Nggak sanggup bayar penuh: dibayar sebisanya, suasana hati turun, dan tunggakan dihitung (F.arrears).
   function houseUpkeep(x) {
@@ -631,7 +695,7 @@
     if (x.has("bersalah")) x.need("mood", -0.8);  // rasa bersalah habis mutusin atau ketahuan selingkuh
     reveal(x, dramas, events);
     train(x);
-    economy(x);
+    economy(x, dramas, events);
     career(x);
     milestones(x);
   };
@@ -860,7 +924,7 @@
     F.build.kpr = true;
     return "kpr";
   }
-  const API = { EXT, achieve, kprQuote, livingCost, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
+  const API = { EXT, achieve, firstOffer, takeOffer, INTERN_PAY, INTERN_DAYS, kprQuote, livingCost, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
     familyView, jobList, shop, pct, population, prestige, salary, npcTown, bestItem, RENTED, BUILD_DAYS, MODELS, PAINTS };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Status = API;

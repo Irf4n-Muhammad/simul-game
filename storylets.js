@@ -564,6 +564,37 @@ storylet("cari_kerja", ["dewasa"], "sedang", { cooldown: 15, weight: x => 3,
   x.remember(`First job: ${i.kerja}` + (i.ditolak ? `, after ${i.ditolak} rejections.` : "."));
 });
 
+// v85: tawaran kerja pertama di ekonomi koin. cari_kerja di atas cuma jalan tanpa status.js (angka gaji lamanya nggak nyambung ke koin);
+// di game beneran tawarannya datang dari sistem kerja (status.js firstOffer): kantor vs magang di bidang impian, gajinya beneran.
+// Hidup mulai home.kerja1_from biar save lama nggak berubah waktu diputar ulang.
+storylet("kerja_pertama", ["dewasa"], "sedang", { once: true, priority: true,
+  cond: x => {
+    const st = x.c.st, S = st ? STX() : null;
+    if (!S || x.home.kerja1_from == null || x.day < x.home.kerja1_from) return false;
+    if (st.job || st.best || !S.canWork(x.c, x.day) || x.day < (x.c.info.siap_kerja ?? FOREVER_)) return false;
+    if (S.pendingFor(x.home, x.c.id).some(m => m.kind === "interview")) return false;
+    return !!S.firstOffer(x.c, x.home, x.day);
+  } }, x => {
+  const S = STX(), O = S.firstOffer(x.c, x.home, x.day), o = O.office, d = O.dream;
+  const at = j => j.at ? ` at ${j.at}` : "";
+  x.say(`${x.n} gets two offers: ${o.title}${at(o)}, steady pay from day one, or a low-paid internship as ${d.title}${at(d)}.`);
+  x.c.info.dilema_hari = x.day;
+  const saved = savedOf(x), gap = d.internPay - d.internLive;
+  const [, final] = x.ask("Which first job do you suggest?",
+    { aman: "Steady office job", cita: `${d.label} internship` },
+    { suportif: "SELF", tegas: "aman" }, x.t("ambisius") > 55 ? "cita" : "aman", { safe: "aman", fx: {
+      aman: [["⏳", "full pay now"], ["🪙", `${sg(o.pay - o.live)} a day`, `pay ${wdN(o.pay)} minus living ${wdN(o.live)}`], ["⭐", o.title],
+        ["📈", "review in 75 days"]],
+      cita: [["⏳", `${d.days} days as intern`],
+        ["🪙", `${sg(gap)} a day, then ${sg(d.pay - d.live)}`, gap < 0 && saved < -gap * d.days ? `savings (${wdN(saved)}) run out` : `pay ${wdN(d.internPay)}, full pay ${wdN(d.pay)} after`],
+        ["⭐", d.title, "no interview needed"], ["📈", `review in ${d.days + 75} days`]],
+      _note: [...moneyNote(x), `Intern pay is ${Math.round(S.INTERN_PAY * 100)}% of full pay`] } });
+  S.takeOffer(x, final === "aman" ? o : d, final === "cita");
+  if (final === "aman") x.say(`${x.n} wears a work shirt for the first time. Looks so grown up!`);
+  else x.say(`${x.n} starts the internship${at(d)}. The pay is tiny, but they come home all excited.`);
+  x.c.info.mulai_kerja = x.day;   // kenangan "First job: ..." sudah dari achieve di setJob
+});
+
 storylet("nganggur_lama", ["dewasa"], "sedang", { cooldown: 60,
   cond: x => !x.c.info.kerja && (x.c.info.ditolak ?? 0) >= 3 && !x.c.info.pensiun }, x => {
   x.say(`${x.n} has been out of work for a while. They start helping at the neighbor's corner shop to keep busy.`);

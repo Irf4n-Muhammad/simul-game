@@ -240,6 +240,7 @@
   ST.EXT.pay = job => (CO[job.co] ? CO[job.co].payMult : 1);
   ST.EXT.pick = (ind, day, key) => (ind === "founder" ? null : pick(ind, day, key));
   ST.EXT.coName = coName;
+  ST.EXT.crowd = (ind, day) => crowd(ind, day).pay;   // v85: gaji awal tawaran kerja pertama ikut keramaian bidang, sama kayak lowongan
 
   // ---------------------------------------------------------------- jaringan dan feed
   // Karier NPC: rangkaian pekerjaan yang dibangkitkan dari nama mereka, dipotong kalau perusahaannya tutup
