@@ -51,6 +51,32 @@ function countdownText(p) {
   const who = state.wakil === "aman" ? "a helper picks the safe choice" : `${p.name} decides alone`;
   return { frac: left / ((p.window + 1) * state.jam.ms), text: `${wait} left. If you don't answer, ${who}. Time in the house waits for you.` };
 }
+// v83: kartu keputusan berangka. Tiap pilihan nulis hasilnya (🪙 ⚡ 😊 ⭐ 💗 ...), dan pilihan yang bukan maunya makhluk nulis harganya.
+// Pilihan pemain selalu jalan (engine.js ask), jadi nggak ada lagi "mungkin dia nggak nurut".
+// v84: kartu keputusan jadi tabel perbandingan. Pilihan = kolom, hasil = baris pendek (⏳ 🪙 ⭐ 😊 💗 ...).
+// Pilihan yang bukan maunya makhluk dapet harga di baris 😊/💗 (merah). fx._note jadi catatan kecil di bawah.
+const DL_ROWS = [["⏳","Time"],["🪙","Money"],["⭐","Path"],["🎓","Later"],["📈","Career"],["🏠","Home"],["🎉","Party"],["👫","Friends"],["⚡","Energy"],["😊","Mood"],["💗","Bond"]];
+function dlTable(p) {
+  const opts = Object.entries(p.options), fx = p.fx || {};
+  const cell = (k, ic) => (fx[k] || []).find(([i]) => i === ic) || [];
+  const seen = new Set(); opts.forEach(([k]) => (fx[k] || []).forEach(([i]) => seen.add(i)));
+  if (p.wish && p.cost) { seen.add("😊"); seen.add("💗"); }
+  const rows = [...DL_ROWS.filter(([i]) => seen.has(i)), ...[...seen].filter(i => !DL_ROWS.some(([j]) => j === i)).map(i => [i, ""])];
+  const costOf = (k, ic) => p.wish && p.wish !== k && p.cost ? (ic === "😊" ? p.cost.mood : ic === "💗" ? p.cost.bond : 0) : 0;
+  const td = (k, ic) => {
+    const [, tx, sub] = cell(k, ic), c = costOf(k, ic);
+    const mine = !tx && p.wish === k && p.cost && (ic === "😊" || ic === "💗") ? "no cost" : "";
+    const parts = [tx ? esc(tx) : mine, c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
+    return `<td>${parts.length ? parts.join(" ") : '<span class="nil">—</span>'}</td>`;
+  };
+  const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)}'s pick</em>` : ""}</th>`).join("");
+  const body = rows.map(([ic, lbl]) => `<tr><th scope="row"><i>${ic}</i>${lbl ? `<small>${lbl}</small>` : ""}</th>${opts.map(([k]) => td(k, ic)).join("")}</tr>`).join("");
+  const lines = [...(p.wish && p.cost ? [`♥ = what ${esc(p.name)} would pick on their own`, `<b class="cost">−</b> red = ${esc(p.name)} is sad you overruled them`] : []),
+    ...[].concat(fx._note || []).map(esc)];
+  const note = lines.length ? `<ul class="dl-note" hidden>${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
+  const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
+  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
+}
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {
   const p = game.pending; if (!p) return;
@@ -59,10 +85,13 @@ function showDilemma() {
   openSheet("dilemma", `
     <span class="ribbon" ${p.drama === "kecil" ? 'style="background: var(--plum)"' : ""}>${LEVEL[p.drama] || "DECISION"} · ${esc(p.name)}</span>
     <h2>${esc(p.question)}</h2>
-    ${Object.entries(p.options).map(([k, l], i) => `<button class="choice ${i ? "no" : "yes"}" data-opt="${esc(k)}">${esc(l)}</button>`).join("")}
+    ${p.fx || p.wish ? dlTable(p)
+      : Object.entries(p.options).map(([k, l], i) => `<button class="choice ${i ? "no" : "yes"}" data-opt="${esc(k)}">${esc(l)}</button>`).join("")}
     <div class="meter"><i id="cdBar" style="width:${cd.frac * 100}%"></i></div>
     <div class="timer" id="cdText">${esc(cd.text)}</div>
     <button class="close" data-later="1">Decide later</button>`);
+  const help = sheet.querySelector(".dl-help"), note = sheet.querySelector(".dl-note");
+  if (help && note) help.onclick = () => { note.hidden = !note.hidden; help.setAttribute("aria-expanded", String(!note.hidden)); help.classList.toggle("on", !note.hidden); };
   sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
     const late = Math.min(p.window, Math.max(0, liveDay() - p.day));
     Tele.dilema("jawab", p.key, { opt: b.dataset.opt, detik: Math.round((Date.now() - shownAt) / 1000), telat: late });
@@ -75,26 +104,13 @@ function showDilemma() {
   sheet.querySelector("[data-later]").onclick = () => { Tele.dilema("nanti", p.key); closeSheet(); };
 }
 
-// ---- daily plan (agenda) + study
-const HOW = { nurut: "followed your plan", bosan: "followed your plan, but is getting bored", kabur: "skipped your plan and did this instead", sendiri: "chose this alone" };
-function showPlan() {
-  if (!cur) return;
-  const opts = cur.agenda_opsi || [], today = cur.agenda_hari;
-  openSheet("plan", `
-    <span class="ribbon" style="background: var(--sky)">DAILY PLAN · ${esc(cur.nama)}</span>
-    <h2>${opts.length ? "What should they do each day?" : "Nothing to plan right now."}</h2>
-    ${today ? `<p>Today: <b>${esc(today.label)}</b>. ${esc(cur.nama)} ${HOW[today.how] || ""}.</p>` : ""}
-    <div class="chips">
-      <button class="chip" data-plan="" aria-pressed="${!cur.rencana}" ${canCare() ? "" : "disabled"}>Let them choose</button>
-      ${opts.map(([id, label]) => `<button class="chip" data-plan="${esc(id)}" aria-pressed="${cur.rencana === id}" ${canCare() ? "" : "disabled"}>${esc(label)}</button>`).join("")}
-    </div>
-    ${cur.ujian ? `<p>Test on ${fmtDate(cur.ujian.hari)}. Studied together: ${cur.ujian.belajar}/3${cur.ujian.sendiri ? ` · on their own: ${cur.ujian.sendiri}` : ""}.</p><button class="secondary" id="studyBtn" ${cur.ujian.belajar >= 3 || !canCare() ? "disabled" : ""}>Study together</button>` : ""}
-    <button class="secondary" id="focusBtn" ${canCare() || focus ? "" : "disabled"}>${focus ? `Focus session running · ${focusClock(focusLeftMs())}` : cur.ujian && cur.ujian.belajar < 3 ? `Study together for ${FOCUS_MIN} minutes` : `Work side by side for ${FOCUS_MIN} minutes`}</button>
-    <button class="close" data-close="1">Close</button>`);
-  sheet.querySelectorAll("[data-plan]").forEach(b => b.onclick = () => { if (game.act(selected, "rencana:" + b.dataset.plan)) { save(); refresh(); showPlan(); } });
-  const sb = $("studyBtn"); if (sb) sb.onclick = () => { if (game.act(selected, "belajar")) { save(); refresh(); say("I'll ace it!"); showPlan(); } };
-  $("focusBtn").onclick = () => { Tele.ev("fokus", { a: "buka" }); showFocus(); };
-  sheet.querySelector("[data-close]").onclick = closeSheet;
+// ---- v81: Daily plan dihapus. Makhluknya ngisi harinya sendiri (agenda.js, "Let them choose"); belajar bareng ada di kartu Agenda,
+// sesi fokus di tombol bawah Agenda. showPlan tetap ada buat tautan lama (Soon, tur) dan sekarang membuka Agenda.
+function showPlan() { if (game) showAgenda(null); }
+// rencana dari save lama dicabut sekali lewat aksi biasa (tercatat, jadi replay tetap sama)
+function planClear() {
+  if (!game || !state) return;
+  for (const m of vm().anggota) { const c = game.home.get(m.id); if (c && c.info.rencana && c.alive(today())) game.act(m.id, "rencana:"); }
 }
 
 // ---- diary: the household's story, newest first
@@ -138,6 +154,6 @@ function showRecap(days, logs) {
 }
 
 $("famBtn").onclick = () => { hideHint(); if (game) showFamily(); };
-$("planBtn").onclick = () => { hideHint(); if (game) { agMon = 0; agSel = null; showAgenda(null); } };   // v80: tombol kalender = Agenda (Daily plan ada di dalamnya)
+$("planBtn").onclick = () => { hideHint(); if (game) { agMon = 0; agSel = null; showAgenda(null); } };   // v80: tombol kalender = Agenda
 $("diaryBtn").onclick = () => { hideHint(); if (game) showBook(); };
 

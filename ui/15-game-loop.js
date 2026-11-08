@@ -38,6 +38,8 @@ function boot() {
   const oldSave = state.aksi.length || state.hadir.length || liveDay() > 0;
   if (state.rawat_from == null) { state.rawat_from = oldSave ? liveDay() : 0; state.rawat_half = careHalfNow(); }
   if (state.tut == null) state.tut = oldSave ? 99 : 0;
+  // v82: les, ilmu per jalur, dan bintang yang nyala sendiri hidup mulai hari ini buat save lama (riwayatnya tetap sama), dari awal buat yang baru
+  if (state.ilmu_from == null) state.ilmu_from = oldSave ? liveDay() : 0;
   save();
   game = new GameLayer.Game(state);
   // tiap tindakan pemain dicatat jenisnya (bukan ke siapa) buat telemetry
@@ -56,6 +58,7 @@ function boot() {
   for (const l of missed) for (const m of Moments.detect(l)) if (m.i >= 2) Tele.ev("momen", { k: m.kind, tag: m.tag, i: m.i, fase: l.phase, lewat: 1 });
   const missedDays = new Set(missed.map(l => l.day)).size;
   selected = selected || vm().anggota[0].id;
+  planClear(); save();   // v81: Daily plan dihapus, rencana lama dicabut
   refresh(); applyHome();
   // v80: buka pertama hari ini = Agenda (rekap "selama kamu pergi" ikut di atasnya); kalau Agenda sudah dilihat hari ini, rekap biasa
   const recap = state.dilihat >= 0 && missedDays >= 2 ? { days: missedDays, logs: missed.filter(l => l.dramas.some(x => x !== "kecil") || l.events.includes("akhir_hidup")).slice(-4) } : null;
