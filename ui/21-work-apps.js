@@ -48,16 +48,16 @@ function phBizApp(c, arg) {
   const body = (bake ? { ops: svc ? baSvcToday : baBakeToday, people: baPeople, money: baBakeMoney } : { ops: baOps, people: baPeople, money: baMoney, growth: baGrowth, partners: baPartners })[tab](c, b, v, T, owner);
   return `<div class="ba${T.dark ? " dark" : ""}" style="--ba:${T.col};--ba-soft:${T.soft}">
     <header class="ba-head">${b.demo ? `<button class="ba-x" data-vn-demo="1" aria-label="Back">‹</button>` : ""}<span class="ba-ic">${T.ic}</span><span class="pa-grow"><b>${esc(b.name)}</b><small>${b.demo ? "Test mode · sample business" : `${esc(T.app)} · ${esc(v.lvl)} · ${owner ? "you're the owner" : esc(c.st.job.role || "Staff")}`}</small></span>${b.demo ? `<button class="ba-next" data-ba="demonext">Next day ›</button>` : ""}</header>
-    <div class="ba-body">${body}</div>
+    <div class="ba-body">${owner && !b.demo ? mauNote(c, "biz") : ""}${body}</div>
     <nav class="ba-tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-ba="tab:${k}">${esc(l)}</button>`).join("")}</nav>
     ${b.tpl === "bakery" ? baIntro("bakery", [["🥐", `${v.owner} runs ${b.name}`, `Every morning ${v.owner} bakes, sells, and counts what's left. You're the advisor.`],
       ["🧺", "Today shows how the bake went", "Sold out means customers walked away. Leftovers mean money in the bin. The trick is neither."],
-      ["💬", "You suggest, they decide", `Plan tomorrow's bake, pick the opening time, answer the weekly decisions. ${v.owner} might say no.`]])
+      ["💬", "You suggest, they decide", `Plan tomorrow's bake, pick the opening time, answer the weekly decisions. If ${v.owner} isn't keen, it costs a little mood.`]])
     : b.tpl === "cafe" ? baIntro("cafe", [["☕", `${v.owner} runs ${b.name}`, `Coffee is made when it's ordered. Food is made each morning, and whatever's left at closing goes in the bin.`],
       ["🧁", "Today shows the day", "Cups poured, food sold and wasted, and anyone who gave up on the line. Get the food right and keep the line short."],
-      ["💬", "You suggest, they decide", `Plan tomorrow's food, choose seats or takeaway, try live music. ${v.owner} might say no.`]])
+      ["💬", "You suggest, they decide", `Plan tomorrow's food, choose seats or takeaway, try live music. If ${v.owner} isn't keen, it costs a little mood.`]])
     : svc ? baIntro(b.tpl, [[T.ic, `${v.owner} runs ${b.name}`, SVC_UI[b.tpl].intro[0]], ["📋", "Today shows the day", SVC_UI[b.tpl].intro[1]],
-      ["💬", "You suggest, they decide", `${SVC_UI[b.tpl].intro[2]} ${v.owner} might say no.`]]) : ""}</div>`;
+      ["💬", "You suggest, they decide", `${SVC_UI[b.tpl].intro[2]} If ${v.owner} isn't keen, it costs a little mood.`]]) : ""}</div>`;
 }
 const baAdv = (n, k, opts, cur) => `<div class="vn-seg">${opts.map(([val, l]) => `<button class="${cur === val ? "on" : ""}" data-ba="${k}:${val}">${l}</button>`).join("")}</div>`;
 const baNote = (c, b) => `<p class="ba-note">You suggest, ${esc((game.home.get(b.owner) || c).name)} decides.</p>`;

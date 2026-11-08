@@ -27,11 +27,11 @@ function phPaws(c, arg) {
   const body = P ? { today: pwToday, care: pwCare, life: pwLife }[tab](cc, v, day, demo) : { today: pwFind, life: pwLife }[tab](cc, v, day, demo);
   return `<div class="ba" style="--ba:${PW_COL};--ba-soft:${PW_SOFT}">
     <header class="ba-head">${demo ? `<button class="ba-x" data-pw="home" aria-label="Back">‹</button>` : ""}<span class="ba-ic">${P ? P.K.ic : "🐾"}</span><span class="pa-grow"><b>${P ? esc(P.name) : "Paws"}</b><small>${demo ? `Test mode · sample ${esc(P ? P.K.label.toLowerCase() : "pet")}` : P ? `${esc(cc.name)}'s ${esc(P.K.label.toLowerCase())}` : `${esc(cc.name)} has no pet`}</small></span>${demo ? `<button class="ba-next" data-pw="next">Next day ›</button>` : ""}</header>
-    <div class="ba-body">${body}</div>
+    <div class="ba-body">${demo ? "" : mauNote(cc, "pet")}${body}</div>
     <nav class="ba-tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-pw="tab:${k}">${esc(l)}</button>`).join("")}</nav>
     ${P ? baIntro("paws", [["🐾", `${P.name} lives with ${cc.name}`, `${P.name} has their own needs: food, play, a clean bed, and a vet when sick. ${cc.name} does the looking after.`],
       ["❤️", "Bond is everything", "The closer they are, the happier both of them. A loved pet makes hard days lighter."],
-      ["💬", "You suggest, they decide", `Food, walks and vet visits are your advice. ${cc.name} might do it their own way.`]]) : ""}</div>`;
+      ["💬", "You suggest, they decide", `Food, walks and vet visits are your call. If ${cc.name} isn't keen that day, it costs a little mood.`]]) : ""}</div>`;
 }
 function pwToday(c, v, day, demo) {
   const P = v.pet, K = P.K, T = P.today && P.today.d === day ? P.today : null, who = c.name;

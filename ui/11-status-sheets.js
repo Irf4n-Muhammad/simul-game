@@ -1,6 +1,12 @@
 // ================================================================ status: dice, big moments, career, shop, rankings, family tree
 const coins = n => `${Math.round(n).toLocaleString("en")} coins`;
 const today = () => game.home.last_day;
+// v86: baris kecil di atas layar saran: hari ini makhluknya nggak mau soal ini, jadi tiap saran ada harganya. Kosong kalau dia mau.
+function mauNote(c, cat) {
+  if (!game || !c || !game.mauOn || !game.mauOn(today())) return "";
+  const m = game.mauOf(c.id, cat, today());
+  return m ? `<div class="mau-note">😕 ${esc(c.name)} isn't keen on ${esc(m.what)} today. It still happens if you suggest it: <b class="cost">😊 −${m.mood}</b> <b class="cost">💗 −${m.bond}</b> each time.</div>` : "";
+}
 const fmtWhen = d => d === today() ? "Today" : d === today() + 1 ? "Tomorrow" : `In ${d - today()} days`;
 const statusOf = id => { const c = game.home.get(id); return c ? Status.memberView(c, game.home, today()) : null; };
 const famStatus = () => Status.familyView(game.home, today());

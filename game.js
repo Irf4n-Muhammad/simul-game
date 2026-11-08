@@ -32,6 +32,17 @@
       early: { label: "Lights out early", note: "+1 condition tomorrow" } } },
   };
   const GROWN = new Set(["dewasa", "tua"]);
+  // v86: kemauan harian per jenis saran (game.mauOf). Harganya sama dengan kartu keputusan kecil (engine.js AGAINST.kecil).
+  const MAU_COST = { mood: 3, bond: 0.5 };
+  const MAU_CAT = {
+    plan: { what: "your plan", quote: "Fine, if you say so." },
+    job: { what: "job hunting", quote: "Fine, I'll send it." },
+    buy: { what: "shopping", quote: "Fine, if you think so." },
+    open: { what: "starting a business", quote: "Okay... we'll try it." },
+    biz: { what: "changing the business", quote: "Fine, your way then." },
+    work: { what: "changing how they work", quote: "Fine, I'll try it." },
+    pet: { what: "pet chores", quote: "Okay, okay." },
+  };
   // v75: jalan bareng ke kota (town.js nunjukin jalannya). Efek kecil, sekali sehari.
   // v77: cuaca waktu jalan (dari langit asli pemain, dicatat di kunci aksi). Badai nggak bisa jalan (UI yang nahan).
   const WALK_WX = {
@@ -107,6 +118,7 @@
       this.home = new E.Household(state.akun, new HumanGuardian(this));
       this.home.found("makhluk-001", state.nama || null);
       this.home.ilmu_from = state.ilmu_from ?? null;
+      this.home.mau_from = state.mau_from ?? null;   // v86: saran harian nggak ditolak lagi, kemauan jadi harga (mauOf)
       this.home.agensi_from = state.ilmu_from ?? null;   // v83: pilihan pemain selalu jalan mulai hari yang sama (engine.js ask)   // v82 ilmu.js: les dan bintang yang nyala sendiri hidup mulai hari ini (save lama tetap sama)
       this.pending = null;
       this.half_now = 1; // 0 = pagi, 1 = malam (diisi UI dari jam; simulasi tanpa jam dianggap hari penuh)
@@ -298,9 +310,36 @@
 
     // Yang sudah dewasa memutuskan sendiri: saran soal rencana, kerja, dan belanja bisa ditolak sesuai sifatnya.
     // Hasilnya dari rng yang ditanam dari hari dan jenis saran, jadi replay sama, dan saran yang sama hari itu tidak bisa diulang.
+    // v86: mulai home.mau_from saran nggak pernah ditolak lagi. Sekali sehari per jenis (kerja, belanja, ...) makhluknya mau atau nggak;
+    // kalau nggak mau, sarannya tetap jalan tapi mood dan ikatan turun (sama dengan kartu keputusan kecil). Hasilnya sudah ketahuan sebelum
+    // tombolnya dipencet (mauOf), jadi UI bisa nulis harganya. Hari sebelum mau_from tetap pakai penolakan lama, jadi replay sama.
+    mauOn(day) { return this.home.mau_from != null && day >= this.home.mau_from; }
+    kindOf(kind) {
+      return kind.startsWith("rencana:") && kind.length > 8 ? "plan" : kind.startsWith("apply:") || kind.startsWith("lamar:") ? "job"
+        : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
+        : kind.startsWith("biz:suggest:") ? "open" : /^biz:(price|focus|hire|fire|close|wait|post|pick|raise|train|borrow|repay|invest|supplier|promo|product|grow|contract|bake|plan|open|dayold|card|rnd|niche|seat|music|mode|extra)\b/.test(kind) ? "biz" : /^kerja:(shift|ot|style|rest|card)\b/.test(kind) ? "work" : /^pet:(adopt|food|walk|vet|card)\b/.test(kind) ? "pet" : null;
+    }
+    // null = mau (atau bukan saran yang bisa ditolak); kalau nggak mau: { mood, bond, quote }
+    mauOf(cid, kindOrCat, day = this.home.last_day) {
+      const c = this.home.get(cid);
+      if (!c || !c.alive(day) || !GROWN.has(E.phase_of(Math.max(0, day - c.born)))) return null;
+      const cat = MAU_CAT[kindOrCat] ? kindOrCat : this.kindOf(kindOrCat);
+      if (!cat) return null;
+      const t = k => c.traits[k] ?? 50, listen = (c.bond / 100) * 0.5 + t("patuh") / 100 * 0.5, B = c.info.bekas || {};
+      const p = { plan: 0.45 - listen * 0.4 + t("impulsif") / 400,
+        job: 0.4 - listen * 0.35 + (100 - t("ambisius")) / 400 + (c.st && c.st.job ? 0.1 : 0) - (B.phk ? 0.12 : 0),
+        buy: 0.35 - listen * 0.3 + (100 - t("impulsif")) / 500 + t("rajin") / 600 + (B.bangkrut ? 0.15 : 0),
+        open: 0.55 - listen * 0.4 + (t("penakut") - 50) / 300 - (t("ambisius") - 50) / 400 + (B.bangkrut ? 0.15 : 0),
+        biz: 0.32 - listen * 0.28 + (t("ambisius") - 50) / 400,
+        work: 0.3 - listen * 0.28 + (t("ambisius") - 50) / 400 + (t("rajin") - 50) / 500,
+        pet: 0.3 - listen * 0.28 + (t("penakut") - 50) / 400 + (50 - t("rajin")) / 500 }[cat];
+      if (E.seed_rng(c.id, day, "mau", cat).random() >= E.clamp(p, 0.03, 0.8)) return null;
+      return { cat, mood: MAU_COST.mood, bond: MAU_COST.bond, quote: MAU_CAT[cat].quote, what: MAU_CAT[cat].what };
+    }
     _refuse(cid, kind, day) {
       const c = this.home.get(cid);
       if (!c || !c.alive(day) || !GROWN.has(E.phase_of(Math.max(0, day - c.born)))) return null;
+      if (this.home.mau_from != null && day >= this.home.mau_from) return null;   // v86: nggak ditolak lagi (mauOf)
       const kindOf = kind.startsWith("rencana:") && kind.length > 8 ? "plan" : kind.startsWith("apply:") || kind.startsWith("lamar:") ? "job"
         : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
         : kind.startsWith("biz:suggest:") ? "open" : /^biz:(price|focus|hire|fire|close|wait|post|pick|raise|train|borrow|repay|invest|supplier|promo|product|grow|contract|bake|plan|open|dayold|card|rnd|niche|seat|music|mode|extra)\b/.test(kind) ? "biz" : /^kerja:(shift|ot|style|rest|card)\b/.test(kind) ? "work" : /^pet:(adopt|food|walk|vet|card)\b/.test(kind) ? "pet" : null;
@@ -348,8 +387,16 @@
 
     // Sesudah tindakan yang diterima: keinginan makhluk ikut dicek (wants.js). Jalan saat main dan saat replay, jadi hasilnya sama.
     _act(cid, kind, day) {
-      this.refused = null;
+      this.refused = null; this.reluctant = null; this._mau = null;
       const ok = this._act0(cid, kind, day);
+      if (ok && this._mau && !this.refused) {   // v86: tetap jalan, harganya mood dan ikatan
+        const mau = this._mau, c = this.home.get(cid), x = new E.Ctx(c, day, E.seed_rng("mau"), this.home, true);
+        x.need("mood", -mau.mood); x.bond(-mau.bond);
+        x.say(`${c.name} wasn't keen on ${mau.what} today, but went along with it (mood −${mau.mood}).`);
+        (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, [], ["enggan"]));
+        this.reluctant = mau;
+      }
+      this._mau = null;
       if (ok && !this.refused && W) {
         const c = this.home.get(cid);
         if (c && c.alive(day) && !("keluar" in c.info) && !kind.startsWith("net:") && !kind.startsWith("titip:")) W.afterAct(this, c, kind, day);
@@ -360,6 +407,7 @@
       if (kind.startsWith("titip:")) return this._titip(kind.slice(6), day);
       const no = this._refuse(cid, kind, day);
       if (no === "again") return false;
+      this._mau = !no && this.mauOn(day) ? this.mauOf(cid, kind, day) : null;   // v86: harganya dibayar di _act kalau sarannya beneran jalan
       if (no) {
         const c = this.home.get(cid), x = new E.Ctx(c, day, E.seed_rng("nolak"), this.home, true);
         x.say(no.log);
@@ -717,6 +765,7 @@
         this.state.aksi.push([day, ...rec]);
         // ditolak tetap dicatat (supaya replay sama), tapi buat UI itu bukan berhasil
         if (this.refused) { if (this.onRefuse) this.onRefuse(this.refused); return false; }
+        if (this.reluctant && this.onReluctant) this.onReluctant(this.reluctant);
         return true;
       }
       return false;
