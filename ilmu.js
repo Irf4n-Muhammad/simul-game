@@ -307,6 +307,11 @@
       I.kerja.lv = j.level;
     }
   }
+  // perkiraan buat kartu "setelah lulus": tiga jurusan yang paling masuk akal, dari nilai sekarang ke kira-kira waktu wisuda
+  function majorPreview(c, days) {
+    const I = il(c.st);
+    return majors(c).map(o => { const v = Math.round(eff(I, o.id)); return { label: N[o.id].label, spec: LES[o.spec], from: v, to: Math.min(UNI_CAP, Math.round(v + UNI_G * talentF(c, o.id) * minatF(o.m) * days)) }; });
+  }
   storylet("pilih_jurusan", ["remaja", "dewasa"], "sedang", { once: true, priority: true,
     cond: x => on(x.home, x.day) && !!x.c.info.kuliah_aktif && !!x.c.st && !il(x.c.st).jur }, x => {
     const M = majors(x.c), I = il(x.c.st);
@@ -316,7 +321,8 @@
     const days = Math.max(30, (x.c.info.siap_kerja ?? x.day + 180) - x.day);
     const fx = Object.fromEntries(M.map(o => {
       const g = Math.round(UNI_G * talentF(x.c, o.id) * minatF(o.m) * days), v = Math.round(eff(I, o.id));
-      return [o.id, [["⭐", `${N[o.id].label} ${v} → ~${Math.min(UNI_CAP, v + g)} by graduation`], ["😊", `${x.n} on ${N[fieldOf(o.spec)].label}: ${MINAT_WORD(o.m)}`]]];
+      const to = Math.min(UNI_CAP, v + g);
+      return [o.id, [["⭐", `${N[o.id].label}: ${v} (${TIER[tierOf(v)]}) now, about ${to} (${TIER[tierOf(to)]}) by graduation in ${days} days`], ["😊", `${x.n} on ${N[fieldOf(o.spec)].label}: ${MINAT_WORD(o.m)}`]]];
     }));
     const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id, fx });
     I.jur = final; I.ver = (I.ver || 0) + 1;
@@ -408,7 +414,7 @@
   }
 
   const API = { TIER, LEVEL, LO, HI, MASTER, MATCH, COURSES, JUNIOR, LES, PRICE, SESI, WAVE, MIN_AGE, SLOTS, BLOK, BLOK_LBL, dayBlocks, freeSlot, tierOf, matchOf, eff, down, deepest, il, preview,
-    minatOf, MINAT_WORD, majors, workNiche, nextWave, active, canEnrol, book, catalog, recommend, schedule, labelAt, light, kidsOf };
+    minatOf, MINAT_WORD, majors, majorPreview, workNiche, nextWave, active, canEnrol, book, catalog, recommend, schedule, labelAt, light, kidsOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Ilmu = API;
 })();
