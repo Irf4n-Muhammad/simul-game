@@ -147,8 +147,8 @@ function skyPanel() {
     const L = v.legacy;
     const verb = sky.skin === "pencil" ? "write it in" : "ink it";
     if (ilmuOn()) {   // v82: nggak ada poin lagi, bintang nyala sendiri dari ilmu (ilmu.js)
-      panel.innerHTML = `<p class="sky-hint">Stars light up on their own as ${esc(c.name)} learns.</p><small class="sky-meta">A topic lights at 10, a class at Intermediate (25), a job at Senior (55), a legend at Master (85). Classes and what ${esc(c.name)} chooses to do each day are what move them.</small><button class="sky-diary" id="skySkills">Skill book</button>`;
-      $("skySkills").onclick = () => { closeSky(); showSkills(c.id); };
+      panel.innerHTML = `<p class="sky-hint">Stars light up on their own as ${esc(c.name)} learns.</p><small class="sky-meta">A topic lights at 10, a class at Intermediate (25), a job at Senior (55), a legend at Master (85). Classes and what ${esc(c.name)} chooses to do each day are what move them. Tap a star to see where ${esc(c.name)} is on that path.</small>${c.age(today()) >= Ilmu.MIN_AGE ? `<button class="sky-diary" id="skyLesAll">Classes</button>` : ""}`;
+      const la = $("skyLesAll"); if (la) la.onclick = () => { closeSky(); showLes(c.id); };
       return;
     }
     panel.innerHTML = `<p class="sky-hint">${v.points ? `Tap a red star to ${verb}.` : `Points come from growing up, practice and big moments.`}</p>
@@ -173,11 +173,16 @@ function skyPanel() {
     <ul>${n.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
     ${skyBend(sky.sel, v)}${skyCrowd(sky.sel)}
     ${st.s === "owned" ? `<small class="sky-meta">${why}</small>${erase ? `<button class="sky-go erase" id="skyErase"><i></i><span>Hold to erase · ${Tree.refundOf(c, sky.sel)} pt${Tree.refundOf(c, sky.sel) === 1 ? "" : "s"} back</span></button><small class="sky-meta">Pencil rubs out until the stars read the book.</small>` : ""}` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}><i></i><span>Hold to ${sky.skin === "pencil" ? "write it in" : "ink it"} · ${st.cost} pt${st.cost === 1 ? "" : "s"}</span></button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
-  if (ilmuOn() && st.s !== "owned") {
+  if (ilmuOn()) {   // v82: angka jalur dan minat tinggal di sini (buku skill dihapus), tanpa tombol tinta/hapus
     const I = Ilmu.il(c.st), LV = { field: [10, "a topic"], spec: [25, "Intermediate"], niche: [55, "Senior"], legend: [85, "Master"] }[n.tier];
     const node = n.tier === "legend" ? n.req[0] : sky.sel, now = LV ? Math.round(Ilmu.eff(I, node)) : null, K = Ilmu.COURSES[node];
-    const go0 = $("skyGo"); if (go0) go0.remove();
-    panel.insertAdjacentHTML("beforeend", `<small class="sky-meta">${LV ? `Lights up on its own at ${LV[0]} (${LV[1]}). ${esc(c.name)} is at ${now} on this path.` : n.tier === "combo" ? "Lights up on its own once both stars it joins are lit." : n.reqAny ? "Lights up on its own after a star below it, if the talent is there." : "Lights up on its own when the time comes."}</small>${K ? `<button class="sky-diary" id="skyLes">${esc(K.name)} classes</button>` : ""}`);
+    panel.querySelectorAll("#skyGo, #skyErase").forEach(e => e.remove());
+    panel.querySelectorAll(".sky-meta").forEach(e => { if (/Pencil rubs out|Needs \d+ points/.test(e.textContent)) e.remove(); });
+    const tier = now != null ? Ilmu.TIER[now >= 85 ? 3 : now >= 55 ? 2 : now >= 25 ? 1 : 0] : "";
+    const where = LV ? (st.s === "owned" ? `${esc(c.name)} is at ${now} on this path · ${tier}.` : `Lights up on its own at ${LV[0]} (${LV[1]}). ${esc(c.name)} is at ${now} on this path.`)
+      : st.s === "owned" ? "" : n.tier === "combo" ? "Lights up on its own once both stars it joins are lit." : n.reqAny ? "Lights up on its own after a star below it, if the talent is there." : "Lights up on its own when the time comes.";
+    const mi = K && I.minat[K.field] != null ? `${esc(c.name)} on ${esc(N[K.field].label)}: ${Ilmu.MINAT_WORD(I.minat[K.field])}${I.ucap && I.ucap.field === K.field ? ` · “${esc(I.ucap.tx)}”` : ""}` : "";
+    panel.insertAdjacentHTML("beforeend", `${where ? `<small class="sky-meta">${where}</small>` : ""}${mi ? `<small class="sky-meta">${mi}</small>` : ""}${K && alive && c.age(today()) >= Ilmu.MIN_AGE ? `<button class="sky-diary" id="skyLes">${esc(K.name)} classes</button>` : ""}`);
     const lb = $("skyLes"); if (lb) lb.onclick = () => { closeSky(); showLes(c.id); };
     return;
   }

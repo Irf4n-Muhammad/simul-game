@@ -95,14 +95,13 @@ function showBook(id = cur && cur.id, ritual = false) {  // ritual: false, true 
 }
 function bkDraw() {
   const { el, S } = bk, s = S.star;
-  const top = `<div class="bk-top"><button class="bk-x" aria-label="Close">✕</button><span class="bk-cap-t">${S.read ? `Born under ${esc(s.name)}` : `${esc(S.c.name)}'s notebook`}</span><span class="bk-btns">${ilmuOn() ? `<button class="bk-diary bk-skills">Skill book</button>` : ""}<button class="bk-diary">Family diary</button></span></div>`;
+  const top = `<div class="bk-top"><button class="bk-x" aria-label="Close">✕</button><span class="bk-cap-t">${S.read ? `Born under ${esc(s.name)}` : `${esc(S.c.name)}'s notebook`}</span><button class="bk-diary">Family diary</button></div>`;
   el.innerHTML = `${top}<button class="bk-closed" aria-label="Open the book">${bkCover(S)}</button>
     <p class="bk-hint">${S.read ? "" : S.left ? `In ${S.left} day${S.left === 1 ? "" : "s"}, the stars read this book.` : ""}</p>`;
   // buka buku = peta bintang (ui/16-stars.js)
   el.querySelector(".bk-closed").onclick = () => bkOpen(false);
   el.querySelector(".bk-x").onclick = closeBook;
-  el.querySelector(".bk-diary:not(.bk-skills)").onclick = () => { closeBook(); showDiary(); };
-  const sk = el.querySelector(".bk-skills"); if (sk) sk.onclick = () => { const id = S.c.id; closeBook(); showSkills(id); };
+  el.querySelector(".bk-diary").onclick = () => { closeBook(); showDiary(); };
 }
 function bkOpen(spread) {
   const id = bk.S.c.id; closeBook(); showTree(id, null, spread);

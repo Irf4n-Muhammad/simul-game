@@ -154,7 +154,7 @@ function showAgenda(recap) {
     ${rc}
     <h2>Coming up</h2>
     ${soon.length ? `<div class="list">${soon.map(row).join("")}</div>` : `<p class="muted">Nothing with a date in the next ${AGENDA_SOON_DAYS} days.</p>`}
-    <div class="ag-more">${ilmuOn() && cur.umur >= Ilmu.MIN_AGE ? `<button class="secondary" id="agLes">Classes</button><button class="secondary" id="agSkills">Skill book</button>` : ""}<button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agFocus">${focus ? `Focus session · ${focusClock(focusLeftMs())}` : `Focus together ${FOCUS_MIN} min`}</button></div>
+    <div class="ag-more">${ilmuOn() && cur.umur >= Ilmu.MIN_AGE ? `<button class="secondary" id="agLes">Classes</button>` : ""}<button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agFocus">${focus ? `Focus session · ${focusClock(focusLeftMs())}` : `Focus together ${FOCUS_MIN} min`}</button></div>
     <button class="big" data-close="1">Go to ${esc(cur.nama)}</button>`);
   sheet.querySelectorAll("[data-ag]").forEach(b => b.onclick = () => {
     const [i, j] = b.dataset.ag.split(":").map(Number), c = R.now[i], o = c && c.opts[j];
@@ -167,7 +167,7 @@ function showAgenda(recap) {
   sheet.querySelectorAll("[data-agles]").forEach(b => b.onclick = () => showLes(b.dataset.agles));
   sheet.querySelectorAll("[data-agsoon]").forEach(b => b.onclick = () => { const i = soon[+b.dataset.agsoon]; if (i && i.go) aheadGo(i); else showAhead(); });
   $("agAhead").onclick = () => showAhead();
-  if ($("agLes")) { $("agLes").onclick = () => showLes(); $("agSkills").onclick = () => showSkills(); }
+  if ($("agLes")) $("agLes").onclick = () => showLes();
   sheet.querySelectorAll("[data-calmon]").forEach(b => b.onclick = () => { agMon += +b.dataset.calmon; agSel = null; showAgenda(); });
   const toCard = k => { const el = k && sheet.querySelector(`[data-card="${CSS.escape(k)}"]`); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return !!el; };
   sheet.querySelectorAll("[data-calday]").forEach(b => b.onclick = () => { const v = +b.dataset.calday; agSel = agSel === v ? null : v; showAgenda(); const el = sheet.querySelector(".cal-day"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); });

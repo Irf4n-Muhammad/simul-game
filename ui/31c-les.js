@@ -1,6 +1,6 @@
-// ================================================================ v82: les dan buku skill (ilmu.js)
+// ================================================================ v82: les (ilmu.js)
 // Classes: daftar kursus per topik umum, tiap kursus kartu pilihan (tingkat, harga, jadwal, perkiraan dapat apa, kenapa direkomendasikan).
-// Skills: tiap topik dua bagian, Skill (angka, tingkat, jalur) dan Minat (dalam kata-kata + kalimat terakhirnya).
+// Angka jalur nggak dipamerin di buku sendiri: dipakai buat milih kartu les, dan kelihatan di panel bintang (16-stars.js).
 const ilmuOn = () => !!game && game.home.ilmu_from != null && today() >= game.home.ilmu_from;
 const LES_TIER_C = ["#6BA368", "#3B7DD8", "#C0723A", "#8A5CC0"];
 const lesTier = t => `<span class="les-tier" style="--c:${LES_TIER_C[t]}">${Ilmu.TIER[t]}</span>`;
@@ -71,27 +71,6 @@ function showLes(id = cur && cur.id) {
     say(`${k.name}? Okay!`);
   });
   sheet.querySelector("[data-close]").onclick = () => { lesOpen = null; closeSheet(); };
-}
-// buku skill
-function showSkills(id = cur && cur.id) {
-  const c = game && game.home.get(id); if (!c || !c.st) return;
-  const n = esc(c.name), B = Ilmu.book(c), touched = B.filter(b => b.touched);
-  const row = b => `<div class="sk-row">
-    <div class="sk-h"><b>${esc(b.label)}</b>${b.touched ? lesTier(b.tier) : ""}</div>
-    <div class="sk-part"><em>Skill</em>${b.touched ? `<div class="sk-bar"><i style="width:${Math.min(100, b.v)}%"></i>${[25, 55, 85].map(t => `<u style="left:${t}%"></u>`).join("")}</div>
-      <small>${esc(b.top)} ${Math.round(b.v)}${b.tier < 3 ? ` · ${Math.ceil([25, 55, 85][b.tier] - b.v)} to ${Ilmu.TIER[b.tier + 1]}` : ""}</small>
-      ${b.paths.length > 1 ? `<small class="sk-paths">Also: ${b.paths.slice(1).map(p => `${esc(p.label)} ${Math.round(p.v)}`).join(", ")}</small>` : ""}` : `<small>Not started yet.</small>`}</div>
-    ${b.word ? `<div class="sk-part"><em>Interest</em><small><b>${esc(b.word)}</b>${b.ucap ? ` · “${esc(b.ucap)}”` : ""}</small></div>` : ""}
-  </div>`;
-  openSheet("skills", `
-    <span class="ribbon">SKILL BOOK · ${n}</span>
-    <h2>What ${n} knows</h2>
-    <p class="muted small">One number per path, 0–100: Junior up to 25, Intermediate up to 55, Senior up to 85, then Master. A path only grows from its own classes and from what ${n} chooses to do.</p>
-    <div class="sk-list">${(touched.length ? B : B.slice(0, 6)).map(row).join("")}</div>
-    ${c.age(today()) >= Ilmu.MIN_AGE ? `<button class="secondary" id="skLes">Classes</button>` : ""}
-    <button class="close" data-close="1">Close</button>`);
-  if ($("skLes")) $("skLes").onclick = () => showLes(id);
-  sheet.querySelector("[data-close]").onclick = closeSheet;
 }
 // gelembung: kalimat makhluk soal les hari ini, sekali per hari waktu pemain ada di rumah
 function lesBubble() {
