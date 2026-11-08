@@ -65,7 +65,7 @@ test("katalog: Senior belum kelihatan buat Junior, rekomendasi kelas yang pas", 
   assert.ok(!cat.some(k => k.lvl === 2), "panggilan belum muncul");
   const R = Ilmu.recommend(c, c.born + 70);
   assert.ok(R.length && R.every(k => k.lvl === 0));
-  assert.equal(Object.keys(Ilmu.COURSES).length, 10 + 21 + 42);
+  assert.equal(Object.keys(Ilmu.COURSES).length, 10 + 20 + 40);
   assert.equal(Tree.NODES.inventor.label, "Organic chemist");
 });
 

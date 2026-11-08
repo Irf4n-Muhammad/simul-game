@@ -28,12 +28,12 @@
   const matchOf = (cls, lrn) => { const d = cls - Math.min(lrn, 2); return d >= 2 ? MATCH[2] : d <= -2 ? 0 : MATCH[d]; };
 
   // ---------------------------------------------------------------- kursus
-  // Junior: satu kursus per cabang (topik umum). Intermediate: 21 les. Senior: dua panggilan di bawah tiap les.
+  // Junior: satu kursus per cabang (topik umum). Intermediate: 20 les. Senior: dua panggilan di bawah tiap les.
   const JUNIOR = { sport: "Junior sports club", vital: "Junior first aid", hands: "Little makers", science: "Junior science", numbers: "Junior maths",
-    words: "Junior reading & writing", art: "Junior art class", music: "Junior music", media: "Junior media club", lead: "Junior scouts" };
+    words: "Junior reading & writing", art: "Junior art class", music: "Junior music", media: "Junior film club", lead: "Junior scouts" };
   const LES = { water: "Swimming", ball: "Football", track: "Athletics", cooking: "Cooking class", building: "Woodwork", firstaid: "First aid",
     data: "Math", lab: "Chemistry", medicine: "Biology", engineering: "Coding", strategy: "Chess", writing: "Writing", law: "Debate",
-    painting: "Drawing", instrument: "Music", voice: "Singing", rhythm: "Dance", film: "Film club", photo: "Photography", public: "Public speaking", team: "Scouts" };
+    painting: "Drawing", instrument: "Music", voice: "Singing", rhythm: "Dance", film: "Film club", public: "Public speaking", team: "Scouts" };
   const PRICE = [60, 120, 200], BASE = [3, 3, 2.5];   // Senior lebih pelan; di atas 85 (Master) setengahnya lagi
   const SESI = [0, 3, 7, 10, 14, 17, 21, 24];             // 8 sesi, 2× seminggu, 4 minggu
   const WAVE = 14, MIN_AGE = 60;                          // kursus mulai tiap 2 minggu; mulai umur sekolah
