@@ -26,8 +26,8 @@ function drawAhead() {
   const off = !cur || !game || state.tut < COACH.length || outView() || cur.fase === "meninggal" || cur.fase === "merantau";
   const S = off ? null : aheadSnap();
   const L = S ? Soon.line(S) : null, M = S ? Soon.someday(S) : null;
-  el.hidden = !L; el2.hidden = !M;
-  if (L) $("momentPill").hidden = true; // the Soon row already names the nearest big moment
+  setHidden(el, !L); setHidden(el2, !M);
+  if (L) setHidden($("momentPill"), true); // the Soon row already names the nearest big moment
   const key = (L ? `${L.k}@${L.day - S.d}` : "-") + "|" + (M ? M.k : "-"); // the distance is part of the key: "in 4 days" has to become "in 3 days" overnight
   if (key !== aheadKey) {
     aheadKey = key;

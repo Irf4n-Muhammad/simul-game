@@ -48,12 +48,12 @@ function drawHud() {
     el.style.setProperty("--v", v.toFixed(0));
     el.style.setProperty("--c", n.k === "perhatian" ? (v > 30 ? "var(--rose)" : "var(--low)") : v > 60 ? "var(--good)" : v > 30 ? "var(--mid)" : "var(--low)");
     el.classList.toggle("low", !gone && v <= 30);
-    el.setAttribute("aria-label", `${n.label}: ${v > 60 ? "good" : v > 30 ? "okay" : "low"}`);
+    setAttr(el, "aria-label", `${n.label}: ${v > 60 ? "good" : v > 30 ? "okay" : "low"}`);
   }
   const ready = treeReady(game.home.get(cur.id)), lb = $("lifeBtn"), dot = lb.querySelector(".dot-new");
   if (ready && !dot) lb.insertAdjacentHTML("beforeend", `<i class="dot-new"></i>`); else if (!ready && dot) dot.remove();
-  $("nameLbl").textContent = cur.nama;
-  $("ageLbl").textContent = `Day ${game.home.last_day + 1}`;   // v81: header tipis; fase dan umur ada di profil
+  setText($("nameLbl"), cur.nama);
+  setText($("ageLbl"), `Day ${game.home.last_day + 1}`);   // v81: header tipis; fase dan umur ada di profil
   $("face").style.background = "#" + (COLOR[cur.rupa.warna] || 0xcccccc).toString(16).padStart(6, "0");
   $("bottom").style.opacity = gone ? 0.5 : 1;
   careRings(); drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead(); tanyaDot(); agendaDot(); lesBubble(); bondCheck(); kabarOffer();

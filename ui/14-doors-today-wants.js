@@ -3,7 +3,7 @@
 const doorsNow = () => game ? Wants.doors(game.home, today(), !!(state && state.dev_pintu)) : {};
 function drawDoors() {
   const P = doorsNow();
-  $("diceBtn").hidden = !P.dadu; $("planBtn").hidden = !P.plan; $("townBtn").hidden = !P.town;
+  setHidden($("diceBtn"), !P.dadu); setHidden($("planBtn"), !P.plan); setHidden($("townBtn"), !P.town);
 }
 // ---- the Today line: one sentence about what matters right now, in a fixed order. Computed from the state every time, never saved.
 let todayKey = null, todayCache = null;

@@ -366,11 +366,21 @@ function resize() {
 }
 addEventListener("resize", resize); resize();
 
-let last = now(), townT = 0;
+let last = now(), townT = 0, coverT = 0;
+// Layar penuh yang menutupi adegan 3D (HP, Burrow, Bazaar, langit bintang, buku). Selama terbuka, adegan nggak digambar:
+// kanvas tetap menampilkan gambar terakhir, GPU bebas buat scroll dan blur di atasnya.
+const isUp = o => !!(o && o.el && o.el.isConnected);   // elemen yang sudah dicopot nggak pernah membekukan adegan
+const coveredUp = () => isUp(PH) || isUp(bw) || isUp(bz) || isUp(sky) || isUp(bk);
 function frame(t) {
-  const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   requestAnimationFrame(frame);
+  qMeter(t);
   if (FC || ARC) return;   // v49/v51: mini game dan layar Games nutupin layar; adegan 3D nggak usah digambar
+  const game3d = (LIAR && LIAR.on) || (KONSER && KONSER.on);   // konser dan wilayah liar punya jam sendiri: jangan dijeda
+  if (!game3d && coveredUp()) { last = t; return; }
+  // lembar (sheet) setengah layar dengan latar blur: adegan di belakangnya cukup 20 kali per detik
+  if (!game3d && sheetKind && !sheet.classList.contains("clear")) { if (t - coverT < 48) return; coverT = t; }
+  const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
+  qFull = !sheetKind;
   if (LIAR && LIAR.on) { renderer.shadowMap.autoUpdate = true; LIAR.frame(t, dt); renderer.render(LIAR.scene, LIAR.camera); liarFps(t); return; }
   if (KONSER && KONSER.on) { KONSER.frame(t, dt); renderer.render(KONSER.scene, KONSER.camera); if (Math.floor(ts * 4) !== Math.floor((ts - dt) * 4)) konserHud(); return; }
   if (GLOBE && GLOBE.on) {
@@ -388,7 +398,7 @@ function frame(t) {
   renderer.shadowMap.autoUpdate = true;   // v79: kota boleh mematikannya di peta; adegan lain selalu hitung bayangan
   if (TOWN && TOWN.on) {
     // v79: kamera diam > 1,5 detik = kota digambar 30 kali per detik, bukan 60 (HP lebih adem, baterai lebih awet)
-    if (TOWN.calm && TOWN.calm(t) && t - townT < 31) return;
+    if (TOWN.calm && TOWN.calm(t)) { qFull = false; if (t - townT < 31) return; }
     const tdt = Math.min(0.05, (t - townT) / 1000); townT = t;
     if (Math.floor(ts / 30) !== Math.floor((ts - tdt) / 30)) applyLight();
     TOWN.frame(t, tdt); renderer.render(TOWN.scene, TOWN.camera);
