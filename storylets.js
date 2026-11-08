@@ -463,7 +463,7 @@ const sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + wdN(v);       // hari kerja
 const savedOf = x => x.c.st ? x.c.st.wallet + (x.c.st.tab || 0) : 0;
 // catatan di bawah tabel: satuan uangnya, dan tabungan makhluknya sekarang
 // v84: catatan = baris pendek (array), satu fakta per baris
-const moneyNote = x => [`🪙 1 = one day of office pay (${WD_UNIT()} coins)`, ...(x.c.st ? [`${x.n} has ${wdN(savedOf(x))} saved`] : [])];
+const moneyNote = x => [`🪙 1 = one day of office pay (${WD_UNIT()} coins)`, ...(x.c.st ? [`🪙 ${x.n}'s savings now: ${wdN(savedOf(x))}`] : [])];
 // angka kartu "setelah lulus" (v83): sel pendek, satuannya hari, hari kerja, dan angka jalur di buku bintang
 function lulusFx(x) {
   const ST = x.c.st ? STX() : null, IL = x.home.ilmu_from != null ? ((typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu) : null;
@@ -473,7 +473,7 @@ function lulusFx(x) {
     kuliah: [["⏳", "150–240 days"], ...(live ? [["🪙", `${sg(live * 195)} saved`, "family pays living"]] : []),
       ...(M.length ? [["⭐", M.map(m => `${m.label} ${m.from}→${m.to}`).join(" or ")]] : []), ["🎓", "jobs easier to get"]],
     kerja: [["⏳", "starts in 5–30 days"], ...(J ? [["🪙", `${sg(J.office.pay - live)} a day`, "pay minus living"]] : []), ["⭐", "the job's path"]],
-    gap: [["⏳", "60–150 days"], ...(live ? [["🪙", `−${wdN(live * 60)} to −${wdN(live * 150)}`, "from savings"]] : []), ["👫", "friendlier"]],
+    gap: [["⏳", "60–150 days"], ...(live ? [["🪙", `−${wdN(live * 60)} to −${wdN(live * 150)}`, savedOf(x) < live * 60 ? `savings (${wdN(savedOf(x))}) run out` : "from savings"]] : []), ["👫", "friendlier"]],
     _note: moneyNote(x),
   };
 }
