@@ -38,6 +38,8 @@ function boot() {
   const oldSave = state.aksi.length || state.hadir.length || liveDay() > 0;
   if (state.rawat_from == null) { state.rawat_from = oldSave ? liveDay() : 0; state.rawat_half = careHalfNow(); }
   if (state.tut == null) state.tut = oldSave ? 99 : 0;
+  // v82: les, ilmu per jalur, dan bintang yang nyala sendiri hidup mulai hari ini buat save lama (riwayatnya tetap sama), dari awal buat yang baru
+  if (state.ilmu_from == null) state.ilmu_from = oldSave ? liveDay() : 0;
   save();
   game = new GameLayer.Game(state);
   // tiap tindakan pemain dicatat jenisnya (bukan ke siapa) buat telemetry

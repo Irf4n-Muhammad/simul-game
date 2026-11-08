@@ -455,6 +455,29 @@ storylet("curhat_malam", ["remaja", "dewasa", "tua"], "kecil", { cooldown: 10,
 
 // ---------------------------------------------------------------- setelah lulus: jalur berbeda
 
+// v83: uang di kartu keputusan ditulis dalam hari kerja (1 hari kerja = gaji sehari kerja kantor pertama, status.js JOBS.office), koinnya
+// kecil di belakang, jadi pemain bisa ngebandingin tanpa tahu "15 koin itu banyak atau nggak".
+const WD_UNIT = () => { const S = STX(); return S && S.JOBS && S.JOBS.office ? S.JOBS.office.pay : HK; };
+const wdN = v => { const d = Math.abs(v) / WD_UNIT(); return d >= 10 ? Math.round(d) : Math.round(d * 10) / 10; };
+const sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + wdN(v);       // hari kerja bertanda, buat sel tabel
+const savedOf = x => x.c.st ? x.c.st.wallet + (x.c.st.tab || 0) : 0;
+// catatan di bawah tabel: satuan uangnya, dan tabungan makhluknya sekarang
+// v84: catatan = baris pendek (array), satu fakta per baris
+const moneyNote = x => [`🪙 1 = one day of office pay (${WD_UNIT()} coins)`, ...(x.c.st ? [`🪙 ${x.n}'s savings now: ${wdN(savedOf(x))}`] : [])];
+// angka kartu "setelah lulus" (v83): sel pendek, satuannya hari, hari kerja, dan angka jalur di buku bintang
+function lulusFx(x) {
+  const ST = x.c.st ? STX() : null, IL = x.home.ilmu_from != null ? ((typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu) : null;
+  const live = ST ? ST.livingCost(x.c, x.day) : null, J = ST ? ST.JOBS : null;
+  const M = IL && x.c.st ? IL.majorPreview(x.c, 195).slice(0, 2) : [];
+  return {
+    kuliah: [["⏳", "150–240 days"], ...(live ? [["🪙", `${sg(live * 195)} saved`, "family pays living"]] : []),
+      ...(M.length ? [["⭐", M.map(m => `${m.label} ${m.from}→${m.to}`).join(" or ")]] : []), ["🎓", "jobs easier to get"]],
+    kerja: [["⏳", "starts in 5–30 days"], ...(J ? [["🪙", `${sg(J.office.pay - live)} a day`, "pay minus living"]] : []), ["⭐", "the job's path"]],
+    gap: [["⏳", "60–150 days"], ...(live ? [["🪙", `−${wdN(live * 60)} to −${wdN(live * 150)}`, savedOf(x) < live * 60 ? `savings (${wdN(savedOf(x))}) run out` : "from savings"]] : []), ["👫", "friendlier"]],
+    _note: moneyNote(x),
+  };
+}
+
 storylet("setelah_lulus", ["remaja", "dewasa"], "sedang", { once: true, priority: true,
   cond: x => "lulus" in x.c.info && x.age >= 266 }, x => {   // v47: sehari sesudah pengumuman lulus 265 (remaja.js); dilema terjadwal, ikut pagar dilema_hari
   const t = x.c.traits;
@@ -464,7 +487,7 @@ storylet("setelah_lulus", ["remaja", "dewasa"], "sedang", { once: true, priority
   x.c.info.dilema_hari = x.day;
   const [g, final] = x.ask("What do you suggest?",
     { kuliah: "College first", kerja: "Start working", gap: "Gap year, go explore" },
-    { suportif: "SELF", tegas: "kuliah" }, pref, { safe: "kuliah" });
+    { suportif: "SELF", tegas: "kuliah" }, pref, { safe: "kuliah", fx: lulusFx(x) });
   x.c.info.jalur = final;
   x.c.info.jalur_oleh = g === null ? "sendiri" : "wali";
   if (final === "kuliah") {
@@ -524,7 +547,9 @@ storylet("cari_kerja", ["dewasa"], "sedang", { cooldown: 15, weight: x => 3,
   const pref = x.t("ambisius") > 55 ? "cita" : "aman";
   const [, final] = x.ask("Which one do you suggest?",
     { aman: "The steady office job", cita: `Chase the ${cita} dream` },
-    { suportif: "SELF", tegas: "aman" }, pref);
+    { suportif: "SELF", tegas: "aman" }, pref, { fx: {
+      aman: [["📈", "steady from day one"]],
+      cita: [["📈", "+5 career, intern at first"]] } });
   if (final === "aman") {
     Object.assign(i, { kerja: "office worker", gaji: 6 + (i.sarjana ? 2 : 0), level: 1 });
     if (!("kerja_sejak" in i)) i.kerja_sejak = x.age;
@@ -603,9 +628,13 @@ storylet("tawaran_pindah_kerja", ["dewasa"], "sedang", { cooldown: 150,
   const kota = x.pick(["the capital", "the port city", "the next country over"]);
   x.say(`${x.n} gets a job offer in ${kota}. Double the pay, but far from home.`);
   const [, final] = x.ask("Take it?", { ambil: "Take it", tetap: "Stay here" },
-    { suportif: "SELF", tegas: "tetap" }, x.t("ambisius") > 65 ? "ambil" : "tetap");
+    { suportif: "SELF", tegas: "tetap" }, x.t("ambisius") > 65 ? "ambil" : "tetap", { fx: {
+      ambil: [["🪙", x.c.st && x.c.st.job ? `pay ${wdN(STX().salary(x.c.st.job))}→${wdN(STX().salary(x.c.st.job) * 2)} a day` : "pay ×2"], ["🏠", "moves far away"], ["💗", "−2"]],
+      tetap: [["🪙", x.c.st && x.c.st.job ? `stays ${wdN(STX().salary(x.c.st.job))} a day` : "same pay"], ["🏠", "stays close"], ["💗", "+2"]], _note: moneyNote(x) } });
   if (final === "ambil") {
     x.c.info.gaji = (x.c.info.gaji ?? 3) * 2;
+    // v83: di ekonomi koin, gaji beneran ikut dobel (dulu cuma angka lama di info). Save lama tetap sama.
+    if (x.agency() && x.c.st && x.c.st.job) x.c.st.job.crowd = (x.c.st.job.crowd || 1) * 2;
     x.c.info.kota = kota;
     x.say(`${x.n} moves to ${kota}. They promise a video call every Sunday.`);
     x.bond(-2);
@@ -764,7 +793,9 @@ storylet("pernikahan", GROWN, "besar", { priority: true, cooldown: 7,
   const [nid, p] = x.c.rel_of("tunangan");
   const [, final] = x.ask("What kind of wedding?", { besar: "Big party", kecil: "Simple, save money for a home" },
     { suportif: "SELF", tegas: "kecil" },
-    x.t("ramah") > 55 ? "besar" : "kecil", { obey: false });
+    x.t("ramah") > 55 ? "besar" : "kecil", { obey: false, fx: {
+      besar: [["🪙", sg(-25 * HK)], ["🎉", "all their friends"], ["💗", "+3"]],
+      kecil: [["🪙", sg(-6 * HK)], ["🎉", "close family"], ["🏠", `${sg(19 * HK)} toward a home`], ["💗", "+3"]], _note: moneyNote(x) } });
   // biaya dalam HK (rencana ekonomi): pesta besar 25 hari kerja, sederhana 6
   coins(x, -(final === "besar" ? 25 : 6) * HK);
   Object.assign(p, { tipe: "suami-istri", sejak: x.day });
@@ -922,8 +953,11 @@ storylet("pindah_rumah", GROWN, "sedang", { cooldown: 270,
   const cash = !x.c.st || x.c.st.wallet + (x.c.st.tab || 0) >= STX().firstHomeCost(x.home, x.c, x.day);
   x.say(!x.c.st ? `${x.n} finds a small house with a yard. Their savings cover the down payment.` : cash ? `${x.n} finds a small flat for sale in the Suburb. Their savings cover it.`
     : `${x.n} finds a small flat for sale in the Suburb. Their savings cover the down payment, and the bank offers a mortgage for the rest.`);
+  const price = x.c.st ? STX().firstHomeCost(x.home, x.c, x.day) : 200;
   const [, final] = x.ask("Buy the house?", { beli: "Buy it", sewa: "Keep renting for now" },
-    { suportif: "SELF", tegas: "beli" }, x.t("rajin") > 45 ? "beli" : "sewa");
+    { suportif: "SELF", tegas: "beli" }, x.t("rajin") > 45 ? "beli" : "sewa", { fx: {
+      beli: [["🪙", sg(-price)], ["🏠", "own home"]],
+      sewa: [["🪙", "keeps savings"], ["🏠", "keeps renting"]], _note: [...moneyNote(x), ...(cash ? [] : ["The bank lends the rest"])] } });
   if (final === "beli") {
     if (x.c.st) STX().buyFirstHome(x.home, x.c, x.day);
     else x.stat("uang", -200);

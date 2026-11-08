@@ -84,14 +84,14 @@
     // v80: pertanyaan ini pernah dijawab (atau dilewati) di save ini? Dipakai anak.js supaya save lama yang sudah memilih sekolah lewat
     // dilema tetap sama waktu diputar ulang, sedangkan pemain baru daftar lewat Agenda.
     answered(cid, day, question) { return `${cid}|${day}|${question}` in this.game.state.jawaban; }
-    decide(x, question, options, window) {
+    decide(x, question, options, window, meta = {}) {
       const key = `${x.c.id}|${x.day}|${question}`;
       const got = this.game.state.jawaban[key];
       if (got === "lewat") return null;
       if (got) return [got[1], got[0]]; // [telat, pilihan]
       if (this.game.live_day !== null && x.day + window >= this.game.live_day) {
         throw new NeedInput({ key, cid: x.c.id, name: x.c.name, day: x.day, question, options, window,
-          drama: x.drama, fase: x.phase });
+          drama: x.drama, fase: x.phase, fx: meta.fx || null, wish: meta.wish ?? null, cost: meta.cost || null });
       }
       return null;
     }
@@ -106,6 +106,8 @@
       this.live_day = null;
       this.home = new E.Household(state.akun, new HumanGuardian(this));
       this.home.found("makhluk-001", state.nama || null);
+      this.home.ilmu_from = state.ilmu_from ?? null;
+      this.home.agensi_from = state.ilmu_from ?? null;   // v83: pilihan pemain selalu jalan mulai hari yang sama (engine.js ask)   // v82 ilmu.js: les dan bintang yang nyala sendiri hidup mulai hari ini (save lama tetap sama)
       this.pending = null;
       this.half_now = 1; // 0 = pagi, 1 = malam (diisi UI dari jam; simulasi tanpa jam dianggap hari penuh)
       this._half = 0;

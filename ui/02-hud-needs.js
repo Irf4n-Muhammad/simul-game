@@ -56,6 +56,6 @@ function drawHud() {
   $("ageLbl").textContent = `Day ${game.home.last_day + 1}`;   // v81: header tipis; fase dan umur ada di profil
   $("face").style.background = "#" + (COLOR[cur.rupa.warna] || 0xcccccc).toString(16).padStart(6, "0");
   $("bottom").style.opacity = gone ? 0.5 : 1;
-  careRings(); drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead(); tanyaDot(); agendaDot(); bondCheck(); kabarOffer();
+  careRings(); drawMoment(); drawDice(); drawDoors(); drawToday(); tourMaybe(); drawAhead(); tanyaDot(); agendaDot(); lesBubble(); bondCheck(); kabarOffer();
 }
 

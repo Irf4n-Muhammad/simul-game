@@ -16,14 +16,14 @@
     ["body", "Body", "fitness", "#5E9E6E", "headband", "g:fitness:10", [
       ["sport", "Sport", "o:lomba:1.3 o:kecelakaan_kecil:0.85", [
         ["ball", "Ball games", "g:fitness:6 j:athlete:3", [
-          ["captain", "Team captain", "j:athlete:5 k:review:2", "Could captain a pro team one day."],
-          ["striker", "Star striker", "j:athlete:6 z:sport:3", "The one everyone watches in the final minute."]]],
+          ["captain", "Football coach", "j:athlete:5 k:review:2", "Trains the team that wins the league."],
+          ["striker", "Pro footballer", "j:athlete:6 z:sport:3", "The one everyone watches in the final minute."]]],
         ["track", "Track", "g:fitness:6 z:sport:3", [
           ["sprinter", "Sprinter", "z:sport:6", "Built for the Championship sprint."],
           ["marathon", "Marathon runner", "j:athlete:4 o:sakit_parah:0.85", "Runs for hours and rarely gets sick."]]],
         ["water", "Water", "g:fitness:6 o:liburan:1.2", [
-          ["swimmer", "Swimmer", "j:athlete:5 z:sport:2", "Medals in the pool."],
-          ["diver", "Deep diver", "o:cerita_perjalanan:1.5 o:liburan:1.3", "Sees reefs nobody else in the family has seen."]]]]],
+          ["swimmer", "Pro swimmer", "j:athlete:5 z:sport:2", "Races for medals in the pool."],
+          ["diver", "Scuba diver", "o:cerita_perjalanan:1.5 o:liburan:1.3", "Sees reefs nobody else in the family has seen."]]]]],
       ["vital", "Vitality", "o:sakit_parah:0.85 o:demam:0.8", [
         ["health", "Health", "o:sakit_parah:0.8 o:sakit_tua:0.85", [
           ["ironimmune", "Iron immune", "o:demam:0.5 o:sakit_parah:0.7", "Hardly ever sick, all life long."],
@@ -36,7 +36,7 @@
           ["wardnurse", "Ward nurse", "j:nurse:6 k:review:1", "Could run a whole hospital ward."]]]]],
       ["hands", "Hands", "o:hobi_baru:1.3 o:usaha_sampingan:1.2", [
         ["cooking", "Cooking", "j:fastfood:3 g:creativity:5", [
-          ["chef", "Head chef", "j:fastfood:5 o:usaha_sampingan:1.4", "From fry cook to running the kitchen."],
+          ["chef", "Chef", "j:fastfood:5 o:usaha_sampingan:1.4", "From fry cook to running the kitchen."],
           ["baker", "Baker", "o:teman_baru:1.2 o:usaha_sampingan:1.5", "The whole street knows their bread."]]],
         ["building", "Building", "g:logic:5 o:hobi_baru:1.2", [
           ["carpenter", "Carpenter", "o:usaha_sampingan:1.5 o:hobi_baru:1.3", "Built half the furniture in the family home."],
@@ -50,21 +50,21 @@
           ["surgeon", "Surgeon", "j:doctor:6 k:review:1", "Chief of medicine is within reach."],
           ["gp", "Family doctor", "j:doctor:4 o:sakit_parah:0.8", "The doctor the whole neighborhood trusts."]]],
         ["lab", "Lab research", "z:science:3 g:logic:6", [
-          ["inventor", "Inventor", "z:science:6 o:karya_besar:1.3", "A real shot at the Golden Acorn prize."],
-          ["naturalist", "Naturalist", "z:science:4 o:liburan:1.3 o:pet_nyasar:1.4", "Names a new beetle after the family."]]],
+          ["inventor", "Organic chemist", "z:science:6 o:karya_besar:1.3", "Works with the chemistry of living things: medicines, plastics, food."],
+          ["naturalist", "Inorganic chemist", "z:science:4 o:liburan:1.3 o:pet_nyasar:1.4", "Works with metals, minerals and crystals."]]],
         ["engineering", "Engineering", "j:software:3 g:logic:6", [
-          ["coder", "Coder", "j:software:6", "Could rise all the way to CTO."],
-          ["robotics", "Robot maker", "j:software:4 z:science:3", "Builds the robot that wins the science fair."]]]]],
+          ["coder", "Software engineer", "j:software:6", "Could rise all the way to CTO."],
+          ["robotics", "Robotics engineer", "j:software:4 z:science:3", "Builds the robot that wins the science fair."]]]]],
       ["numbers", "Numbers", "g:logic:8 o:dipecat:0.85", [
         ["finance", "Finance", "j:quant:3 j:office:2", [
           ["trader", "Trader", "j:quant:6", "Head of trading, if the nerves hold."],
           ["investor", "Investor", "j:founder:4 o:beli_barang_mahal:0.7", "Money that quietly grows for the next generation."]]],
         ["strategy", "Strategy", "k:review:2 k:interview:1", [
-          ["chess", "Chess master", "k:comp:4 g:logic:8", "Wins every family board game, forever."],
-          ["planner", "Master planner", "k:review:3 o:nganggur_lama:0.6", "Never caught without a plan B."]]],
+          ["chess", "Pro chess player", "k:comp:4 g:logic:8", "Plays tournaments for prize money."],
+          ["planner", "Chess coach", "k:review:3 o:nganggur_lama:0.6", "Teaches the next champion the openings."]]],
         ["data", "Data", "j:software:2 j:quant:2", [
-          ["analyst", "Analyst", "j:office:5 j:software:3", "Sees patterns before anyone else."],
-          ["cipher", "Codebreaker", "j:software:4 z:science:3", "Solves the puzzle nobody else could."]]]]],
+          ["analyst", "Data analyst", "j:office:5 j:software:3", "Sees patterns in numbers before anyone else."],
+          ["cipher", "Accountant", "j:software:4 z:science:3", "Keeps the books straight for half the town."]]]]],
       ["words", "Words", "g:logic:6 g:charm:4", [
         ["teaching", "Teaching", "j:teacher:3", [
           ["mentor", "Mentor", "j:teacher:5 o:teman_baru:1.2", "Old students visit for years."],
@@ -91,8 +91,8 @@
           ["pianist", "Pianist", "z:art:5 o:lomba:1.3", "Plays the recital everyone remembers."],
           ["guitarist", "Guitarist", "o:pesta_pertama:1.4 o:kenalan_menarik:1.3", "The song at every campfire."]]],
         ["voice", "Voice", "j:influencer:2 o:lomba:1.2", [
-          ["singer", "Singer", "j:influencer:5", "Could become an Icon."],
-          ["composer", "Composer", "z:art:5 o:karya_besar:1.4", "Writes the song the family sings for generations."]]],
+          ["singer", "Pop singer", "j:influencer:5", "Could become an Icon."],
+          ["composer", "Choir singer", "z:art:5 o:karya_besar:1.4", "Sings in the town choir, front row."]]],
         ["rhythm", "Rhythm", "g:fitness:5 o:pesta_pertama:1.2", [
           ["dancer", "Dancer", "z:sport:2 z:art:3 j:athlete:2", "Moves like nobody else on the stage."],
           ["dj", "DJ", "o:pesta_pertama:1.5 o:party_kantor:1.3", "Every big night has their playlist."]]]]],
@@ -132,11 +132,11 @@
           ["founder_n", "Founder", "j:founder:6", "Could build a unicorn."],
           ["sales", "Salesperson", "j:fastfood:3 j:office:3 k:interview:1", "Could sell sand on a beach."]]],
         ["public", "Public life", "j:influencer:2 o:teman_baru:1.1", [
-          ["mayor", "Town leader", "k:review:3 o:reuni:1.3", "Their name ends up on a park bench."],
-          ["speaker", "Speaker", "j:influencer:4 j:teacher:2", "Fills a hall when they talk."]]],
+          ["mayor", "Politician", "k:review:3 o:reuni:1.3", "Their name ends up on a park bench."],
+          ["speaker", "TV presenter", "j:influencer:4 j:teacher:2", "A face the whole town sees every evening."]]],
         ["team", "Teamwork", "k:review:2 j:office:2", [
-          ["manager", "Manager", "j:office:5 k:review:2", "Head of office material."],
-          ["coach", "Coach", "j:athlete:3 j:teacher:3", "Turns rookies into legends."]]]]]]],
+          ["manager", "Team manager", "j:office:5 k:review:2", "Head of office material."],
+          ["coach", "Scout leader", "j:athlete:3 j:teacher:3", "Takes the troop camping and brings everyone home."]]]]]]],
   ];
 
   const COMBOS = [
