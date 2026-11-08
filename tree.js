@@ -1,4 +1,4 @@
-// Pohon bakat: tiap makhluk menumbuhkan pohonnya sendiri. 4 akar, 12 cabang, 36 ranting, 72 panggilan hidup,
+// Pohon bakat: tiap makhluk menumbuhkan pohonnya sendiri. 4 akar, 12 cabang, 37 ranting, 74 panggilan hidup,
 // 38 kombinasi lintas akar, dan 20 simpul rahasia yang baru muncul kalau sesuatu terjadi di hidupnya.
 // Poin datang dari umur, latihan, dan momen besar. Membuka simpul = tindakan "pohon:<id>" yang dicatat,
 // jadi game tetap bisa diputar ulang. Efek: belajar lebih cepat, skor momen besar, peluang kejadian, dan aksesori.
@@ -100,6 +100,9 @@
         ["film", "Film", "j:influencer:2 o:karya_besar:1.2", [
           ["director", "Film director", "o:karya_besar:1.6 z:art:3", "A film with their name in the credits."],
           ["actor", "Actor", "j:influencer:5 o:kenalan_menarik:1.2", "Recognized on the street."]]],
+        ["photo", "Photography", "z:art:2 o:liburan:1.1", [
+          ["photojournalist", "Photojournalist", "j:influencer:2 o:cerita_perjalanan:1.4", "Their photos make the front page."],
+          ["weddingphoto", "Wedding photographer", "j:designer:3 o:pesta_pertama:1.2", "In every family's wedding album."]]],
         ["socialmedia", "Social media", "j:influencer:3", [
           ["influencer_n", "Influencer", "j:influencer:6", "Followers in every city."],
           ["streamer", "Streamer", "j:influencer:4 o:teman_baru:1.3", "Thousands watch them every night."]]],
