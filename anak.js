@@ -111,7 +111,10 @@
       }
       x.say(`Three letters on the mat, one from each school that takes creatures born this week. ${x.n} chews the corner of one. Enrolment closes tomorrow.`);
       const [g, final] = tanya(x, SEKOLAH_Q(x.n), { dekat: "Old Town Primary, round the corner", seni: "Hillside Arts & Sport, up the hill", favorit: "Riverside Academy, across the bridge" },
-        { suportif: "dekat", tegas: "favorit" }, "dekat", { obey: false, safe: "dekat", alone: "so the form went in for the school round the corner, where the neighbours' kids go." });
+        { suportif: "dekat", tegas: "favorit" }, "dekat", { obey: false, safe: "dekat", alone: "so the form went in for the school round the corner, where the neighbours' kids go.", fx: {
+          dekat: [["⏳", "2-minute walk"], ["👫", "neighbours' kids"], ["🌱", E.FX.trait(["ramah", 1])]],
+          seni: [["⏳", "bus up the hill"], ["⭐", "lessons start 30, not 25"], ["🎓", "contests +8%"]],
+          favorit: [["⏳", "long way round"], ["🎓", "every quiz +6"]] } });
       x.c.info.sekolah_pilihan = { id: final, d: x.day, oleh: oleh(g) };
       if (final === "dekat") x.trait("ramah", 1);
       x.remember(`Enrolled at ${SEKOLAH[final].nama}.`);
@@ -122,7 +125,10 @@
     if (x.age !== 116 || !gateOk(x)) { x.c.info.liburan = { id: "danau", d: x.day, oleh: "default" }; return `A week off school starts in five days. The lake cabins again, booked without much discussion. ${x.n} is already packing the fishing net.`; }
     x.say(`${x.n} brings home a note: a week off school, starting in five days. The whole class is already trading plans.`);
     const [g, final] = tanya(x, "A week off school starts in five days. Where to?", { danau: "The lake cabins, an hour away", pantai: "The seaside, a long drive", rumah: "Stay home, day trips" },
-      { suportif: "pantai", tegas: "rumah" }, "danau", { obey: false, safe: "danau", alone: "so it's the lake cabins, an hour away, like most years." });
+      { suportif: "pantai", tegas: "rumah" }, "danau", { obey: false, safe: "danau", alone: "so it's the lake cabins, an hour away, like most years.", fx: {
+        danau: [["⏳", "1 hour away"], ["😊", "same fun"]],
+        pantai: [["⏳", "long drive"], ["😊", "same fun"]],
+        rumah: [["⏳", "day trips"], ["😊", "same fun"]], _note: ["Only the story changes, not the numbers"] } });
     x.c.info.liburan = { id: final, d: x.day, oleh: oleh(g) };
     return { danau: `The lake cabins, then. ${x.n} starts packing that evening, five days early: net, torch, three books, no socks.`,
       pantai: `The seaside, then. ${x.n} digs out the bucket from last summer and sleeps with it next to the bed.`,
@@ -140,7 +146,9 @@
     if (x.age !== 131 || !gateOk(x)) { x.c.info.field_trip = { ikut: true, d: x.day, oleh: "default" }; return `A permission slip for the class trip to the lighthouse comes home, and goes back signed the same evening.`; }
     x.say(`A permission slip comes home, crumpled: the class trip to the lighthouse and the rock pools, in three days. Lunch not provided.`);
     const [g, final] = tanya(x, "Class trip to the lighthouse in three days. Sign the slip?", { ikut: "Sign it, pack a lunch", tidak: "Not this time" },
-      { suportif: "ikut", tegas: "ikut" }, "ikut", { obey: false, safe: "ikut", alone: `so the slip went back signed, and ${x.n} packed the lunch.` });
+      { suportif: "ikut", tegas: "ikut" }, "ikut", { obey: false, safe: "ikut", alone: `so the slip went back signed, and ${x.n} packed the lunch.`, fx: {
+        ikut: [["🩺", "+1"], ["😊", "+8"]],
+        tidak: [["🩺", "—"], ["😊", "−4"]] } });
     x.c.info.field_trip = { ikut: final === "ikut", d: x.day, oleh: oleh(g) };
     return final === "ikut" ? `Signed. ${x.n} plans the lunch for three days: two sandwiches, an apple "for the crabs", and a biscuit that won't survive the bus.`
       : `Not this time. ${x.n} nods, then asks four more times before bed, then stops asking, which is worse.`;

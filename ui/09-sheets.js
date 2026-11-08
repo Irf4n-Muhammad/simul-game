@@ -55,7 +55,9 @@ function countdownText(p) {
 // Pilihan pemain selalu jalan (engine.js ask), jadi nggak ada lagi "mungkin dia nggak nurut".
 // v84: kartu keputusan jadi tabel perbandingan. Pilihan = kolom, hasil = baris pendek (⏳ 🪙 ⭐ 😊 💗 ...).
 // Pilihan yang bukan maunya makhluk dapet harga di baris 😊/💗 (merah). fx._note jadi catatan kecil di bawah.
-const DL_ROWS = [["⏳","Time"],["🪙","Money"],["⭐","Path"],["🎓","Later"],["📈","Career"],["🏠","Home"],["🎉","Party"],["👫","Friends"],["⚡","Energy"],["😊","Mood"],["💗","Bond"]];
+// v85: baris baru buat semua kartu keputusan (skill, sehat, pinter, sifat, nama baik, pasangan, anak, hewan)
+const DL_ROWS = [["⏳","Time"],["🪙","Money"],["⭐","Path"],["🛠️","Skill"],["🧠","Smarts"],["🎓","Later"],["📈","Career"],["🩺","Health"],["🏠","Home"],["🐾","Pet"],
+  ["🎉","Party"],["👫","Friends"],["💑","Partner"],["🧒","Kid"],["📣","Fame"],["🌱","Grows"],["⚡","Energy"],["😊","Mood"],["💗","Bond"]];
 function dlTable(p) {
   const opts = Object.entries(p.options), fx = p.fx || {};
   const cell = (k, ic) => (fx[k] || []).find(([i]) => i === ic) || [];
@@ -66,7 +68,7 @@ function dlTable(p) {
   const td = (k, ic) => {
     const [, tx, sub] = cell(k, ic), c = costOf(k, ic);
     const mine = !tx && p.wish === k && p.cost && (ic === "😊" || ic === "💗") ? "no cost" : "";
-    const parts = [tx ? esc(tx) : mine, c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
+    const parts = [tx && tx !== "—" ? esc(tx) : mine, c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
     return `<td>${parts.length ? parts.join(" ") : '<span class="nil">—</span>'}</td>`;
   };
   const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)}'s pick</em>` : ""}</th>`).join("");
@@ -75,7 +77,7 @@ function dlTable(p) {
     ...[].concat(fx._note || []).map(esc)];
   const note = lines.length ? `<ul class="dl-note" hidden>${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
   const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
-  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
+  return `<div class="dl-wrap"><table class="dl-tbl${opts.length > 3 ? " many" : ""}"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length > 3 ? 2 : opts.length}">${btns}</div>`;
 }
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {

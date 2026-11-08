@@ -644,6 +644,8 @@ svg { stroke: currentColor; }
 .dl-note[hidden] { display: none; }
 .dl-note { list-style: none; padding: 0; margin: 0 2px 10px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--ink-soft); }
 .dl-tbl td small { display: block; font-size: 10.5px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.dl-tbl.many { font-size: 12px; } .dl-tbl.many thead th { font-size: 12px; } .dl-tbl.many th, .dl-tbl.many td { padding: 7px 3px; }
+.dl-tbl.many thead th:first-child, .dl-tbl.many tbody th { width: 44px; }
 .dl-picks { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 8px; margin-bottom: 10px; }
 .dl-pick { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 11px 6px; font: inherit; font-weight: 800; font-size: 14px; color: var(--ink); cursor: pointer; }
 .dl-pick.want { border-color: #E7B8C6; background: #FFF6F8; } .dl-pick:active { background: #FFF3E8; }
