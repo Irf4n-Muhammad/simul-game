@@ -361,7 +361,7 @@
       { lanjut: "Finish the course", berhenti: "Okay, you can stop" },
       { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut", fx: {
         lanjut: [["⭐", pv.target ? `about +${r1(Math.min(pv.per * left0, pv.total))} ${pv.tlabel} over ${left0} more sessions` : "no more progress from this class"], ["😊", `−5 each session`], ["⚡", `−${K.sport ? 12 : 8} each session`]],
-        berhenti: [["🪙", `fee not refunded (${K.price})`], ["😊", "+5, relieved"], ["⭐", k.gain > 0 ? `keeps the +${r1(k.gain)} so far` : "nothing gained"]] } });
+        berhenti: [["🪙", `the ${K.price} 🪙 fee is not refunded`], ["😊", "+5, relieved"], ["⭐", k.gain > 0 ? `keeps the +${r1(k.gain)} so far` : "nothing gained"]] } });
     if (final === "lanjut") {
       x.need("mood", -3);
       I.minat[K.field] = Math.max(0, I.minat[K.field] - 2);
