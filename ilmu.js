@@ -14,7 +14,7 @@
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const T = (typeof module !== "undefined") ? require("./tree.js") : globalThis.Tree;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
-  const { HOOKS, seed_rng, phase_of } = E;
+  const { HOOKS, seed_rng, phase_of, storylet } = E;
   const N = T.NODES;
 
   // ---------------------------------------------------------------- tingkat dan pengali
@@ -227,6 +227,38 @@
     if (pay === "dompet" && !["dewasa", "tua"].includes(phase_of(c.age(day)))) return false;
     return enrol(home, c, id, day, pay === "dompet" ? "dompet" : "dapur");
   };
+
+  // ---------------------------------------------------------------- dilema: mau berhenti les
+  // Minat jatuh di bawah 25 sesudah paling nggak 2 sesi: makhluknya minta keluar. Sekali per kursus.
+  // Lanjut = selesaiin kursusnya (bisa nggak nurut). Berhenti = sisa sesi hangus, uang nggak balik, lega.
+  const quitOf = (c, day) => {
+    if (!c.st || !c.st.ilmu) return null;
+    const I = c.st.ilmu;
+    return I.kursus.find(k => k.n >= 2 && k.n < SESI.length - 1 && !k.tanya && day >= k.mulai && minatOf(c, COURSES[k.id].field) < 25) || null;
+  };
+  storylet("les_berhenti", ["anak", "remaja", "dewasa", "tua"], "sedang", { cooldown: 10,
+    cond: x => on(x.home, x.day) && x.day - (x.c.info.dilema_hari ?? -7) >= 7 && !!quitOf(x.c, x.day), weight: () => 3 }, x => {
+    const k = quitOf(x.c, x.day), K = COURSES[k.id], I = il(x.c.st);
+    k.tanya = x.day;
+    x.c.info.dilema_hari = x.day;
+    x.say(`${x.n} pushes their ${K.name} bag under the bed. "Can I stop going? I really don't like it."`);
+    const [, final] = x.ask(`${x.n} wants to quit ${K.name} (${k.n}/${SESI.length} sessions done).`,
+      { lanjut: "Finish the course", berhenti: "Okay, you can stop" },
+      { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut" });
+    if (final === "lanjut") {
+      x.need("mood", -3);
+      I.minat[K.field] = Math.max(0, I.minat[K.field] - 2);
+      x.say(`${x.n} sighs and keeps going to ${K.name}.`);
+      return;
+    }
+    const left = SESI.length - k.n;
+    k.n = SESI.length; k.stop = x.day;
+    I.selesai.push({ id: k.id, d: x.day, gain: k.gain, bolos: k.bolos, stop: true });
+    I.minat[K.field] = Math.min(100, I.minat[K.field] + 3);
+    x.need("mood", 5);
+    x.say(`${x.n} stops ${K.name}, ${left} session${left === 1 ? "" : "s"} early. The fee doesn't come back, but ${x.n} looks lighter${k.gain > 0 ? `, and keeps the +${r1(k.gain)} from the sessions they went to` : ""}.`);
+    x.remember(`Quit ${K.name}.`);
+  });
 
   // ---------------------------------------------------------------- tampilan
   // buku skill: tiap cabang yang sudah disentuh, jalur terdalamnya, tingkat, minat, kalimat terakhir soal topik itu

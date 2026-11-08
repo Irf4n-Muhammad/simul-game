@@ -78,3 +78,26 @@ test("Organic chemist ikut les Chemistry: poin ke Organic chemist, ×0,05; les S
   assert.equal(b.target, "medicine", "Biology jalan sendiri dari 25"); assert.equal(b.v, 25);
   assert.equal(Ilmu.preview(c, "inventor").match, 1);
 });
+
+test("dilema berhenti les: minat jatuh, makhluk minta keluar sekali per kursus; berhenti = sisa sesi hangus", () => {
+  const go = () => {
+    const st = fresh("akun-il4"), g = new G.Game(st), c = g.home.members[0], d0 = c.born + 120;
+    g.advance(d0, null);
+    assert.equal(g.act(c.id, "les:science"), true);
+    const K = c.st.ilmu.kursus[0];
+    for (let d = d0 + 1; d <= K.mulai + 30; d++) {
+      Object.assign(c.needs, { lapar: 80, energi: 80, kebersihan: 80, mood: 80 });
+      c.st.ilmu.minat.science = Math.min(c.st.ilmu.minat.science ?? 10, 10);
+      g.advance(d, null);
+    }
+    return { c, K };
+  };
+  const { c, K } = go();
+  assert.ok(K.tanya, "dilemanya muncul");
+  assert.equal(K.n, 8);
+  const quit = c.st.ilmu.selesai.find(s => s.id === "science");
+  if (K.stop) assert.ok(quit.stop && K.stop === K.tanya);
+  else assert.ok(!quit.stop, "kalau lanjut, kursusnya selesai biasa");
+  const b = go();
+  assert.deepEqual(b.K, K, "replay sama");
+});
