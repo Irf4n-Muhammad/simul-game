@@ -58,20 +58,21 @@ function countdownText(p) {
 const DL_ROWS = [["⏳","Time"],["🪙","Money"],["⭐","Path"],["🎓","Later"],["📈","Career"],["🏠","Home"],["🎉","Party"],["👫","Friends"],["⚡","Energy"],["😊","Mood"],["💗","Bond"]];
 function dlTable(p) {
   const opts = Object.entries(p.options), fx = p.fx || {};
-  const cell = (k, ic) => ((fx[k] || []).find(([i]) => i === ic) || [])[1];
+  const cell = (k, ic) => (fx[k] || []).find(([i]) => i === ic) || [];
   const seen = new Set(); opts.forEach(([k]) => (fx[k] || []).forEach(([i]) => seen.add(i)));
   if (p.wish && p.cost) { seen.add("😊"); seen.add("💗"); }
   const rows = [...DL_ROWS.filter(([i]) => seen.has(i)), ...[...seen].filter(i => !DL_ROWS.some(([j]) => j === i)).map(i => [i, ""])];
   const costOf = (k, ic) => p.wish && p.wish !== k && p.cost ? (ic === "😊" ? p.cost.mood : ic === "💗" ? p.cost.bond : 0) : 0;
   const td = (k, ic) => {
-    const tx = cell(k, ic), c = costOf(k, ic);
-    const parts = [tx ? esc(tx) : "", c ? `<b class="cost">−${c}</b>` : ""].filter(Boolean);
+    const [, tx, sub] = cell(k, ic), c = costOf(k, ic);
+    const parts = [tx ? esc(tx) : "", c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
     return `<td>${parts.length ? parts.join(" ") : '<span class="nil">—</span>'}</td>`;
   };
   const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)} wants</em>` : ""}</th>`).join("");
   const body = rows.map(([ic, lbl]) => `<tr><th scope="row"><i>${ic}</i>${lbl ? `<small>${lbl}</small>` : ""}</th>${opts.map(([k]) => td(k, ic)).join("")}</tr>`).join("");
-  const costNote = p.wish && p.cost ? `<span class="cost">−</span> = not what ${esc(p.name)} wants. ` : "";
-  const note = fx._note || costNote ? `<p class="dl-note">${costNote}${esc(fx._note || "")}</p>` : "";
+  const lines = [...(p.wish && p.cost ? [`<b class="cost">−</b> red = not what ${esc(p.name)} wants`] : []),
+    ...[].concat(fx._note || []).map(esc)];
+  const note = lines.length ? `<ul class="dl-note">${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
   const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
   return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
 }

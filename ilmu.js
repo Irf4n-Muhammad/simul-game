@@ -324,7 +324,7 @@
       const to = Math.min(UNI_CAP, v + g);
       return [o.id, [["⭐", `${N[o.id].label} ${v}→${to}`], ["😊", MINAT_WORD(o.m)]]];
     }));
-    fx._note = `⭐ = where the path should be by graduation, in about ${days} days (Junior under 25, Intermediate 25–54, Senior 55+).`;
+    fx._note = [`⭐ = path level at graduation (in ~${days} days)`, "Junior <25 · Intermediate 25–54 · Senior 55+"];
     const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id, fx });
     I.jur = final; I.ver = (I.ver || 0) + 1;
     x.c.info.jurusan = LES[N[final].spec];
@@ -363,7 +363,7 @@
       { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut", fx: {
         lanjut: [["⭐", pv.target ? `+${r1(Math.min(pv.per * left0, pv.total))} ${pv.tlabel}` : "nothing more"], ["😊", `−5 × ${left0}`], ["⚡", `−${K.sport ? 12 : 8} × ${left0}`]],
         berhenti: [["⭐", k.gain > 0 ? `keeps +${r1(k.gain)}` : "nothing"], ["😊", "+5"], ["🪙", `${K.price} 🪙 fee lost`]],
-        _note: `${left0} sessions left. ×${left0} = every session from here.` } });
+        _note: [`${left0} sessions left · ×${left0} = every session`] } });
     if (final === "lanjut") {
       x.need("mood", -3);
       I.minat[K.field] = Math.max(0, I.minat[K.field] - 2);

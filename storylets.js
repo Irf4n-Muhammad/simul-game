@@ -462,18 +462,19 @@ const wdN = v => { const d = Math.abs(v) / WD_UNIT(); return d >= 10 ? Math.roun
 const sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + wdN(v);       // hari kerja bertanda, buat sel tabel
 const savedOf = x => x.c.st ? x.c.st.wallet + (x.c.st.tab || 0) : 0;
 // catatan di bawah tabel: satuan uangnya, dan tabungan makhluknya sekarang
-const moneyNote = x => `🪙 = work-days: 1 is an office job's pay for a day (${WD_UNIT()} coins).${x.c.st ? ` ${x.n} has ${wdN(savedOf(x))} saved.` : ""}`;
+// v84: catatan = baris pendek (array), satu fakta per baris
+const moneyNote = x => [`🪙 1 = one day of office pay (${WD_UNIT()} coins)`, ...(x.c.st ? [`${x.n} has ${wdN(savedOf(x))} saved`] : [])];
 // angka kartu "setelah lulus" (v83): sel pendek, satuannya hari, hari kerja, dan angka jalur di buku bintang
 function lulusFx(x) {
   const ST = x.c.st ? STX() : null, IL = x.home.ilmu_from != null ? ((typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu) : null;
   const live = ST ? ST.livingCost(x.c, x.day) : null, J = ST ? ST.JOBS : null;
   const M = IL && x.c.st ? IL.majorPreview(x.c, 195).slice(0, 2) : [];
   return {
-    kuliah: [["⏳", "150–240 days"], ...(live ? [["🪙", `${sg(live * 195)} saved`]] : []),
+    kuliah: [["⏳", "150–240 days"], ...(live ? [["🪙", `${sg(live * 195)} saved`, "family pays living"]] : []),
       ...(M.length ? [["⭐", M.map(m => `${m.label} ${m.from}→${m.to}`).join(" or ")]] : []), ["🎓", "jobs easier to get"]],
-    kerja: [["⏳", "starts in 5–30 days"], ...(J ? [["🪙", `${sg(J.office.pay - live)} a day`]] : []), ["⭐", "the job's path"]],
-    gap: [["⏳", "60–150 days"], ...(live ? [["🪙", `−${wdN(live * 60)} to −${wdN(live * 150)}`]] : []), ["👫", "friendlier"]],
-    _note: moneyNote(x) + (live ? ` College: the family pays living costs. Working: pay minus living costs. Gap year: living costs come out of savings.` : ""),
+    kerja: [["⏳", "starts in 5–30 days"], ...(J ? [["🪙", `${sg(J.office.pay - live)} a day`, "pay minus living"]] : []), ["⭐", "the job's path"]],
+    gap: [["⏳", "60–150 days"], ...(live ? [["🪙", `−${wdN(live * 60)} to −${wdN(live * 150)}`, "from savings"]] : []), ["👫", "friendlier"]],
+    _note: moneyNote(x),
   };
 }
 
@@ -956,7 +957,7 @@ storylet("pindah_rumah", GROWN, "sedang", { cooldown: 270,
   const [, final] = x.ask("Buy the house?", { beli: "Buy it", sewa: "Keep renting for now" },
     { suportif: "SELF", tegas: "beli" }, x.t("rajin") > 45 ? "beli" : "sewa", { fx: {
       beli: [["🪙", sg(-price)], ["🏠", "own home"]],
-      sewa: [["🪙", "keeps savings"], ["🏠", "keeps renting"]], _note: moneyNote(x) + (cash ? "" : " The bank lends what savings don't cover.") } });
+      sewa: [["🪙", "keeps savings"], ["🏠", "keeps renting"]], _note: [...moneyNote(x), ...(cash ? [] : ["The bank lends the rest"])] } });
   if (final === "beli") {
     if (x.c.st) STX().buyFirstHome(x.home, x.c, x.day);
     else x.stat("uang", -200);
