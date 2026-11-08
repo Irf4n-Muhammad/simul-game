@@ -209,7 +209,7 @@
   // perusahaan (career.js) bisa punya nama jabatan dan gaji sendiri
   // v85: magang (job.intern = hari selesai) dibayar INTERN_PAY dari gaji penuh dan judulnya dikasih "(intern)"
   const INTERN_PAY = 0.3, INTERN_DAYS = 60;
-  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1) * (job.crowd || 1) * (job.intern ? INTERN_PAY : 1)); }
+  function salary(job) { const J = JOBS[job.id]; return Math.round(J.pay * Math.pow(J.mult || 1.4, job.level) * (job.co && EXT.pay ? EXT.pay(job) : 1) * (job.crowd || 1) * (job.intern ? INTERN_PAY : 1) * (job.far || 1)); }
   function title(job, level = job.level) {
     const t = job.co && EXT.title ? EXT.title(job, level) : JOBS[job.id].ladder[level];
     return job.intern && level === job.level ? `${t} (intern)` : t;
@@ -260,8 +260,8 @@
     return null;
   }
   // biaya hidup kalau pemasukan rutinnya nambah `pay` sehari (rumus livingCost)
-  function livingWith(c, day, pay) {
-    const inc = Money.daily(c, ROUTINE, day) + pay;
+  function livingWith(c, day, pay) { return livingAt(Money.daily(c, ROUTINE, day) + pay); }
+  function livingAt(inc) {
     const [cut, extra] = CFG.LIFESTYLE_RICH;
     return Math.round(LIVING_COST + CFG.LIFESTYLE * Math.max(0, inc - LIVING_COST) + extra * Math.max(0, inc - cut));
   }
@@ -280,6 +280,19 @@
     d.req = JOBS[dream].req;
     return { office, dream: d };
   }
+  // v86: tawaran pindah kerja (storylet tawaran_pindah_kerja) di ekonomi koin: kerjaan yang sama, level yang sama, gaji MOVE_PAY kali
+  // (job.far), di kota lain. Biaya hidup ikut naik lewat rumus livingCost. Hidup mulai home.pindah_from.
+  const MOVE_PAY = 2;
+  const pindahOn = (home, day) => home.pindah_from != null && day >= home.pindah_from;
+  function moveOffer(c, day) {
+    const j = c.st && c.st.job;
+    if (!j) return null;
+    const pay = salary(j), pay2 = salary({ ...j, far: MOVE_PAY });
+    // biaya hidup dibanding di gaji tetapnya (rata-rata pemasukan di livingCost masih nyusul kalau baru naik gaji)
+    const base = Math.max(0, Money.daily(c, ROUTINE, day) - Money.daily(c, ["gaji"], day));
+    return { pay, live: livingAt(base + pay), pay2, live2: livingAt(base + pay2), title: title(j) };
+  }
+  function takeMove(x) { if (x.c.st.job) x.c.st.job.far = MOVE_PAY; }
   function takeOffer(x, o, intern) {
     setJob(x, o.id, x.day, { co: o.co, crowd: o.crowd });
     const st = x.c.st;
@@ -713,6 +726,10 @@
 
   // Karier lama digantikan sistem wawancara dan review
   for (const s of REGISTRY) if (["cari_kerja", "naik_jabatan", "tawaran_pindah_kerja"].includes(s.id)) s.cond = () => false;
+  // v86: tawaran pindah kerja hidup lagi di sistem koin: sudah pernah naik jabatan, bukan magang, belum pernah pindah kota
+  const pindah = REGISTRY.find(s => s.id === "tawaran_pindah_kerja");
+  if (pindah) pindah.cond = x => pindahOn(x.home, x.day) && !!x.c.st && !!x.c.st.job && x.c.st.job.level >= 1 && !x.c.st.job.intern && !x.c.st.job.far
+    && x.c.st.job.id !== "owner" && !x.c.st.job.biz && !x.c.info.kota && !x.c.info.pensiun && x.t("ambisius") > 50;
 
   // Warisan: dompet dibagi ke anak yang masih hidup, kalau nggak ada ke anggota rumah lain
   const _farewell = HOOKS.akhir_hidup;
@@ -924,7 +941,7 @@
     F.build.kpr = true;
     return "kpr";
   }
-  const API = { EXT, achieve, firstOffer, takeOffer, INTERN_PAY, INTERN_DAYS, kprQuote, livingCost, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
+  const API = { EXT, achieve, firstOffer, takeOffer, moveOffer, takeMove, MOVE_PAY, INTERN_PAY, INTERN_DAYS, kprQuote, livingCost, firstHomeCost, buyFirstHome, costOf, salary, title, estimateFor, schedule, pendingFor, canWork, SKILLS, SKILL_LABEL, RARES, JOBS, PRIZES, ITEMS, DICE_BONUS, BANK_MAX, BANK_DAYS, fam, luck, boards, memberView,
     familyView, jobList, shop, pct, population, prestige, salary, npcTown, bestItem, RENTED, BUILD_DAYS, MODELS, PAINTS };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Status = API;

@@ -59,3 +59,39 @@ test("save lama: kerja1_from null, tawaran nggak pernah muncul", () => {
   assert.equal(seen, null);
   assert.ok(c.st.job, "tetap dapat kerja lewat lamaran sendiri seperti dulu");
 });
+
+// v86: tawaran pindah kerja (gaji dobel di kota lain) hidup lagi di sistem koin
+test("pindah kerja: kartu pakai gaji dan biaya hidup beneran, ambil = gaji dobel", () => {
+  const st = { ...fresh("akun-k1"), pindah_from: 0 };
+  const g = new G.Game(st), c = g.home.members[0], gd = g.home.guardian, orig = gd.decide.bind(gd);
+  let seen = null;
+  gd.decide = (x, q, opts, w, info) => {
+    if (opts.gap && opts.kuliah) return [0, "kerja"];
+    if (opts.cita && /internship/.test(opts.cita)) return [0, "aman"];
+    if (opts.ambil && opts.tetap) { seen = { day: x.day, info, M: ST.moveOffer(x.c, x.day) }; return [0, "ambil"]; }
+    return orig(x, q, opts, w, info);
+  };
+  let pay0 = null;
+  for (let d = 0; d < 700 && !seen; d++) {
+    g.advance(d, null);
+    if (c.st && c.st.job && c.st.job.level === 0 && d > 300) { c.st.job.level = 1; c.traits.ambisius = 80; }
+    if (c.st && c.st.job) pay0 = ST.salary(c.st.job);
+  }
+  assert.ok(seen, "tawaran pindah muncul");
+  const money = seen.info.fx.ambil.find(r => r[0] === "🪙");
+  assert.match(money[2], /minus living/);
+  assert.ok(Math.abs(seen.M.pay2 - seen.M.pay * 2) <= 2, "gaji dobel");
+  assert.ok(seen.M.live2 > seen.M.live, "biaya hidup naik di kota baru");
+  g.advance(seen.day + 1, null);
+  assert.equal(c.st.job.far, ST.MOVE_PAY);
+  assert.ok(c.info.kota);
+  assert.ok(ST.salary(c.st.job) >= seen.M.pay * 1.9, `${ST.salary(c.st.job)} vs ${seen.M.pay}`);
+});
+
+test("pindah kerja: save lama (pindah_from null) nggak pernah dapet tawaran", () => {
+  const g = new G.Game(fresh("akun-k1")), c = g.home.members[0], gd = g.home.guardian, orig = gd.decide.bind(gd);
+  let seen = false;
+  gd.decide = (x, q, opts, w, info) => { if (opts.ambil && opts.tetap) seen = true; return orig(x, q, opts, w, info); };
+  for (let d = 0; d < 500; d++) { g.advance(d, null); if (c.st && c.st.job && c.st.job.level === 0 && d > 300) { c.st.job.level = 1; c.traits.ambisius = 80; } }
+  assert.equal(seen, false);
+});
