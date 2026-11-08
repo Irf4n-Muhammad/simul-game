@@ -38,13 +38,13 @@ svg { stroke: currentColor; }
 .glass, .pill, .icon-btn, .arrow, .room-name, .round, .moment, .story, .hint, .bubble { background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid rgba(255,255,255,.55); box-shadow: var(--shadow); }
 
 #app.night { --glass: rgba(251,248,243,.9); }
-.hud-top { position: absolute; top: 0; left: 0; right: 0; padding: 14px 16px 0; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+.hud-top { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.pill { pointer-events: auto; display: flex; align-items: center; gap: 10px; border-radius: 999px; padding: 6px 16px 6px 6px; text-align: left; }
-.pill .face { width: 34px; height: 34px; border-radius: 50%; background: #E5BFBF; box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }
+.pill { pointer-events: auto; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 14px 4px 4px; text-align: left; }
+.pill .face { width: 30px; height: 30px; border-radius: 50%; background: #E5BFBF; box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }
 .pill b { font-size: 16px; font-weight: 800; display: block; line-height: 1.1; letter-spacing: -.01em; }
 .pill small { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
-.icon-btn { pointer-events: auto; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
+.icon-btn { pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
 .icon-btn svg { width: 20px; height: 20px; }
 
 .needs { display: flex; gap: 10px; justify-content: center; }
@@ -193,6 +193,12 @@ svg { stroke: currentColor; }
 .need .fill { display: none; }
 .need svg { position: relative; width: 17px; height: 17px; }
 .need.low { animation: pulse 1.6s ease-in-out infinite; }
+/* v81: chip rawat digabung ke ring. Ring yang rawatnya lagi waktunya dapat titik oranye; ketuk ring = kerjakan rawatnya */
+.need { pointer-events: auto; cursor: pointer; border: 0; padding: 0; color: var(--ink); }
+.need.due::after { content: ""; position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
+.need.due.late::after { background: #E0645A; }
+.need.cared::after { content: "✓"; position: absolute; top: -3px; right: -3px; width: 13px; height: 13px; border-radius: 50%; background: var(--good); color: #fff; font-size: 8.5px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+#careStrip, #soon, #someday { display: none !important; }
 @keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.09) } }
 
 .hud-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; align-items: center; }

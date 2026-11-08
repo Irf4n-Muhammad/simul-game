@@ -148,7 +148,7 @@ function showAgenda(recap) {
     ${rc}
     <h2>Coming up</h2>
     ${soon.length ? `<div class="list">${soon.map(row).join("")}</div>` : `<p class="muted">Nothing with a date in the next ${AGENDA_SOON_DAYS} days.</p>`}
-    <div class="ag-more"><button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agPlan">Daily plan</button></div>
+    <div class="ag-more"><button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agFocus">${focus ? `Focus session · ${focusClock(focusLeftMs())}` : `Focus together ${FOCUS_MIN} min`}</button></div>
     <button class="big" data-close="1">Go to ${esc(cur.nama)}</button>`);
   sheet.querySelectorAll("[data-ag]").forEach(b => b.onclick = () => {
     const [i, j] = b.dataset.ag.split(":").map(Number), c = R.now[i], o = c && c.opts[j];
@@ -174,7 +174,7 @@ function showAgenda(recap) {
     if (g.day != null) { agSel = g.day; showAgenda(); }
   });
   if ($("agDiary")) $("agDiary").onclick = () => showDiary();
-  $("agPlan").onclick = () => showPlan();
+  $("agFocus").onclick = () => { Tele.ev("fokus", { a: "buka" }); showFocus(); };
   sheet.querySelector("[data-close]").onclick = () => { agRecap = null; agMon = 0; agSel = null; closeSheet(); };
   Tele.ev("agenda", { a: "buka", n: R.now.length, belum: Rekom.pending(R) });
 }

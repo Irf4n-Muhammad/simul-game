@@ -75,26 +75,13 @@ function showDilemma() {
   sheet.querySelector("[data-later]").onclick = () => { Tele.dilema("nanti", p.key); closeSheet(); };
 }
 
-// ---- daily plan (agenda) + study
-const HOW = { nurut: "followed your plan", bosan: "followed your plan, but is getting bored", kabur: "skipped your plan and did this instead", sendiri: "chose this alone" };
-function showPlan() {
-  if (!cur) return;
-  const opts = cur.agenda_opsi || [], today = cur.agenda_hari;
-  openSheet("plan", `
-    <span class="ribbon" style="background: var(--sky)">DAILY PLAN · ${esc(cur.nama)}</span>
-    <h2>${opts.length ? "What should they do each day?" : "Nothing to plan right now."}</h2>
-    ${today ? `<p>Today: <b>${esc(today.label)}</b>. ${esc(cur.nama)} ${HOW[today.how] || ""}.</p>` : ""}
-    <div class="chips">
-      <button class="chip" data-plan="" aria-pressed="${!cur.rencana}" ${canCare() ? "" : "disabled"}>Let them choose</button>
-      ${opts.map(([id, label]) => `<button class="chip" data-plan="${esc(id)}" aria-pressed="${cur.rencana === id}" ${canCare() ? "" : "disabled"}>${esc(label)}</button>`).join("")}
-    </div>
-    ${cur.ujian ? `<p>Test on ${fmtDate(cur.ujian.hari)}. Studied together: ${cur.ujian.belajar}/3${cur.ujian.sendiri ? ` · on their own: ${cur.ujian.sendiri}` : ""}.</p><button class="secondary" id="studyBtn" ${cur.ujian.belajar >= 3 || !canCare() ? "disabled" : ""}>Study together</button>` : ""}
-    <button class="secondary" id="focusBtn" ${canCare() || focus ? "" : "disabled"}>${focus ? `Focus session running · ${focusClock(focusLeftMs())}` : cur.ujian && cur.ujian.belajar < 3 ? `Study together for ${FOCUS_MIN} minutes` : `Work side by side for ${FOCUS_MIN} minutes`}</button>
-    <button class="close" data-close="1">Close</button>`);
-  sheet.querySelectorAll("[data-plan]").forEach(b => b.onclick = () => { if (game.act(selected, "rencana:" + b.dataset.plan)) { save(); refresh(); showPlan(); } });
-  const sb = $("studyBtn"); if (sb) sb.onclick = () => { if (game.act(selected, "belajar")) { save(); refresh(); say("I'll ace it!"); showPlan(); } };
-  $("focusBtn").onclick = () => { Tele.ev("fokus", { a: "buka" }); showFocus(); };
-  sheet.querySelector("[data-close]").onclick = closeSheet;
+// ---- v81: Daily plan dihapus. Makhluknya ngisi harinya sendiri (agenda.js, "Let them choose"); belajar bareng ada di kartu Agenda,
+// sesi fokus di tombol bawah Agenda. showPlan tetap ada buat tautan lama (Soon, tur) dan sekarang membuka Agenda.
+function showPlan() { if (game) showAgenda(null); }
+// rencana dari save lama dicabut sekali lewat aksi biasa (tercatat, jadi replay tetap sama)
+function planClear() {
+  if (!game || !state) return;
+  for (const m of vm().anggota) { const c = game.home.get(m.id); if (c && c.info.rencana && c.alive(today())) game.act(m.id, "rencana:"); }
 }
 
 // ---- diary: the household's story, newest first
@@ -138,6 +125,6 @@ function showRecap(days, logs) {
 }
 
 $("famBtn").onclick = () => { hideHint(); if (game) showFamily(); };
-$("planBtn").onclick = () => { hideHint(); if (game) { agMon = 0; agSel = null; showAgenda(null); } };   // v80: tombol kalender = Agenda (Daily plan ada di dalamnya)
+$("planBtn").onclick = () => { hideHint(); if (game) { agMon = 0; agSel = null; showAgenda(null); } };   // v80: tombol kalender = Agenda
 $("diaryBtn").onclick = () => { hideHint(); if (game) showBook(); };
 

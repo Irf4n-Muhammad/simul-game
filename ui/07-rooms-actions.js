@@ -56,6 +56,7 @@ function careUi() {
     if (roomIx !== CARE_ROOM[i.id]) setRoom(CARE_ROOM[i.id]);
     if (!i.done) setTimeout(() => careDo(i), 220);
   });
+  if (typeof careRings === "function") careRings();
   const it = careItemFor(r.act);
   if (it) {
     const lbl = it.full ? "Fed" : it.done ? ({ mandi: "Clean", tidur: "Tucked in" }[it.id] || "Done") : !it.open ? "After noon" : it.label + (it.overdue ? " (late)" : "");
@@ -69,7 +70,7 @@ const COACH = [
   { on: "poke", el: () => null, text: n => `This is <b>${n}</b>. Tap them to say hi.` },
   { on: "care", el: () => $("actBtn"), text: n => `${n} is hungry. Tap <b>${$("actBtn").dataset.lbl || "the big button"}</b> to feed them, and pick what they eat.` },
   { on: "room", el: () => $("next"), text: () => `Tap the arrow or swipe to visit the other rooms. Each one has its own care.` },
-  { on: "ok", el: () => $("careStrip"), text: n => `These are today's care tasks. <b>Morning</b>: breakfast and a bath. <b>Evening</b>: dinner and bedtime. Missing one day is fine, ${n} manages. Miss them day after day and ${n} gets tired and does worse at big moments. Going away? Tell the family in <b>Family</b>.` },
+  { on: "ok", el: () => $("needs"), text: n => `These rings are ${n}'s needs. An <b>orange dot</b> means a care task is due: tap the ring to do it. <b>Morning</b>: breakfast and a bath. <b>Evening</b>: dinner and bedtime. Missing one day is fine, ${n} manages. Miss them day after day and ${n} gets tired and does worse at big moments. Going away? Tell the family in <b>Family</b>.` },
   { on: "ok", phone: true, el: () => $("lifeBtn"), text: n => `Your <b>phone</b> starts small: family chat, photos and the calendar. New apps show up as ${n} grows.` },
   { on: "ok", el: () => null, text: n => `Time here runs like real time. Come back ${careHalfNow() ? "tomorrow morning for breakfast" : "this evening for dinner and bedtime"}. ${n} will be waiting.` },
 ];
