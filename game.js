@@ -106,6 +106,7 @@
       this.live_day = null;
       this.home = new E.Household(state.akun, new HumanGuardian(this));
       this.home.found("makhluk-001", state.nama || null);
+      this.home.ilmu_from = state.ilmu_from ?? null;   // v82 ilmu.js: les dan bintang yang nyala sendiri hidup mulai hari ini (save lama tetap sama)
       this.pending = null;
       this.half_now = 1; // 0 = pagi, 1 = malam (diisi UI dari jam; simulasi tanpa jam dianggap hari penuh)
       this._half = 0;

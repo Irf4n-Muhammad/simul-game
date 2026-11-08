@@ -8,7 +8,7 @@ function agendaSnap() {
   if (!game) return null;
   const d = today();
   const members = vm().anggota.map(m => { const h = game.home.get(m.id); return { id: m.id, nama: m.nama, born: m.born, alive: !!h && h.alive(d) && !("keluar" in h.info), info: h ? h.info : {}, st: h && h.st ? h.st : null }; });
-  return { d, members };
+  return { d, members, ilmu: ilmuOn() };
 }
 function agendaCards() { const S = agendaSnap(); return S ? Rekom.cards(S) : { now: [], soon: [] }; }
 const AGENDA_SOON = 4, AGENDA_SOON_DAYS = 30;
@@ -39,6 +39,11 @@ function agEvents(R, S, d) {
       ? { kind: "event", lbl: c.lbl, short: school ? "Enrol closes" : c.short, ic: c.ic, tx: school ? `Enrolment closes. ${c.tx}.` : `${c.short} day for ${c.nama}`, sub: c.why, k: c.k, card: c.k }
       : { kind: "deadline", lbl: c.lbl, short: c.short, ic: c.ic, tx: school ? `Last day to choose ${c.nama}'s school` : `${c.short} day for ${c.nama}`, sub: c.why, k: c.k, card: c.k });
     if (c.startDay != null) startEv(c, c.startDay);
+  }
+  // les yang lagi jalan atau sudah didaftar: tiap hari sesi kelihatan di kalender (v82)
+  if (S && ilmuOn()) for (const m of vm().anggota) {
+    const h = game.home.get(m.id), I = h && h.st && h.st.ilmu; if (!I) continue;
+    for (const k of I.kursus) { const K = Ilmu.COURSES[k.id]; Ilmu.schedule(k).forEach((gd, j) => { if (j >= k.n && gd >= d) add(gd, { kind: "event", lbl: "CLASS", short: K.name, ic: "📘", tx: `${m.nama}: ${K.name}, session ${j + 1} of ${Ilmu.SESI.length}`, sub: `${Ilmu.TIER[K.lvl]} class. Each session costs a little energy and mood.`, k: "lesi:" + m.id + ":" + k.id + ":" + j, cid: m.id }); }); }
   }
   for (const i of R.soon) {
     add(i.day, { kind: "open", lbl: i.lbl, short: i.short, ic: i.ic, tx: i.tx, sub: `Open until ${agDay(i.close)}: that's the week to compare the three schools and send one form. ${agCap(i.sub)}.`, k: i.k });
@@ -123,7 +128,7 @@ function showAgenda(recap) {
       ${o.like ? `<p class="ag-like">${esc(o.like)}</p>` : ""}
       ${o.gets ? `<div class="ag-gets"><em>What ${esc(c.nama)} gets</em>${o.gets.map(([g, t]) => `<span class="${G[g] || "eq"}"><i>${g}</i>${esc(t)}</span>`).join("")}</div>` : ""}
       ${o.star && c.starWhy && !o.picked ? `<p class="ag-why"><b>Why we recommend it:</b> ${esc(c.starWhy)}</p>` : ""}
-      <button class="ag-pick" data-ag="${ix}:${j}" ${canCare() && !o.picked ? "" : "disabled"}>${o.picked ? (c.lbl === "SCHOOL" ? "✓ Enrolled here" : "✓ Done") : c.done ? "Switch to this school" : esc(c.pickLabel || o.label)}</button>
+      <button class="ag-pick" data-ag="${ix}:${j}" ${canCare() && !o.picked && (!o.price || (wallet() && wallet().koin >= o.price)) ? "" : "disabled"}>${o.picked ? (c.lbl === "SCHOOL" ? "✓ Enrolled here" : "✓ Done") : c.lbl === "SCHOOL" && c.done ? "Switch to this school" : esc(o.btn || c.pickLabel || o.label)}</button>
     </div>`;
   const card = (c, ix) => {
     const opts = c.opts.map((o, j) => [o, j]).sort((a, b) => (b[0].picked - a[0].picked) || (b[0].star - a[0].star));
@@ -132,8 +137,9 @@ function showAgenda(recap) {
       <div class="ag-head">${c.done ? `<i class="days ok"><b>✓</b><small>done</small></i>` : left(c.left)}<span class="grow"><b><em class="k">${esc(c.lbl)}:</em> ${esc(c.tx)}</b>
         <small class="sub">${c.done ? "" : `Closes ${esc(agDay(c.day))} · `}${esc(c.why)}</small></span></div>
       ${c.study != null ? `<div class="ag-steps">${Array.from({ length: Rekom.STUDY_MAX }, (_, k) => `<i class="${k < c.study ? "on" : ""}"></i>`).join("")}<small>${c.study}/${Rekom.STUDY_MAX} evenings</small></div>` : ""}
-      ${many ? `<p class="ag-hint">${c.opts.length} options. Read them, then press the button on the one you want.</p>` : ""}
-      ${opts.length ? `<div class="ag-choices">${opts.map(([o, j]) => choice(c, o, ix, j)).join("")}</div>` : ""}
+      ${many && !(c.more === "les" && c.done) ? `<p class="ag-hint">${c.more === "les" ? `The ${c.opts.length} classes that fit best right now. Press the button on the one you want.` : `${c.opts.length} options. Read them, then press the button on the one you want.`}</p>` : ""}
+      ${opts.length && !(c.more === "les" && c.done) ? `<div class="ag-choices">${opts.map(([o, j]) => choice(c, o, ix, j)).join("")}</div>` : ""}
+      ${c.more === "les" ? `<button class="secondary" data-agles="${esc(c.cid)}">See all classes for ${esc(c.nama)}</button>` : ""}
     </div>`;
   };
   const row = (i, ix) => `<button class="line ahead${i.sure === false ? " maybe" : ""}" data-agsoon="${ix}">${left(i.day - d)}<span class="grow"><b><em class="k">${esc(i.lbl || "SOON")}:</em> ${esc(i.tx)}</b><small class="sub">${esc(fmtDate(i.day))}${i.sub ? " · " + esc(i.sub) : ""}</small></span></button>`;
@@ -148,17 +154,20 @@ function showAgenda(recap) {
     ${rc}
     <h2>Coming up</h2>
     ${soon.length ? `<div class="list">${soon.map(row).join("")}</div>` : `<p class="muted">Nothing with a date in the next ${AGENDA_SOON_DAYS} days.</p>`}
-    <div class="ag-more"><button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agFocus">${focus ? `Focus session · ${focusClock(focusLeftMs())}` : `Focus together ${FOCUS_MIN} min`}</button></div>
+    <div class="ag-more">${ilmuOn() && cur.umur >= Ilmu.MIN_AGE ? `<button class="secondary" id="agLes">Classes</button><button class="secondary" id="agSkills">Skill book</button>` : ""}<button class="secondary" id="agAhead">Everything ahead</button><button class="secondary" id="agFocus">${focus ? `Focus session · ${focusClock(focusLeftMs())}` : `Focus together ${FOCUS_MIN} min`}</button></div>
     <button class="big" data-close="1">Go to ${esc(cur.nama)}</button>`);
   sheet.querySelectorAll("[data-ag]").forEach(b => b.onclick = () => {
     const [i, j] = b.dataset.ag.split(":").map(Number), c = R.now[i], o = c && c.opts[j];
     if (!o) return;
     if (c.cid !== selected) select(c.cid);
     Tele.ev("agenda", { a: "pilih", k: c.k.split(":")[0], o: o.id, star: o.star ? 1 : 0, sisa: c.left });
-    if (game.act(c.cid, o.act)) { drainNoon(); save(); refresh(); showAgenda(); if (o.act === "belajar") say("I'll ace it!"); }
+    if (o.price && (!wallet() || wallet().koin < o.price)) return;
+    if (game.act(c.cid, o.act)) { if (o.price) wallet().koin -= o.price; drainNoon(); save(); refresh(); showAgenda(); if (o.act === "belajar") say("I'll ace it!"); else if (o.price) say(`${o.label}? Okay!`); }
   });
+  sheet.querySelectorAll("[data-agles]").forEach(b => b.onclick = () => showLes(b.dataset.agles));
   sheet.querySelectorAll("[data-agsoon]").forEach(b => b.onclick = () => { const i = soon[+b.dataset.agsoon]; if (i && i.go) aheadGo(i); else showAhead(); });
   $("agAhead").onclick = () => showAhead();
+  if ($("agLes")) { $("agLes").onclick = () => showLes(); $("agSkills").onclick = () => showSkills(); }
   sheet.querySelectorAll("[data-calmon]").forEach(b => b.onclick = () => { agMon += +b.dataset.calmon; agSel = null; showAgenda(); });
   const toCard = k => { const el = k && sheet.querySelector(`[data-card="${CSS.escape(k)}"]`); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return !!el; };
   sheet.querySelectorAll("[data-calday]").forEach(b => b.onclick = () => { const v = +b.dataset.calday; agSel = agSel === v ? null : v; showAgenda(); const el = sheet.querySelector(".cal-day"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); });

@@ -606,6 +606,27 @@ svg { stroke: currentColor; }
 .ag-choice.star .ag-pick { background: var(--accent); }
 .ag-pick:disabled { background: transparent; color: var(--good, #6BA368); border: 1.5px solid var(--good, #6BA368); }
 .ag-choice:not(.picked) .ag-pick:disabled { color: var(--ink-soft); border-color: var(--line); }
+/* v82: les dan buku skill (ui/31c-les.js) */
+.bk-btns { display: flex; gap: 6px; }
+.les-tier { display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--c); border-radius: 999px; padding: 2px 7px; vertical-align: 1px; margin-left: 4px; }
+.ag-ch-h small .les-tier { margin-left: 0; }
+.ag-pick.sec { background: #fff; color: var(--ink); border: 1.5px solid var(--line); margin-top: -2px; }
+.les-grp { border: 1px solid var(--line); border-radius: 14px; background: #fff; margin-bottom: 8px; overflow: hidden; }
+.les-grp .ag-choices { padding: 0 10px 10px; }
+.les-gh { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; background: none; padding: 11px 12px; text-align: left; color: var(--ink); }
+.les-gh span { display: flex; flex-direction: column; gap: 2px; } .les-gh b { font-size: 15px; font-weight: 800; } .les-gh small { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.les-gh i { font-style: normal; font-size: 20px; font-weight: 700; color: var(--ink-soft); }
+.les-grp.open { border-color: var(--ink); }
+.muted.small, p.small { font-size: 12.5px; }
+.sk-list { display: flex; flex-direction: column; gap: 8px; }
+.sk-row { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.sk-h { display: flex; align-items: center; gap: 6px; } .sk-h b { font-size: 15px; font-weight: 800; }
+.sk-part { display: flex; flex-direction: column; gap: 4px; }
+.sk-part em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+.sk-part small { font-size: 12.5px; font-weight: 600; color: var(--ink); } .sk-paths { color: var(--ink-soft) !important; }
+.sk-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(46,42,38,.1); overflow: hidden; }
+.sk-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+.sk-bar u { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; text-decoration: none; }
 .ag-steps { display: flex; align-items: center; gap: 5px; } .ag-steps i { width: 26px; height: 8px; border-radius: 4px; background: var(--line); } .ag-steps i.on { background: var(--good, #6BA368); }
 .ag-steps small { margin-left: 4px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
 .ag-recap .linkish { border: 0; background: none; padding: 2px 0; font-size: 12.5px; font-weight: 700; color: var(--accent); }
@@ -1541,6 +1562,7 @@ svg { stroke: currentColor; }
 <script src="bank.js"></script>
 <script src="status.js"></script>
 <script src="tree.js"></script>
+<script src="ilmu.js"></script>
 <script src="rasi.js"></script>
 <script src="cosmetics.js"></script>
 <script src="career.js"></script>

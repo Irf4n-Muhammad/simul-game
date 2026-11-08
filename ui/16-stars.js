@@ -104,7 +104,7 @@ function skyResize() {
 }
 function skyRefresh() {
   const c = sky.c, v = Tree.view(c, game.home, today()); sky.v = v;
-  $("skyPts").textContent = v.points;
+  $("skyPts").textContent = v.points; $("skyPts").parentElement.hidden = ilmuOn();
   $("skySub").textContent = `${v.have.length} of ${Tree.count} stars lit · ${v.hidden} still dark`;
   skyPanel();
 }
@@ -146,6 +146,11 @@ function skyPanel() {
   if (!sky.sel) {
     const L = v.legacy;
     const verb = sky.skin === "pencil" ? "write it in" : "ink it";
+    if (ilmuOn()) {   // v82: nggak ada poin lagi, bintang nyala sendiri dari ilmu (ilmu.js)
+      panel.innerHTML = `<p class="sky-hint">Stars light up on their own as ${esc(c.name)} learns.</p><small class="sky-meta">A topic lights at 10, a class at Intermediate (25), a job at Senior (55), a legend at Master (85). Classes and what ${esc(c.name)} chooses to do each day are what move them.</small><button class="sky-diary" id="skySkills">Skill book</button>`;
+      $("skySkills").onclick = () => { closeSky(); showSkills(c.id); };
+      return;
+    }
     panel.innerHTML = `<p class="sky-hint">${v.points ? `Tap a red star to ${verb}.` : `Points come from growing up, practice and big moments.`}</p>
       <small class="sky-meta">${v.parts.age} from growing up · ${v.parts.practice} from practice · ${v.parts.moments} from big moments · ${v.parts.mastery} from mastery</small>${L ? `<small class="sky-meta">Family path from ${esc(L.from)}: ${L.path.map(id => esc(Tree.NODES[id].label)).join(" → ")}. Each star on it costs 1 point less.</small>` : ""}<button class="sky-diary" id="skyDiary">Family diary</button>`;
     $("skyDiary").onclick = () => { closeSky(); showDiary(); };
@@ -168,6 +173,14 @@ function skyPanel() {
     <ul>${n.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
     ${skyBend(sky.sel, v)}${skyCrowd(sky.sel)}
     ${st.s === "owned" ? `<small class="sky-meta">${why}</small>${erase ? `<button class="sky-go erase" id="skyErase"><i></i><span>Hold to erase · ${Tree.refundOf(c, sky.sel)} pt${Tree.refundOf(c, sky.sel) === 1 ? "" : "s"} back</span></button><small class="sky-meta">Pencil rubs out until the stars read the book.</small>` : ""}` : `<button class="sky-go" id="skyGo" ${why ? "disabled" : ""}><i></i><span>Hold to ${sky.skin === "pencil" ? "write it in" : "ink it"} · ${st.cost} pt${st.cost === 1 ? "" : "s"}</span></button>${why ? `<small class="sky-meta">${why}</small>` : ""}`}`;
+  if (ilmuOn() && st.s !== "owned") {
+    const I = Ilmu.il(c.st), LV = { field: [10, "a topic"], spec: [25, "Intermediate"], niche: [55, "Senior"], legend: [85, "Master"] }[n.tier];
+    const node = n.tier === "legend" ? n.req[0] : sky.sel, now = LV ? Math.round(Ilmu.eff(I, node)) : null, K = Ilmu.COURSES[node];
+    const go0 = $("skyGo"); if (go0) go0.remove();
+    panel.insertAdjacentHTML("beforeend", `<small class="sky-meta">${LV ? `Lights up on its own at ${LV[0]} (${LV[1]}). ${esc(c.name)} is at ${now} on this path.` : n.tier === "combo" ? "Lights up on its own once both stars it joins are lit." : n.reqAny ? "Lights up on its own after a star below it, if the talent is there." : "Lights up on its own when the time comes."}</small>${K ? `<button class="sky-diary" id="skyLes">${esc(K.name)} classes</button>` : ""}`);
+    const lb = $("skyLes"); if (lb) lb.onclick = () => { closeSky(); showLes(c.id); };
+    return;
+  }
   const go = $("skyGo"); if (go) skyHold(go, skyLight);
   const er = $("skyErase"); if (er) skyHold(er, skyErase);
 }
@@ -290,7 +303,7 @@ function skyPaper(ts, cam, skin, ease, main) {
       ctx.globalAlpha = ease; (big ? skySpk(ctx, x, y, base * (n.tier === "root" ? 1.35 : 1.7), 0.26) : skyDia(ctx, x, y, base * 1.25)); ctx.fillStyle = C.own; ctx.fill(); ctx.strokeStyle = C.ownS; ctx.lineWidth = 1.2; ctx.stroke();
       skyDia(ctx, x, y, base * 0.45); ctx.fillStyle = C.hi; ctx.fill();
     } else {
-      const aff = s === "open" && v.nodes[id].cost <= v.points, dim = s === "glimpse" || s === "gated";
+      const aff = s === "open" && v.nodes[id].cost <= v.points && !ilmuOn(), dim = s === "glimpse" || s === "gated";
       ctx.globalAlpha = (dim ? 0.4 : s === "open" ? 0.95 : 0.6) * ease; (big ? skySpk(ctx, x, y, base * (n.tier === "root" ? 1.15 : 1.4), 0.26) : skyDia(ctx, x, y, base * 1.05));
       ctx.fillStyle = C.hi; ctx.fill(); ctx.strokeStyle = s === "open" ? C.open : C.fog; ctx.lineWidth = 1.4; ctx.stroke();
       if (aff) { ctx.globalAlpha = (0.35 + 0.55 * tw) * ease; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, base * 2.4, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); }
@@ -323,7 +336,7 @@ function skyPaper(ts, cam, skin, ease, main) {
   ctx.globalAlpha = 1;
 }
 function treeReady(c) {
-  if (!c || !c.st || !c.alive(today()) || "keluar" in c.info) return false;
+  if (!c || !c.st || !c.alive(today()) || "keluar" in c.info || ilmuOn()) return false;
   const v = Tree.view(c, game.home, today());
   return Object.values(v.nodes).some(n => n.s === "open" && n.cost <= v.points);
 }

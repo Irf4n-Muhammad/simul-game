@@ -73,6 +73,27 @@
           pickLabel: "Study together",
         });
       }
+      // ---- les (v82, ilmu.js): gelombang kelas tiap 2 minggu; daftar paling lambat sehari sebelum mulai, kelewat = gelombang berikutnya
+      const IL = S.ilmu && (typeof module !== "undefined" ? require("./ilmu.js") : globalThis.Ilmu);
+      if (IL && m.st && age >= IL.MIN_AGE) {
+        const I = IL.il(m.st), wave = IL.nextWave(S.d), last = wave - 1;
+        const going = I.kursus.filter(k => k.n < IL.SESI.length && k.mulai <= S.d), next = I.kursus.filter(k => k.mulai === wave);
+        if (!going.length) {
+          const rec = IL.recommend(m, S.d, 3);
+          if (rec.length || next.length) now.push({
+            k: "les:" + m.id, cid: m.id, nama: m.nama, ic: "📘", lbl: "CLASSES",
+            tx: next.length ? `${m.nama} starts ${next.map(k => IL.COURSES[k.id].name).join(" and ")} ${fmt(wave)}` : `New classes start ${fmt(wave)}`,
+            why: next.length ? `You can add another class until the day before.` : `Miss it and the next round starts two weeks later.`,
+            short: "Classes", day: last, left: last - S.d, done: !!next.length, urgent: false, starWhy: rec[0] ? `Right level for ${m.nama}, and the fastest progress of the classes open now.` : "",
+            pickLabel: "Enrol",
+            opts: rec.map((k, j) => ({ id: k.id, label: k.name, ic: ["🌱", "📘", "🎓"][k.lvl], where: `${IL.TIER[k.lvl]} class on ${k.flabel} · 8 sessions over 4 weeks`, price: k.price,
+              like: `${m.nama} on this topic: ${IL.MINAT_WORD(k.minat)}.`,
+              gets: [["+", `About +${k.per} ${k.tlabel} per session (up to +${k.total} over the course)`], ["−", `Energy −${k.sport ? 12 : 8} and mood −2 each session`]],
+              act: "les:" + k.id, star: j === 0, picked: false, btn: `Enrol · 🪙 ${k.price}` })),
+            more: "les",
+          });
+        }
+      }
     }
     now.sort((a, b) => (a.done - b.done) || (a.left - b.left));
     soon.sort((a, b) => a.day - b.day);
