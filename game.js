@@ -81,6 +81,9 @@
       this.tap = 0;
     }
     attends(day) { return this.game.attended.has(day); }
+    // v80: pertanyaan ini pernah dijawab (atau dilewati) di save ini? Dipakai anak.js supaya save lama yang sudah memilih sekolah lewat
+    // dilema tetap sama waktu diputar ulang, sedangkan pemain baru daftar lewat Agenda.
+    answered(cid, day, question) { return `${cid}|${day}|${question}` in this.game.state.jawaban; }
     decide(x, question, options, window) {
       const key = `${x.c.id}|${x.day}|${question}`;
       const got = this.game.state.jawaban[key];
@@ -474,6 +477,22 @@
         const seen = (c.info.trip_ke ||= []);
         if (!seen.includes(town)) { seen.push(town); x.remember(`Took the train to ${town} with you.`); }
         (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["trip"]));
+        return true;
+      }
+      if (kind.startsWith("daftar:sekolah:")) {
+        // v80 Agenda: daftar sekolah selama jendela pendaftaran (anak.js DAFTAR, umur 46–53). Boleh ganti pilihan selama masih buka.
+        const A = (typeof module !== "undefined") ? require("./anak.js") : globalThis.Anak;
+        const id = kind.slice(15), S = A && A.SEKOLAH[id], age = day - c.born;
+        if (!S || age < A.DAFTAR.buka || age > A.DAFTAR.tutup || c.fired.pilih_sekolah) return false;
+        const prev = c.info.sekolah_pilihan;
+        if (prev && prev.id === id) return false;
+        c.info.sekolah_pilihan = { id, d: day, oleh: "wali" };
+        const x = new E.Ctx(c, day, E.seed_rng("daftar", c.id, day), this.home, true);
+        x.say(prev ? `You change the form: ${x.n} will go to ${S.nama}, ${S.di}, instead.` : S.teks(x.n) + ` School starts on day ${c.born + A.DAFTAR.masuk + 1}.`);
+        if (!prev) x.remember(`Enrolled at ${S.nama}.`);
+        // sekolah dekat = teman satu jalan (Ramah +1, sama seperti pilihan lama di umur 56); pindah dari situ = bonusnya dicabut lagi
+        if (id === "dekat") x.trait("ramah", 1); else if (prev && prev.id === "dekat") x.trait("ramah", -1);
+        (this._sink || (this.noon_logs ||= [])).push(E.make_log(c, day, x, x.phase, true, x.log, ["kecil"], ["daftar_sekolah"]));
         return true;
       }
       if (kind === "peluk") {

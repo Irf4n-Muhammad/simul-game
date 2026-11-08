@@ -92,11 +92,23 @@
   // ask(): penjaga nggak buka app = default (self_pick) yang jalan; `safe` disamain dengan default supaya wakil "aman" nggak milih yang lain
   const oleh = g => g === null ? "sendiri" : "wali";
   const SEKOLAH_Q = n => `Which school for ${n}? Three letters came.`;
+  // v80 Agenda: pendaftaran sekolah jadi jendela. Kabar muncul umur 39 (Agenda "Coming up"), pendaftaran buka 46, tutup 53, masuk 60.
+  // Pemain daftar lewat aksi "daftar:sekolah:<id>" (game.js) selama jendelanya buka. Yang kelewat masuk sekolah dekat rumah.
+  const DAFTAR = { kabar: 39, buka: 46, tutup: 53, masuk: 60 };
   // pilih sekolah: umur 56–59 (bayi), di hari yang nggak ada tonggak bayi; lewat 60 nggak ditanya lagi (sekolahOf = dekat)
   FORCED.push({ id: "pilih_sekolah",
     cond: x => !x.c.fired.pilih_sekolah && !x.c.info.sekolah_pilihan && x.age >= 56 && x.age < 60 && x.c.info.tg_hari !== x.day && x.c.info.ex_hari !== x.day,
     run: x => {
       x.c.fired.pilih_sekolah = 1;
+      // v80: pemain sungguhan (HumanGuardian punya answered) daftar lewat Agenda. Pertanyaan lama cuma diputar ulang buat save yang
+      // dulu sudah menjawabnya; selain itu pendaftarannya kelewat. Wali simulasi (GuardianBot) tetap ditanya seperti sebelum v80.
+      const G = x.guardian;
+      if (G && typeof G.answered === "function" && !G.answered(x.c.id, x.day, SEKOLAH_Q(x.n))) {
+        x.c.info.sekolah_pilihan = { id: "dekat", d: x.day, oleh: "kelewat" };
+        x.trait("ramah", 1);
+        x.remember(`Enrolled at ${SEKOLAH.dekat.nama}: the enrolment forms were never sent.`);
+        return `Enrolment closed a few days ago and no form went in, so ${x.n} gets a place at ${SEKOLAH.dekat.nama}, two streets away. The neighbours' kids go there; now so does ${x.n}.`;
+      }
       x.say(`Three letters on the mat, one from each school that takes creatures born this week. ${x.n} chews the corner of one. Enrolment closes tomorrow.`);
       const [g, final] = tanya(x, SEKOLAH_Q(x.n), { dekat: "Old Town Primary, round the corner", seni: "Hillside Arts & Sport, up the hill", favorit: "Riverside Academy, across the bridge" },
         { suportif: "dekat", tegas: "favorit" }, "dekat", { obey: false, safe: "dekat", alone: "so the form went in for the school round the corner, where the neighbours' kids go." });
@@ -379,7 +391,7 @@
   }
   const next = (c, day) => view(c, day).find(v => !v.done) || null;
 
-  const API = { KALENDER, LIST, ORANG, GRADE, SEKOLAH, TUJUAN, dayOf, tinggi, view, calendar, upcoming, next, sahabatOf, sekolahOf, liburanOf };
+  const API = { KALENDER, LIST, ORANG, GRADE, SEKOLAH, SEKOLAH_Q, DAFTAR, TUJUAN, dayOf, tinggi, view, calendar, upcoming, next, sahabatOf, sekolahOf, liburanOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Anak = API;
 })();

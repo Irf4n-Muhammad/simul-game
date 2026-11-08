@@ -163,7 +163,7 @@ function showLife(tab = lifeTab) {
     const c = game.home.get(cur.id), P = Career.profile(c, game.home, today()), feed = Career.feed(c, game.home, today()).slice(0, 2);
     openSheet("life", `${lifeHead(tab)}
       <div class="row"><h2>${esc(cur.nama)}</h2><span class="coins">${coins(s.wallet)}</span></div>
-      <div class="box"><h3>${esc(P.headline)}</h3><small>${s.job ? `${coins(s.job.pay)}/day · ${s.job.share} of creatures do this kind of work` : P.open ? `If you don't pick a job, ${esc(cur.nama)} applies somewhere alone after a few days.` : "Skills grow from the daily plan. Pick it with the calendar button."}</small></div>
+      <div class="box"><h3>${esc(P.headline)}</h3><small>${s.job ? `${coins(s.job.pay)}/day · ${s.job.share} of creatures do this kind of work` : P.open ? `If you don't pick a job, ${esc(cur.nama)} applies somewhere alone after a few days.` : "Skills grow from the daily plan. Find it in the agenda, behind the calendar button."}</small></div>
       ${s.moments.map(m => `<button class="line" data-moment="${esc(m.id)}"><span class="grow"><b>${esc(m.label)}</b><small class="sub">${fmtWhen(m.day)} · needs ${m.req} · now ${m.est.skill + m.est.talent + m.est.cond + (m.est.tree || 0)} + dice</small></span></button>`).join("")}
       ${P.offers.length ? `<div class="box"><h3>✉ ${P.offers.length} recruiter message${P.offers.length > 1 ? "s" : ""}</h3><small>Waiting in Burrow.</small></div>` : ""}
       ${feed.length ? `<div class="fieldset"><span class="lbl">On Burrow</span>${feed.map(p => `<div class="line"><span class="grow"><b>${esc(p.who)}</b><small class="sub">${esc(p.text)}</small></span></div>`).join("")}</div>` : ""}
