@@ -40,10 +40,13 @@ function boot() {
   if (state.tut == null) state.tut = oldSave ? 99 : 0;
   // v82: les, ilmu per jalur, dan bintang yang nyala sendiri hidup mulai hari ini buat save lama (riwayatnya tetap sama), dari awal buat yang baru
   if (state.ilmu_from == null) state.ilmu_from = oldSave ? liveDay() : 0;
+  // v86: saran harian nggak ditolak lagi, kalau makhluknya nggak mau harganya mood dan ikatan (game.mauOf); save lama mulai hari ini
+  if (state.mau_from == null) state.mau_from = oldSave ? liveDay() : 0;
   save();
   game = new GameLayer.Game(state);
   // tiap tindakan pemain dicatat jenisnya (bukan ke siapa) buat telemetry
   const _act = game.act.bind(game); game.act = (...a) => { const ok = _act(...a); Tele.aksi(a[1], ok); return ok; };
+  game.onReluctant = t => { setTimeout(() => say(`${t.quote} (😊 −${t.mood})`, 3000), 150); };
   game.onRefuse = t => { drainNoon(); closeSheet(); if (PH) closePhone(true); setTimeout(() => { play("shake", 600); say(t.quote, 3500); }, 100); };
   game.half_now = careHalfNow();
   const t = liveDay();

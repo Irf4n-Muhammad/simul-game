@@ -16,7 +16,7 @@ function phWard(c, arg) {
   const body = { today: wdToday, team: wdTeam, career: wdCareer }[tab](cc, v, day);
   return `<div class="ba" style="--ba:${P.color};--ba-soft:${P.soft}">
     <header class="ba-head">${demo ? `<button class="ba-x" data-vn-demo="1" aria-label="Back">‹</button>` : ""}<span class="ba-ic">${P.ic}</span><span class="pa-grow"><b>${esc(v.co)}</b><small>${demo ? `Test mode · sample ${esc(jl)}` : `${esc(P.app)} · ${esc(v.title)}`}</small></span>${demo ? `<button class="ba-next" data-wd="next">Next day ›</button>` : ""}</header>
-    <div class="ba-body">${body}</div>
+    <div class="ba-body">${demo ? "" : mauNote(cc, "work")}${body}</div>
     <nav class="ba-tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-wd="tab:${k}">${esc(l)}</button>`).join("")}</nav>
     ${baIntro("work-" + v.job, [[P.ic, `${cc.name} is ${/^[aeiou]/i.test(jl) ? "an" : "a"} ${jl} at ${v.co}`, P.intro[0]],
       ["📋", "Today shows the shift", `${P.intro[1].replace("{n}", cc.name)} Your advice changes tomorrow, not today.`],

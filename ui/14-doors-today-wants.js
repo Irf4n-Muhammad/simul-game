@@ -62,7 +62,7 @@ const TOURS = {
   // v46: app School (anak.js): pintu umur 60, kartu intro di app, "?" di app
   school: { el: () => $("lifeBtn"), steps: n => [`<b>School</b> is on the tablet now: ${n}'s timetable, quizzes and report cards. The dates are the same for every creature born the same week.`, `The dates are set; the marks aren't. A study evening before a quiz still counts, and so does who ${n} sits next to.`] },
   burrow: { el: () => $("lifeBtn"), steps: n => [`${n} has a phone of their own now. <b>Burrow</b> is where the town's jobs are: a profile, offers, and news from people they know.`, `You can suggest a job. ${n} decides whether to apply.`] },
-  bazaar: { el: () => $("lifeBtn"), steps: n => [`The <b>Bazaar</b> is open on the phone: things to buy, new and second-hand, and limited drops.`, `It's ${n}'s money. You can suggest; they can say no.`] },
+  bazaar: { el: () => $("lifeBtn"), steps: n => [`The <b>Bazaar</b> is open on the phone: things to buy, new and second-hand, and limited drops.`, `It's ${n}'s money. You suggest, and it happens; if ${n} isn't keen that day, it costs a little mood.`] },
   // v44.1: bukan pintu, tapi tur yang sama: baris Soon/Someday (muncul sendiri saat barisnya pertama tampil, diulang lewat "?" di lembar What's ahead)
   fokus: { el: () => $("planBtn"), steps: n => [`<b>Focus together</b> is at the bottom of your calendar: ${FOCUS_MIN} minutes, your work next to ${n}'s. Put the phone down; ${n} stays on screen.`, `Finish the clock before a quiz and it counts as a study evening, the same as the Study button. No quiz? Then it's just company.`] },
   balik: { el: () => $("today"), steps: n => [`Once a week ${n} turns it around and asks about <b>you</b>. One tap to answer, nothing to get right.`, `It's not for points. ${n} just wants to know, and reacts the way ${n} would. Your answers stay on this phone.`] },
@@ -125,8 +125,8 @@ const PH_INTRO = {
   chirp: n => [["🐦", "Chirp", "The town's feed. Neighbours post here, and news lands here first."], ["💬", "Your family too", `One day ${n} will post here. What they say is up to them.`]],
   stars: n => [["✨", "Stars", `${n}'s talents, drawn as constellations.`], ["🔭", "Light one up", `Points come from what ${n} actually does. Tap a star next to a lit one to light it.`]],
   mag: () => [["📰", "The Magazine", "A new issue every month: the town, its people, and sometimes your family."]],
-  burrow: n => [["🐾", "Burrow", `The town's work network: a profile, job offers, and news from people ${n} knows.`], ["🤝", "You suggest, they decide", `Point ${n} at a job. They apply if they like it.`]],
-  bazaar: n => [["🛍️", "The Bazaar", "New things, second-hand finds and limited drops."], ["🪙", "Their money", `It's ${n}'s wallet. Suggest a buy; they can say no.`]],  // v45: rak "Later" di layar depan tablet/HP (ui/35-tonggak.js)
+  burrow: n => [["🐾", "Burrow", `The town's work network: a profile, job offers, and news from people ${n} knows.`], ["🤝", "You suggest, they decide", `Point ${n} at a job and they apply. If they're not keen that day, it costs a little mood.`]],
+  bazaar: n => [["🛍️", "The Bazaar", "New things, second-hand finds and limited drops."], ["🪙", "Their money", `It's ${n}'s wallet. Suggest a buy; if they're not keen, it costs a little mood.`]],  // v45: rak "Later" di layar depan tablet/HP (ui/35-tonggak.js)
   later: n => [["🔒", "Later", `The grey apps open when ${n} is older. The day is written under each one. Nothing to buy, just time.`]],
   // v46: app School (anak.js)
   school: n => [["🏫", "School", `${n}'s timetable for the year: quizzes, report cards, a week off, the school show. The same days for every creature born the same week.`], ["📝", "What's not written", `The dates are set. The marks, the friends and the teacher's note are up to ${n}, and a little to you: study evenings count.`]],

@@ -55,7 +55,7 @@ function bwShow(tab, view = null) {
   const offers = Career.profile(bw.c, game.home, today()).offers.length, badge = bw.el.querySelector('.bw-nav [data-tab="jobs"] .bw-badge');
   badge.hidden = !offers; badge.textContent = offers;
   const body = $("bwBody");
-  body.innerHTML = view ? bwJob(view) : tab === "jobs" ? bwJobs() : tab === "me" ? bwMe() : bwFeed();
+  body.innerHTML = (view || tab === "jobs" ? mauNote(bw.c, "job") : "") + (view ? bwJob(view) : tab === "jobs" ? bwJobs() : tab === "me" ? bwMe() : bwFeed());
   body.scrollTop = 0;
   bwBind(body);
 }

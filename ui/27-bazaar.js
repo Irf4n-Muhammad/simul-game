@@ -54,7 +54,7 @@ function bzShow(tab, view = null) {
   bz.el.classList.toggle("detail", !!view);
   const body = $("bzBody");
   if (!view && bz.q) { body.innerHTML = bzSearch(bz.q); body.scrollTop = 0; bzBind(body); shotFill(body); return; }
-  body.innerHTML = view ? bzItem(view) : tab === "limited" ? bzLimited() : tab === "used" ? bzUsed() : tab === "mine" ? bzMine() : bzNew();
+  body.innerHTML = mauNote(bz.c, "buy") + (view ? bzItem(view) : tab === "limited" ? bzLimited() : tab === "used" ? bzUsed() : tab === "mine" ? bzMine() : bzNew());
   body.scrollTop = 0;
   bzBind(body); shotFill(body);
 }
