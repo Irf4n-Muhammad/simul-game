@@ -14,6 +14,7 @@
   const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
   const T = (typeof module !== "undefined") ? require("./tree.js") : globalThis.Tree;
   const Money = (typeof module !== "undefined") ? require("./money.js") : globalThis.Money;
+  if (typeof module !== "undefined") require("./agenda.js");   // HOOKS.agenda harus sudah ada sebelum dibungkus di bawah
   const { HOOKS, seed_rng, phase_of, storylet } = E;
   const N = T.NODES;
 
@@ -35,7 +36,12 @@
     data: "Math", lab: "Chemistry", medicine: "Biology", engineering: "Coding", strategy: "Chess", writing: "Writing", law: "Debate",
     painting: "Drawing", instrument: "Music", voice: "Singing", rhythm: "Dance", film: "Film club", public: "Public speaking", team: "Scouts" };
   const PRICE = [60, 120, 200], BASE = [3, 3, 2.5];   // Senior lebih pelan; di atas 85 (Master) setengahnya lagi
-  const SESI = [0, 3, 7, 10, 14, 17, 21, 24];             // 8 sesi, 2× seminggu, 4 minggu
+  const SESI = [0, 3, 7, 10, 14, 17, 21, 24];             // 8 sesi, 2× seminggu, 4 minggu (offset lama, buat kursus tanpa slot)
+  // v82b: hari dibagi 4 blok. Hari sekolah/kerja: Pagi–Siang sekolah atau kerja, Sore bebas, Malam di rumah. Akhir pekan Pagi–Sore bebas.
+  // Les makan satu blok: Sore di hari kerja (gantiin kegiatan bebasnya hari itu), atau Pagi di akhir pekan. Hari 0 = Minggu.
+  const BLOK = ["pagi", "siang", "sore", "malam"], BLOK_LBL = { pagi: "Morning", siang: "Midday", sore: "Afternoon", malam: "Evening" };
+  const SLOTS = [{ days: [1, 4], blok: "sore", label: "Mon & Thu afternoons" }, { days: [2, 5], blok: "sore", label: "Tue & Fri afternoons" },
+    { days: [6, 0], blok: "pagi", label: "Sat & Sun mornings" }];
   const WAVE = 14, MIN_AGE = 60;                          // kursus mulai tiap 2 minggu; mulai umur sekolah
   const fieldOf = id => { const n = N[id]; return n.tier === "field" ? id : n.field; };
   const kidsOf = id => N[id].kids.filter(k => LEVEL[N[k].tier] === LEVEL[N[id].tier] + 1 && N[k].req[0] === id);
@@ -89,7 +95,7 @@
   const minatF = v => 0.5 + v / 100 * 0.7;
 
   // perkiraan buat UI: gain per sesi dan ke mana poinnya masuk kalau ikut kursus ini sekarang
-  function preview(c, cid) {
+  function preview(c, cid, day = null) {
     const K = COURSES[cid], I = il(c.st), v = eff(I, K.node);
     const capped = v >= HI[K.lvl] - 0.001, deep = capped ? deepest(I, K.node) : null;
     // tingkat makhluk di jalur ini = yang paling dalam (Organic chemist 60 di kelas Science tetap dihitung Senior)
@@ -98,18 +104,46 @@
     const mi = minatOf(c, K.field);
     const per = target ? BASE[K.lvl] * talentF(c, K.node) * m * minatF(mi) * ((I.v[target] ?? 0) >= MASTER ? 0.5 : 1) : 0;
     const room = target ? HI[LEVEL[N[target].tier]] - (I.v[target] ?? eff(I, target)) : 0;
-    return { v: r1(v), tier: lrn, cls: K.lvl, match: m, per: r1(per), total: r1(Math.min(per * SESI.length, room)), target, tlabel: target ? N[target].label : null, capped: capped && !deep, minat: mi };
+    return { v: r1(v), tier: lrn, cls: K.lvl, match: m, per: r1(per), total: r1(Math.min(per * SESI.length, room)), slot: day == null ? null : freeSlot(I, nextWave(day)), target, tlabel: target ? N[target].label : null, capped: capped && !deep, minat: mi };
   }
 
   // ---------------------------------------------------------------- jadwal
   const nextWave = d => Math.floor(d / WAVE) * WAVE + WAVE;   // gelombang berikutnya yang mulai sesudah hari d
   const ageOk = (c, day) => c.age(day) >= MIN_AGE;
-  const active = (c, day) => c.st && c.st.ilmu ? c.st.ilmu.kursus.filter(k => k.n < SESI.length && day <= k.mulai + SESI[SESI.length - 1]) : [];
+  const active = (c, day) => c.st && c.st.ilmu ? c.st.ilmu.kursus.filter(k => k.n < SESI.length && day <= schedule(k)[SESI.length - 1]) : [];
+  // hari-hari sesinya: 8 hari pertama sejak gelombang mulai yang jatuh di hari slotnya
+  function schedule(k) {
+    if (k.slot == null) return SESI.map(s => k.mulai + s);
+    const S = SLOTS[k.slot], out = [];
+    for (let d = k.mulai; out.length < SESI.length; d++) if (S.days.includes(d % 7)) out.push(d);
+    return out;
+  }
+  // slot pertama yang nggak bentrok sama kursus yang masih jalan waktu gelombang ini mulai; -1 kalau penuh
+  function freeSlot(I, mulai) {
+    const used = new Set(I.kursus.filter(k => k.n < SESI.length && k.slot != null && schedule(k)[SESI.length - 1] >= mulai).map(k => k.slot));
+    for (let i = 0; i < SLOTS.length; i++) if (!used.has(i)) return i;
+    return -1;
+  }
+  // les yang makan blok tertentu hari ini
+  const classAt = (I, day, blok) => I.kursus.find(k => k.n < SESI.length && k.slot != null && SLOTS[k.slot].blok === blok && schedule(k)[k.n] === day) || null;
+  // isi 4 blok di satu hari buat makhluk ini (buat jadwal mingguan di UI)
+  function dayBlocks(c, day) {
+    const ph = phase_of(c.age(day)), wk = day % 7 >= 1 && day % 7 <= 5, I = c.st && c.st.ilmu;
+    const busy = !wk ? null : (ph === "anak" || ph === "remaja") && !c.has("libur", day) ? "School" : c.info.kuliah_aktif ? "College" : c.st && c.st.job && !c.info.pensiun ? "Work" : null;
+    return BLOK.map(b => {
+      if (b === "malam") return { b, tx: "Home", kind: "home" };
+      if (busy && b !== "sore") return { b, tx: busy, kind: "busy" };
+      const sl = I ? I.kursus.find(k => k.n < SESI.length && k.slot != null && SLOTS[k.slot].blok === b && schedule(k).includes(day)) : null;
+      if (sl) return { b, tx: COURSES[sl.id].name, kind: "class" };
+      return { b, tx: "Free time", kind: "free" };
+    });
+  }
   function canEnrol(c, cid, day) {
     const K = COURSES[cid];
     if (!K || !c.st || !c.alive(day) || !ageOk(c, day)) return false;
     const I = il(c.st);
     if (I.kursus.some(k => k.id === cid && k.n < SESI.length)) return false;   // lagi diambil atau sudah daftar
+    if (freeSlot(I, nextWave(day)) < 0) return false;      // jam lesnya udah penuh
     return true;
   }
   function enrol(home, c, cid, day, pay) {
@@ -118,7 +152,7 @@
       if (c.st.wallet < K.price) return false;
       Money.move(c, -K.price, "les", day);
     }
-    I.kursus.push({ id: cid, d: day, mulai: nextWave(day), n: 0, bolos: 0, gain: 0, pay: pay || "dapur", v0: r1(eff(I, K.node)) });
+    I.kursus.push({ id: cid, d: day, mulai: nextWave(day), n: 0, bolos: 0, gain: 0, pay: pay || "dapur", v0: r1(eff(I, K.node)), slot: freeSlot(I, nextWave(day)) });
     return true;
   }
 
@@ -127,9 +161,10 @@
     const c = x.c, K = COURSES[k.id], I = il(c.st), rng = seed_rng(c.id, x.day, "les", k.id);
     const mi = minatOf(c, K.field);
     k.n += 1;
-    if (x.c.needs.mood < 15 || (mi < 25 && rng.random() < 0.35)) {
+    const tired = x.c.needs.energi < 20;
+    if (x.c.needs.mood < 15 || tired || (mi < 25 && rng.random() < 0.35)) {
       k.bolos += 1;
-      I.ucap = { d: x.day, field: K.field, tx: mi < 25 ? `Do I have to go to ${K.name}? I'm staying home.` : `Too tired for ${K.name} today...`, mood: -1 };
+      I.ucap = { d: x.day, field: K.field, tx: tired ? `Too tired for ${K.name} after today...` : mi < 25 ? `Do I have to go to ${K.name}? I'm staying home.` : `Too tired for ${K.name} today...`, mood: -1 };
       x.say(`_${x.n} skips ${K.name} today (${k.n}/${SESI.length})._`);
       return;
     }
@@ -207,8 +242,9 @@
     // les yang jadwalnya hari ini
     for (const k of I.kursus) {
       if (k.n >= SESI.length) continue;
-      if (x.day - k.mulai === SESI[k.n]) { sesi(x, k); if (k.n >= SESI.length) selesai(x, k); }
-      else if (x.day > k.mulai + SESI[k.n]) { k.n += 1; k.bolos += 1; if (k.n >= SESI.length) selesai(x, k); }   // hari yang kelewat (misal sakit)
+      const D = schedule(k);
+      if (x.day === D[k.n]) { sesi(x, k); if (k.n >= SESI.length) selesai(x, k); }
+      else if (x.day > D[k.n]) { k.n += 1; k.bolos += 1; if (k.n >= SESI.length) selesai(x, k); }   // hari yang kelewat (misal sakit)
     }
     lifeWork(x);
     // nyalain bintang cuma kalau ilmunya berubah (rahasia dan kombinasi dicek seminggu sekali)
@@ -284,6 +320,17 @@
     x.remember(`Majored in ${LES[N[final].spec]}.`);
   });
 
+  // les Sore di hari kerja gantiin kegiatan bebas hari itu (sesinya sendiri jalan di HOOKS.status)
+  const _agenda = HOOKS.agenda;
+  HOOKS.agenda = x => {
+    const c = x.c;
+    if (c.st && c.st.ilmu && on(x.home, x.day) && x.day % 7 >= 1 && x.day % 7 <= 5) {
+      const k = classAt(c.st.ilmu, x.day, "sore");
+      if (k) { c.info.agenda_hari = { hari: x.day, id: "les", label: COURSES[k.id].name, how: "les" }; return; }
+    }
+    if (_agenda) _agenda(x);
+  };
+
   // ---------------------------------------------------------------- dilema: mau berhenti les
   // Minat jatuh di bawah 25 sesudah paling nggak 2 sesi: makhluknya minta keluar. Sekali per kursus.
   // Lanjut = selesaiin kursusnya (bisa nggak nurut). Berhenti = sisa sesi hangus, uang nggak balik, lega.
@@ -337,7 +384,7 @@
   function catalog(c, day) {
     const I = il(c.st), out = [];
     for (const K of Object.values(COURSES)) {
-      const p = preview(c, K.id);
+      const p = preview(c, K.id, day);
       if (K.lvl > p.tier + 1) continue;                      // Senior buat yang masih Junior: belum kelihatan
       if (K.lvl === 2 && eff(I, N[K.node].spec) < 40) continue;   // panggilan kelihatan menjelang Senior
       if (p.match === 0) continue;                           // dua tingkat di bawah: nggak ada gunanya
@@ -349,11 +396,10 @@
   function recommend(c, day, n = 3) {
     // jalur yang sudah dimulai didahulukan (lanjut lebih dalam), sesudah itu yang paling cepat maju
     const score = k => k.per + (k.v >= 10 ? 1.5 : 0) + k.lvl * 0.5;
-    return catalog(c, day).filter(k => !k.taking && !k.capped && k.match >= 1).sort((a, b) => (score(b) - score(a)) || (b.minat - a.minat)).slice(0, n);
+    return catalog(c, day).filter(k => !k.taking && !k.capped && k.match >= 1 && k.slot >= 0).sort((a, b) => (score(b) - score(a)) || (b.minat - a.minat)).slice(0, n);
   }
-  function schedule(k) { return SESI.map(s => k.mulai + s); }
 
-  const API = { TIER, LEVEL, LO, HI, MASTER, MATCH, COURSES, JUNIOR, LES, PRICE, SESI, WAVE, MIN_AGE, tierOf, matchOf, eff, down, deepest, il, preview,
+  const API = { TIER, LEVEL, LO, HI, MASTER, MATCH, COURSES, JUNIOR, LES, PRICE, SESI, WAVE, MIN_AGE, SLOTS, BLOK, BLOK_LBL, dayBlocks, freeSlot, tierOf, matchOf, eff, down, deepest, il, preview,
     minatOf, MINAT_WORD, majors, workNiche, nextWave, active, canEnrol, book, catalog, recommend, schedule, labelAt, light, kidsOf };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Ilmu = API;

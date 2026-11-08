@@ -86,9 +86,9 @@
             why: next.length ? `You can add another class until the day before.` : `Miss it and the next round starts two weeks later.`,
             short: "Classes", day: last, left: last - S.d, done: !!next.length, urgent: false, starWhy: rec[0] ? `Right level for ${m.nama}, and the fastest progress of the classes open now.` : "",
             pickLabel: "Enrol",
-            opts: rec.map((k, j) => ({ id: k.id, label: k.name, ic: ["🌱", "📘", "🎓"][k.lvl], where: `${IL.TIER[k.lvl]} class on ${k.flabel} · 8 sessions over 4 weeks`, price: k.price,
+            opts: rec.map((k, j) => ({ id: k.id, label: k.name, ic: ["🌱", "📘", "🎓"][k.lvl], where: `${IL.TIER[k.lvl]} class on ${k.flabel} · 8 sessions, ${IL.SLOTS[k.slot].label}`, price: k.price,
               like: `${m.nama} on this topic: ${IL.MINAT_WORD(k.minat)}.`,
-              gets: [["+", `About +${k.per} ${k.tlabel} per session (up to +${k.total} over the course)`], ["−", `Energy −${k.sport ? 12 : 8} and mood −2 each session`]],
+              gets: [["+", `About +${k.per} ${k.tlabel} per session (up to +${k.total} over the course)`], ["−", `Energy −${k.sport ? 12 : 8} and mood −2 each session`], ["−", IL.SLOTS[k.slot].blok === "sore" ? `No free time on ${IL.SLOTS[k.slot].label} for 4 weeks` : `No lie-in on ${IL.SLOTS[k.slot].label} for 4 weeks`]],
               act: "les:" + k.id, star: j === 0, picked: false, btn: `Enrol · 🪙 ${k.price}` })),
             more: "les",
           });

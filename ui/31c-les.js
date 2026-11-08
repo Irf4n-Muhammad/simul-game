@@ -16,20 +16,30 @@ function lesMatchTx(k, n) {
 function lesCard(c, k, star, ix) {
   const n = esc(c.name), w = wallet(), grown = lesGrown(c), start = Ilmu.nextWave(today());
   const tgt = k.tlabel;
-  const canKitchen = w && w.koin >= k.price, canWallet = grown && c.st.wallet >= k.price, ok = canCare() && !k.taking && ilmuOn();
+  const canKitchen = w && w.koin >= k.price, canWallet = grown && c.st.wallet >= k.price, ok = canCare() && !k.taking && ilmuOn() && k.slot >= 0, SL = k.slot >= 0 ? Ilmu.SLOTS[k.slot] : null;
   return `<div class="ag-choice${star ? " star" : ""}${k.taking ? " picked" : ""}">
     ${k.taking ? `<span class="ag-badge ok">✓ Enrolled</span>` : star ? `<span class="ag-badge">★ Recommended</span>` : ""}
     <div class="ag-ch-h"><span class="ag-ic">${["🌱", "📘", "🎓"][k.lvl]}</span><span><b>${esc(k.name)}</b><small>${lesTier(k.lvl)} class${k.parent ? ` · after ${esc(k.parent.name)}` : ""}</small></span></div>
-    <p class="ag-like">8 sessions, twice a week, for 4 weeks. Next start ${esc(agDay(start))}.</p>
+    <p class="ag-like">${k.taking ? "Enrolled." : SL ? `8 sessions on ${esc(SL.label)}, over 4 weeks. First one ${esc(agDay(Ilmu.schedule({ mulai: start, slot: k.slot })[0]))}.` : `No free time left for another class: ${n}'s afternoons and weekend mornings are full.`}</p>
     <div class="ag-gets"><em>What ${n} gets</em>
       ${tgt ? `<span class="up"><i>+</i>About +${k.per} ${esc(tgt)} per session (up to +${k.total} over the course)</span>` : `<span class="eq"><i>=</i>No progress from this class now</span>`}
       <span class="${k.match >= 1 ? "up" : k.match >= 0.2 ? "eq" : "down"}"><i>${k.match >= 1 ? "+" : k.match >= 0.2 ? "=" : "−"}</i>${esc(lesMatchTx(k, c.name))}</span>
-      <span class="down"><i>−</i>Each session costs energy (−${k.sport ? 12 : 8}) and a little mood (−2)</span>
+      <span class="down"><i>−</i>Each session costs energy (−${k.sport ? 12 : 8}) and a little mood (−2)${SL && SL.blok === "sore" ? `, and takes the afternoon ${n} would have had free` : ""}. Too tired (energy under 20) means a missed session.</span>
       <span class="${k.minat >= 55 ? "up" : k.minat >= 35 ? "eq" : "down"}"><i>${k.minat >= 55 ? "+" : k.minat >= 35 ? "=" : "−"}</i>${n} on ${esc(Tree.NODES[k.field].label)}: ${Ilmu.MINAT_WORD(k.minat)}${k.minat < 25 ? ". Might skip sessions" : ""}</span></div>
     ${star ? `<p class="ag-why"><b>Why we recommend it:</b> right level for ${n}, and ${esc(Tree.NODES[k.field].label)} is something ${n} ${k.minat >= 55 ? "enjoys" : "is quick at"}.</p>` : ""}
     ${k.taking ? `<button class="ag-pick" disabled>✓ Enrolled</button>` : `<button class="ag-pick" data-les="${ix}" data-pay="dapur" ${ok && canKitchen ? "" : "disabled"}>Enrol · ${coinTxt(k.price)} kitchen coins</button>
     ${grown ? `<button class="ag-pick sec" data-les="${ix}" data-pay="dompet" ${ok && canWallet ? "" : "disabled"}>Pay from ${n}'s wallet · ${k.price}</button>` : ""}`}
   </div>`;
+}
+// jadwal minggu ini: 7 hari × 4 blok (Ilmu.dayBlocks), mulai Senin
+function lesWeek(c, d) {
+  // minggu ini; kalau les yang baru didaftar mulainya minggu depan, tunjukin minggu itu biar kelihatan blok yang kepakai
+  const I = Ilmu.il(c.st), nx = I.kursus.filter(k => k.n < Ilmu.SESI.length).map(k => Ilmu.schedule(k)[k.n]).filter(x => x != null && x >= d), a = nx.length ? Math.min(...nx) : d;
+  const mon0 = d - ((d % 7) + 6) % 7, monA = a - ((a % 7) + 6) % 7, mon = a - d <= 13 ? monA : mon0, days = [...Array(7)].map((_, i) => mon + i);
+  const cap = mon === mon0 ? "This week" : `Week of ${esc(agDay(mon))}`;
+  const head = `<div class="wk-h"></div>${Ilmu.BLOK.map(b => `<div class="wk-h">${Ilmu.BLOK_LBL[b]}</div>`).join("")}`;
+  const rows = days.map(gd => `<div class="wk-d${gd === d ? " now" : ""}">${AG_WDL[((gd % 7) + 6) % 7]}</div>${Ilmu.dayBlocks(c, gd).map(x => `<div class="wk-c ${x.kind}">${esc(x.tx)}</div>`).join("")}`).join("");
+  return `<p class="muted small"><b>${cap}</b></p><div class="wk">${head}${rows}</div><p class="muted small">Classes take a free afternoon on school days, or a weekend morning. Energy runs down through the day, so a class after a long school day is the one ${esc(c.name)} is most likely to skip.</p>`;
 }
 let lesOpen = null;   // topik yang lagi dibuka di daftar kelas
 function showLes(id = cur && cur.id) {
@@ -55,7 +65,8 @@ function showLes(id = cur && cur.id) {
     <span class="ribbon">CLASSES · ${n}</span>
     <h2>Classes for ${n}</h2>
     <p class="muted">A new round starts every two weeks (next: ${esc(agDay(Ilmu.nextWave(d)))}). ${lesGrown(c) ? `Pay with kitchen coins or ${n}'s own wallet.` : "Paid with kitchen coins."} You have ${coinTxt(w ? w.koin : 0)}.</p>
-    ${act.length ? `<h3>Taking now</h3><div class="list">${act.map(k => { const K = Ilmu.COURSES[k.id], nx = Ilmu.schedule(k)[k.n]; return `<div class="line"><span class="grow"><b>${esc(K.name)} ${lesTier(K.lvl)}</b><small class="sub">${k.n}/${Ilmu.SESI.length} sessions${k.gain ? ` · +${k.gain} so far` : ""}${nx != null ? ` · next ${esc(agDay(nx))}` : ""}</small></span></div>`; }).join("")}</div>` : ""}
+    ${act.length ? `<h3>Taking now</h3><div class="list">${act.map(k => { const K = Ilmu.COURSES[k.id], nx = Ilmu.schedule(k)[k.n]; return `<div class="line"><span class="grow"><b>${esc(K.name)} ${lesTier(K.lvl)}</b><small class="sub">${k.slot != null ? `${esc(Ilmu.SLOTS[k.slot].label)} · ` : ""}${k.n}/${Ilmu.SESI.length} sessions${k.gain ? ` · +${k.gain} so far` : ""}${nx != null ? ` · next ${esc(agDay(nx))}` : ""}</small></span></div>`; }).join("")}</div>` : ""}
+    <h3>${n}'s week</h3>${lesWeek(c, d)}
     <h3>Pick a topic</h3>
     <p class="muted small">Classes take ${n} from a general topic (Junior) to one subject (Intermediate, up to 55). Senior and Master come later, from a college major and from working in the field. Classes far above or below ${n}'s level teach very little.</p>
     ${fields.map(grp).join("")}

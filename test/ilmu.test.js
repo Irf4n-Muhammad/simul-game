@@ -125,3 +125,21 @@ test("pilih_jurusan muncul sekali waktu kuliah, nilai jurusan naik selama kuliah
   assert.ok(I.v[I.jur] > 60 && I.v[I.jur] <= 84, `naik dari kuliah: ${I.v[I.jur]}`);
   assert.deepEqual(go().v, I.v);
 });
+
+test("jatah waktu: les makan satu blok (Sen&Kam sore, Sel&Jum sore, Sab&Min pagi), penuh = nggak bisa daftar; les sore gantiin kegiatan bebas", () => {
+  const st = fresh("akun-il6"), g = new G.Game(st), c = g.home.members[0], d0 = c.born + 120;
+  g.advance(d0, null);
+  assert.equal(g.act(c.id, "les:science"), true);
+  assert.equal(g.act(c.id, "les:numbers"), true);
+  assert.equal(g.act(c.id, "les:art"), true);
+  assert.equal(g.act(c.id, "les:music"), false, "tiga slot udah kepakai");
+  const K = c.st.ilmu.kursus;
+  assert.deepEqual(K.map(k => k.slot), [0, 1, 2]);
+  const S0 = Ilmu.schedule(K[0]);
+  assert.equal(S0.length, 8); assert.ok(S0.every(d => [1, 4].includes(d % 7)));
+  assert.ok(Ilmu.schedule(K[2]).every(d => [6, 0].includes(d % 7)));
+  const B = Ilmu.dayBlocks(c, S0[0]);
+  assert.deepEqual(B.map(b => b.kind), ["busy", "busy", "class", "home"], "hari sekolah: sekolah, sekolah, les, rumah");
+  for (let d = d0 + 1; d <= S0[0]; d++) { Object.assign(c.needs, { lapar: 80, energi: 80, kebersihan: 80, mood: 80 }); g.advance(d, null); }
+  assert.equal(c.info.agenda_hari.id, "les", "kegiatan bebas sore itu dipakai les");
+});
