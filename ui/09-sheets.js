@@ -65,12 +65,13 @@ function dlTable(p) {
   const costOf = (k, ic) => p.wish && p.wish !== k && p.cost ? (ic === "😊" ? p.cost.mood : ic === "💗" ? p.cost.bond : 0) : 0;
   const td = (k, ic) => {
     const [, tx, sub] = cell(k, ic), c = costOf(k, ic);
-    const parts = [tx ? esc(tx) : "", c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
+    const mine = !tx && p.wish === k && p.cost && (ic === "😊" || ic === "💗") ? "no cost" : "";
+    const parts = [tx ? esc(tx) : mine, c ? `<b class="cost">−${c}</b>` : "", sub ? `<small>${esc(sub)}</small>` : ""].filter(Boolean);
     return `<td>${parts.length ? parts.join(" ") : '<span class="nil">—</span>'}</td>`;
   };
-  const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)} wants</em>` : ""}</th>`).join("");
+  const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)}'s pick</em>` : ""}</th>`).join("");
   const body = rows.map(([ic, lbl]) => `<tr><th scope="row"><i>${ic}</i>${lbl ? `<small>${lbl}</small>` : ""}</th>${opts.map(([k]) => td(k, ic)).join("")}</tr>`).join("");
-  const lines = [...(p.wish && p.cost ? [`<b class="cost">−</b> red = not what ${esc(p.name)} wants`] : []),
+  const lines = [...(p.wish && p.cost ? [`♥ = what ${esc(p.name)} would pick on their own`, `<b class="cost">−</b> red = ${esc(p.name)} is sad you overruled them`] : []),
     ...[].concat(fx._note || []).map(esc)];
   const note = lines.length ? `<ul class="dl-note">${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
   const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
