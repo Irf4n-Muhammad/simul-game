@@ -624,7 +624,22 @@ class GuardianBot {
   }
 }
 
-const Engine = { make_log, FOREVER, YEAR, PHASES, OLD_AGE, LIFESPAN, adult_age, ADULT_SCALE, NAMES, RUPA, TRAITS, START_DATE, WINDOW, RULESETS, STRICT,
+// v85: bahasa angka kartu keputusan (fx), dipakai storylets.js, anak.js, remaja.js. Uang ditulis dalam hari kerja:
+// FX.unit = gaji sehari kerja kantor pertama (storylets.js ngisi dari status.js; 50 kalau belum ada).
+const TRAIT_WORD = { rajin: "hard-working", impulsif: "impulsive", setia: "loyal", ambisius: "ambitious", ramah: "friendly",
+  penakut: "timid", patuh: "obedient", kreatif: "creative" };
+const FX = {
+  unit: () => 50,
+  num: v => { const a = Math.abs(v), r = a >= 10 ? Math.round(a) : Math.round(a * 10) / 10; return (v > 0 ? "+" : v < 0 ? "−" : "") + r; },
+  wd: v => { const d = Math.abs(v) / FX.unit(); return d >= 10 ? Math.round(d) : Math.round(d * 10) / 10; },
+  money: v => (v > 0 ? "+" : v < 0 ? "−" : "") + FX.wd(v),
+  trait: (...kv) => kv.map(([k, v]) => `${TRAIT_WORD[k]} ${FX.num(v)}`).join(", "),
+  pct: p => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`,
+  saved: c => c.st ? c.st.wallet + (c.st.tab || 0) : 0,
+  note: x => [`🪙 1 = one day of office pay (${FX.unit()} coins)`, ...(x.c.st ? [`🪙 ${x.n}'s savings now: ${FX.wd(FX.saved(x.c))}`] : [])],
+};
+
+const Engine = { FX, make_log, FOREVER, YEAR, PHASES, OLD_AGE, LIFESPAN, adult_age, ADULT_SCALE, NAMES, RUPA, TRAITS, START_DATE, WINDOW, RULESETS, STRICT,
   seed_rng, clamp, phase_of, inherit, inc, lower, Creature, World, Ctx, REGISTRY, AMBIENT, FORCED, HOOKS,
   storylet, simulate_day, SCARS, Household, make_ctx, make_log, GuardianBot, world_active };
 if (typeof module !== "undefined") module.exports = Engine;

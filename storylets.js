@@ -4,7 +4,7 @@
 "use strict";
 const E = (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
 (function () {
-const { AMBIENT, FORCED, HOOKS, NAMES, YEAR, adult_age: AA, OLD_AGE, FOREVER, Creature, inherit, make_ctx, make_log, seed_rng, storylet, inc } = E;
+const { FX, AMBIENT, FORCED, HOOKS, NAMES, YEAR, adult_age: AA, OLD_AGE, FOREVER, Creature, inherit, make_ctx, make_log, seed_rng, storylet, inc } = E;
 
 const ALL = ["bayi", "anak", "remaja", "dewasa", "tua"];
 const GROWN = ["dewasa", "tua"];
@@ -55,7 +55,9 @@ storylet("demam", ["bayi", "anak"], "sedang", { cooldown: 60,
     `${x.n} won't eat and just keeps sleeping. Their forehead is hot.`]));
   const [, final] = x.ask("Go to the doctor, or a cool cloth at home?",
     { dokter: "Go to the doctor", rumah: "Cool cloth at home" },
-    { suportif: "dokter", tegas: "rumah" }, "rumah", { obey: false, safe: "dokter" });
+    { suportif: "dokter", tegas: "rumah" }, "rumah", { obey: false, safe: "dokter", fx: {
+      dokter: [["🩺", "+6"], ["💗", "+2"]],
+      rumah: [["🩺", "+2 or −8", "30%: 3-day fever"]] } });
   if (final === "dokter") {
     x.say(x.pick(["The doctor says it's just a mild cold. By tomorrow morning they're bouncing around again.",
       `The doctor gives them a dinosaur sticker. ${x.n} is happier about the sticker than about getting better.`]));
@@ -91,7 +93,9 @@ storylet("takut_petir", ["bayi", "anak"], "kecil", { cooldown: 25, weight: x => 
 
 storylet("nangis_tengah_malam", ["bayi"], "kecil", { cooldown: 8 }, x => {
   const [, final] = x.ask(`${x.n} is crying at 2 a.m.`, { gendong: "Hold them until they sleep", biarin: "Let them learn to sleep alone" },
-    { suportif: "gendong", tegas: "biarin" }, "gendong", { obey: false });
+    { suportif: "gendong", tegas: "biarin" }, "gendong", { obey: false, fx: {
+      gendong: [["💗", "+1"]],
+      biarin: [["🌱", tw(["penakut", 0.3], ["patuh", 0.2])]] } });
   if (final === "gendong") {
     x.bond(1);
     x.say(`${x.n} goes quiet in your arms right away and falls asleep holding your shirt.`);
@@ -105,7 +109,9 @@ storylet("nangis_tengah_malam", ["bayi"], "kecil", { cooldown: 8 }, x => {
 storylet("makanan_baru", ["bayi"], "kecil", { cooldown: 10 }, x => {
   const sayur = x.pick(["steamed carrots", "spinach mush", "mashed pumpkin"]);
   const [, final] = x.ask(`Mealtime! Try ${sayur}, or their favorite porridge?`,
-    { coba: `Try ${sayur}`, favorit: "Favorite porridge" }, { suportif: "favorit", tegas: "coba" }, "favorit", { obey: false });
+    { coba: `Try ${sayur}`, favorit: "Favorite porridge" }, { suportif: "favorit", tegas: "coba" }, "favorit", { obey: false, fx: {
+      coba: [["🩺", "50%: +1"], ["😊", "50%: −4"]],
+      favorit: [["😊", "+4"]] } });
   if (final === "coba") {
     if (x.chance(0.5)) {
       x.stat("kesehatan", 1);
@@ -159,7 +165,10 @@ storylet("berantem_sekolah", ["anak"], "sedang", { cooldown: 50, weight: x => x.
     `${x.n} comes home with a scraped cheek and won't say why.`]));
   const [, final] = x.ask("What do you say?",
     { marahi: "Scold them", tanya: "Ask gently", bela: "Take their side" },
-    { suportif: "tanya", tegas: "marahi" }, "tanya", { obey: false });
+    { suportif: "tanya", tegas: "marahi" }, "tanya", { obey: false, fx: {
+      marahi: [["🌱", tw(["patuh", 2], ["rajin", 1])], ["😊", "−12"], ["💗", "−4"]],
+      tanya: [["🌱", x.has("diejek") ? tw(["setia", 2]) : `50%: ${tw(["setia", 2])}`], ["💗", "+5"]],
+      bela: [["🌱", tw(["impulsif", 2])], ["💗", "+4"]] } });
   if (final === "marahi") {
     x.say(`${x.n} says nothing and goes to their room. They skip dinner that night.`);
     x.trait("patuh", 2);
@@ -235,7 +244,11 @@ storylet("bakat_ketahuan", ["anak"], "sedang", { once: true, priority: true, con
   x.c.info.dilema_hari = x.day;
   const seni = !!x.c.info.sekolah_pilihan && x.c.info.sekolah_pilihan.id === "seni";
   const [g, final] = x.ask(`Sign them up for ${bakat} lessons?`, { les: "Sign them up", aman: "Maths tutoring instead", nanti: "Maybe later" },
-    { suportif: "les", tegas: "aman" }, "les", { safe: "les" });   // dicuekin (wakil "aman" sekalipun) = les ngikut bakat
+    { suportif: "les", tegas: "aman" }, "les", { safe: "les", fx: {
+      les: [["⭐", `${bakat} 10→${seni ? 30 : 25}`], ["🎓", "practice +4, not +2"]],
+      aman: [["⭐", `${bakat} stays 10`], ["🧠", "+2"], ["🎓", "quizzes +5"]],
+      nanti: [["⭐", `${bakat} stays 10`], ["🎓", G && G[skill] > 1 ? `talent ${G[skill]}→${G[skill] - 1}/10` : "—"]],
+      _note: ["⭐ = talent level (0–100), grows with practice"] } });   // dicuekin (wakil "aman" sekalipun) = les ngikut bakat
   x.c.info.les_pilihan = { id: final, d: x.day, oleh: g === null ? "sendiri" : "wali" };   // siapa yang mutusin, buat app School (Your choices)
   if (final === "les") {
     x.c.info.bakat_level = seni ? 30 : 25;
@@ -279,7 +292,9 @@ storylet("ketahuan_bolos", ["anak", "remaja"], "sedang", { cooldown: 10,
   x.say(`The teacher sends a letter: ${x.n} skipped school last week. The "group study" was at the beach.`);
   const [, final] = x.ask("How do you react?",
     { hukum: "Punish them, no playing for a week", ngobrol: "Have a talk" },
-    { suportif: "ngobrol", tegas: "hukum" }, "ngobrol", { obey: false });
+    { suportif: "ngobrol", tegas: "hukum" }, "ngobrol", { obey: false, fx: {
+      hukum: [["🌱", tw(["rajin", 3])], ["💗", "−3"]],
+      ngobrol: [["💗", "+3"]] } });
   if (final === "hukum") {
     x.say(`${x.n} sulks for a week, but their quiz scores go up.`);
     x.trait("rajin", 3);
@@ -313,7 +328,9 @@ storylet("pet_nyasar", ["anak", "remaja"], "kecil", { once: true, cond: x => x.a
   const pet = x.pick(["tiny winged lizard", "fluffball that sneezes", "fish that walks on land"]);
   x.say(`A lost ${pet} shows up outside the house. ${x.n} has named it before you can even answer.`);
   const [, final] = x.ask("Can we keep it?", { boleh: "Yes", jangan: "No" },
-    { suportif: "boleh", tegas: "jangan" }, "boleh");
+    { suportif: "boleh", tegas: "jangan" }, "boleh", { fx: {
+      boleh: [["🐾", "new pet"]],
+      jangan: [["🐾", "back to the park"], ["😊", "−10"]] } });
   if (final === "boleh") {
     x.c.info.pet = pet;
     x.say(`The ${pet} now sleeps at the foot of ${x.n}'s bed.`);
@@ -351,7 +368,9 @@ storylet("cinta_monyet", ["remaja"], "sedang", { cooldown: 60,
       rule === "boleh" ? "boleh" : "larang", "boleh", options);
   } else {
     [, final, followed] = x.ask(`Can they get close to ${npc.nama}?`, options,
-      { suportif: "boleh", tegas: "larang" }, "boleh");
+      { suportif: "boleh", tegas: "larang" }, "boleh", { fx: {
+        boleh: [["💑", "crush starts", "may date after 14 days"]],
+        larang: [["💑", "number deleted"]] } });
   }
   if (final === "boleh") {
     x.c.relations[nid] = { nama: npc.nama, tipe: "gebetan", skor: 55, sejak: x.day };
@@ -383,7 +402,9 @@ storylet("ketahuan_pacaran_diam", ["remaja", "dewasa"], "sedang", { cooldown: 20
   const nama = rel ? rel.nama : "someone";
   x.say(`You see a photo of ${x.n} and ${nama} on a classmate's feed. Turns out they've been dating for a month.`);
   const [, final] = x.ask("Your reaction?", { marah: "Get angry", terima: "Accept it, ask for honesty from now on" },
-    { suportif: "terima", tegas: "marah" }, "terima", { obey: false });
+    { suportif: "terima", tegas: "marah" }, "terima", { obey: false, fx: {
+      marah: [["💗", "−6"]],
+      terima: [["🌱", tw(["setia", 1])], ["💗", "+4"]] } });
   if (final === "marah") {
     x.say(`${x.n} slams the door. For two days they only answer "hm".`);
     x.bond(-6);
@@ -458,12 +479,12 @@ storylet("curhat_malam", ["remaja", "dewasa", "tua"], "kecil", { cooldown: 10,
 // v83: uang di kartu keputusan ditulis dalam hari kerja (1 hari kerja = gaji sehari kerja kantor pertama, status.js JOBS.office), koinnya
 // kecil di belakang, jadi pemain bisa ngebandingin tanpa tahu "15 koin itu banyak atau nggak".
 const WD_UNIT = () => { const S = STX(); return S && S.JOBS && S.JOBS.office ? S.JOBS.office.pay : HK; };
-const wdN = v => { const d = Math.abs(v) / WD_UNIT(); return d >= 10 ? Math.round(d) : Math.round(d * 10) / 10; };
-const sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + wdN(v);       // hari kerja bertanda, buat sel tabel
-const savedOf = x => x.c.st ? x.c.st.wallet + (x.c.st.tab || 0) : 0;
-// catatan di bawah tabel: satuan uangnya, dan tabungan makhluknya sekarang
-// v84: catatan = baris pendek (array), satu fakta per baris
-const moneyNote = x => [`🪙 1 = one day of office pay (${WD_UNIT()} coins)`, ...(x.c.st ? [`🪙 ${x.n}'s savings now: ${wdN(savedOf(x))}`] : [])];
+// v85: pembantu angka pindah ke engine.js (FX) supaya anak.js dan remaja.js nulis kartu dengan satuan yang sama
+FX.unit = WD_UNIT;
+const wdN = FX.wd, sg = FX.money, tw = FX.trait, pc = FX.pct;   // hari kerja, hari kerja bertanda, sifat, persen
+const savedOf = x => FX.saved(x.c);
+// catatan di bawah tabel: satuan uangnya, dan tabungan makhluknya sekarang (v84: satu fakta per baris)
+const moneyNote = FX.note;
 // angka kartu "setelah lulus" (v83): sel pendek, satuannya hari, hari kerja, dan angka jalur di buku bintang
 function lulusFx(x) {
   const ST = x.c.st ? STX() : null, IL = x.home.ilmu_from != null ? ((typeof module !== "undefined") ? require("./ilmu.js") : globalThis.Ilmu) : null;
@@ -568,7 +589,9 @@ storylet("nganggur_lama", ["dewasa"], "sedang", { cooldown: 60,
   cond: x => !x.c.info.kerja && (x.c.info.ditolak ?? 0) >= 3 && !x.c.info.pensiun }, x => {
   x.say(`${x.n} has been out of work for a while. They start helping at the neighbor's corner shop to keep busy.`);
   const [, final] = x.ask("What do you say?", { semangat: "Cheer them on, help with the CV", kritik: "Tell them to get serious" },
-    { suportif: "semangat", tegas: "kritik" }, "semangat", { obey: false });
+    { suportif: "semangat", tegas: "kritik" }, "semangat", { obey: false, fx: {
+      semangat: [["🌱", tw(["rajin", 1])], ["💗", "+3"]],
+      kritik: [["🌱", tw(["rajin", 3])], ["💗", "−3"]] } });
   if (final === "semangat") {
     x.bond(3);
     x.trait("rajin", 1);
@@ -749,7 +772,9 @@ storylet("ketahuan_selingkuh", GROWN, "besar", { cooldown: 30,
   const [nid, p] = Object.entries(x.c.relations).find(([, r]) => ["pasangan", "tunangan", "suami-istri"].includes(r.tipe));
   x.say(`${p.nama} finds some chats on ${x.n}'s phone. The house is so, so quiet that night.`);
   const [, final] = x.ask("What do you suggest?", { jujur: "Be honest and say sorry", diam: "Stay quiet" },
-    { suportif: "jujur", tegas: "jujur" }, "diam");
+    { suportif: "jujur", tegas: "jujur" }, "diam", { fx: {
+      jujur: [["💑", "50%: stays", `score ${p.skor}→${Math.max(10, p.skor - 30)}`], ["📣", "50%: −5"], ["🌱", `50%: ${tw(["setia", 6])}`], ["😊", "50%: heartbroken"]],
+      diam: [["💑", `${p.nama} leaves`], ["📣", "−5"], ["😊", "heartbroken 60 days"]] } });
   if (final === "jujur" && x.chance(0.5)) {
     p.skor = Math.max(10, p.skor - 30);
     x.say(`${x.n} confesses everything. ${p.nama} needs time, but hasn't left yet.`);
@@ -775,7 +800,9 @@ storylet("lamaran", GROWN, "besar", { cooldown: 90,
   x.say(`${x.n} shows you a ring hidden in their sock drawer. They want to propose to ${p.nama}!`);
   const [, final, followed] = x.ask("Do you give your blessing?", { restu: "Give your blessing", tunggu: "Wait a bit" },
     { suportif: "restu", tegas: p.skor > 90 ? "restu" : "tunggu" },
-    "restu", { alone: `so ${x.n} proposed without waiting for your blessing.` });
+    "restu", { alone: `so ${x.n} proposed without waiting for your blessing.`, fx: {
+      restu: [["💑", "engaged", "wedding in 30 days"]],
+      tunggu: [["💑", `score ${Math.round(p.skor)}→${Math.round(p.skor - 10)}`]] } });
   if (final === "restu") {
     Object.assign(p, { tipe: "tunangan", sejak: x.day });
     x.say(`${p.nama} says yes, happy-crying. ${p.nama}'s guardian sends a message: "congrats, future in-law!"`);
@@ -817,7 +844,9 @@ storylet("berantem_rumah_tangga", GROWN, "sedang", { cooldown: 150, cond: marrie
   const soal = x.pick(["money", "who does the dishes", "where to go on vacation", "how to raise the kids"]);
   x.say(`${x.n} and ${p.nama} fight about ${soal}. ${x.n} comes to you to vent.`);
   const [, final] = x.ask("What do you say?", { baikan: "Tell them to apologize first", bela: "Take their side" },
-    { suportif: "baikan", tegas: "baikan" }, "bela", { obey: true });
+    { suportif: "baikan", tegas: "baikan" }, "bela", { obey: true, fx: {
+      baikan: [["💑", "+8"]],
+      bela: [["💑", "−8"], ["💗", "+2"]] } });
   if (final === "baikan") {
     p.skor = Math.min(100, p.skor + 8);
     x.say(`${x.n} apologizes first. That night they watch a movie together again.`);
@@ -921,7 +950,10 @@ storylet("besan_protes", GROWN, "sedang", { cooldown: 100,
   x.say(`${x.c.info.besan} sends a long message saying ${soal}.`);
   inc(x.home.stats, "aksi_besan");
   const [, final] = x.ask("How do you reply?", { sopan: "Reply politely", hadiah: "Send a gift back", cuek: "Ignore it" },
-    { suportif: "sopan", tegas: "cuek" }, "sopan", { obey: false });
+    { suportif: "sopan", tegas: "cuek" }, "sopan", { obey: false, fx: {
+      sopan: [["👫", "in-laws calm"]],
+      hadiah: [["👫", "in-laws calm"]],
+      cuek: [["👫", "upset 120 days"]] } });
   if (final === "cuek") {
     x.say(`The message goes unanswered. The next week ${x.c.info.besan} sends an even longer one.`);
     x.flag("besan_kesal", 120);
@@ -994,7 +1026,9 @@ storylet("sahabat_pinjam_uang", GROWN, "sedang", { cooldown: 150,
   const [nid, t] = x.c.rel_of("teman");
   x.say(`${t.nama}, ${x.n}'s old best friend, wants to borrow money for their mom's hospital bill.`);
   const [, final] = x.ask("Lend it?", { pinjam: "Lend it", tolak: "Kindly say no" },
-    { suportif: "pinjam", tegas: "tolak" }, x.t("setia") > 45 ? "pinjam" : "tolak");
+    { suportif: "pinjam", tegas: "tolak" }, x.t("setia") > 45 ? "pinjam" : "tolak", { fx: {
+      pinjam: [["🪙", sg(-8 * HK), "70% paid back"], ["👫", "30%: friend lost"]],
+      tolak: [["🪙", "keeps it"], ["👫", `friend ${Math.round(t.skor)}→${Math.round(t.skor - 20)}`]], _note: moneyNote(x) } });
   if (final === "pinjam") {
     coins(x, -8 * HK);
     if (x.chance(0.7)) {
@@ -1015,7 +1049,9 @@ storylet("krisis_paruh_baya", ["dewasa"], "sedang", { once: true,
   cond: x => AA(4 * YEAR) <= x.age && x.age < AA(7 * YEAR), weight: x => 0.15 }, x => {
   x.say(`${x.n} suddenly dyes their hair and says they want to learn electric guitar.`);
   const [, final] = x.ask("Support it?", { dukung: "Support it", ingatkan: "Remind them of their age" },
-    { suportif: "dukung", tegas: "ingatkan" }, "dukung", { obey: false });
+    { suportif: "dukung", tegas: "ingatkan" }, "dukung", { obey: false, fx: {
+      dukung: [["😊", "+20"]],
+      ingatkan: [["😊", "—"]] } });
   if (final === "dukung") {
     x.say(`Three months later ${x.n} plays a show at a cafe near home. Off-key, but so happy.`);
     x.need("mood", 20);
@@ -1038,7 +1074,10 @@ storylet("sakit_parah", ["remaja", "dewasa", "tua"], "besar", { cooldown: 180,
   cond: x => x.c.stats.kesehatan < 40, weight: x => (40 - x.c.stats.kesehatan) / 8 }, x => {
   x.say(`${x.n} faints on the street. The doctor says they're worn out and their body is getting weak.`);
   const [, final] = x.ask("Stay in the hospital for a week?", { rawat: "Stay in the hospital", rumah: "Rest at home" },
-    { suportif: "rawat", tegas: "rawat" }, "rumah", { obey: false, safe: "rawat" });
+    { suportif: "rawat", tegas: "rawat" }, "rumah", { obey: false, safe: "rawat", fx: {
+      rawat: [["⏳", "1 week"], ["🩺", `${Math.round(x.c.stats.kesehatan)}→${Math.min(100, Math.round(x.c.stats.kesehatan + 30))}`]],
+      rumah: [["⏳", "—"], ["🩺", `${Math.round(x.c.stats.kesehatan)}→${Math.min(100, Math.round(x.c.stats.kesehatan + 12))}`]],
+      _note: ["🩺 = health (0–100)"] } });
   x.stat("kesehatan", final === "rawat" ? 30 : 12);
   x.remember(final === "rawat" ? "Stayed in the hospital for exhaustion." : "Fainted from exhaustion.");
 });
@@ -1047,8 +1086,11 @@ storylet("usaha_sampingan", ["dewasa"], "sedang", { cooldown: 180,
   cond: x => x.t("ambisius") > 60 && x.c.stats.uang > 60 }, x => {
   const ide = x.pick(["a coffee cart", "an online sticker shop", "private tutoring", "a late-night noodle stall"]);
   x.say(`${x.n} wants to start a side business: ${ide}, paid for with their savings.`);
+  const hit = 0.4 + x.t("rajin") / 300;
   const [, final] = x.ask("Support it?", { gas: "Go for it", tahan: "Hold off for now" },
-    { suportif: "gas", tegas: "tahan" }, "gas");
+    { suportif: "gas", tegas: "tahan" }, "gas", { fx: {
+      gas: [["🪙", sg(-10 * HK), `${pc(hit)} it's a hit`], ["🌱", `${pc(1 - hit)}: ${tw(["ambisius", -2])}`]],
+      tahan: [["🪙", "keeps savings"]], _note: moneyNote(x) } });
   if (final === "gas") {
     coins(x, -10 * HK);
     if (x.chance(0.4 + x.t("rajin") / 300)) {
@@ -1072,7 +1114,9 @@ storylet("hidup_sendiri", ["dewasa"], "sedang", { once: true,
     && (x.c.info.minat_cinta ?? 1) < 0.5 }, x => {
   x.say(`Tonight ${x.n} cooks dinner for one, then tells you: "I don't think I need to get married to be happy."`);
   const [, final] = x.ask("What do you say?", { dukung: "Your choice, I support you", dorong: "Try opening your heart again" },
-    { suportif: "dukung", tegas: "dorong" }, "dukung", { obey: true });
+    { suportif: "dukung", tegas: "dorong" }, "dukung", { obey: true, fx: {
+      dukung: [["💑", "stays single"], ["😊", "+10"]],
+      dorong: [["💑", "starts dating"]] } });
   if (final === "dukung") {
     x.c.info.minat_cinta = 0.05;
     x.need("mood", 10);
@@ -1092,7 +1136,9 @@ storylet("adopsi_sendiri", GROWN, "besar", { once: true,
     + `"Do you think I could be a parent on my own?"`);
   const [, final] = x.ask("What do you answer?", { adopsi: "You can, let's adopt", jangan: "Your life is full enough" },
     { suportif: "SELF", tegas: "adopsi" },
-    x.t("ramah") + x.t("setia") > 80 ? "adopsi" : "jangan", { obey: false });
+    x.t("ramah") + x.t("setia") > 80 ? "adopsi" : "jangan", { obey: false, fx: {
+      adopsi: [["🧒", "a baby joins"], ["🏠", `${x.home.free_slots(x.day)} free bed${x.home.free_slots(x.day) === 1 ? "" : "s"}`]],
+      jangan: [["🧒", "—"], ["🏠", "volunteers Saturdays"]] } });
   if (final === "adopsi" && x.home.free_slots(x.day) > 0) {
     const taken = x.home.members.map(m => m.name);
     const kid = Creature.new(`${x.c.id}-adopsi`, { born: x.day - 20, gen: x.c.gen + 1, parents: [x.c.id, ""], avoid: taken });
@@ -1115,7 +1161,9 @@ storylet("sulit_punya_anak", GROWN, "besar", { once: true,
   x.say(`${x.n} and ${p.nama} have waited a long time for baby news. The doctor says the chances are small.`);
   const [, final] = x.ask("What now?", { adopsi: "Adopt from the shelter", berdua: "Just the two of us" },
     { suportif: "SELF", tegas: "adopsi" },
-    x.t("ramah") > 50 ? "adopsi" : "berdua", { obey: false });
+    x.t("ramah") > 50 ? "adopsi" : "berdua", { obey: false, fx: {
+      adopsi: [["🧒", x.home.free_slots(x.day) > 0 ? "a baby joins" : "home is full"], ["🏠", `${x.home.free_slots(x.day)} free bed${x.home.free_slots(x.day) === 1 ? "" : "s"}`]],
+      berdua: [["🧒", "—"], ["💑", "travel together"]] } });
   const home = x.home;
   if (final === "adopsi" && home.free_slots(x.day) > 0) {
     const kid_id = `${x.c.id}-adopsi`;
@@ -1145,7 +1193,9 @@ storylet("pindah_keluar", ["dewasa"], "sedang", { once: true,
   const kota = x.pick(["the port city", "the capital", "the island across the sea"]);
   x.say(`${x.n} has a chance to live in ${kota}. They want to move out and start fresh on their own.`);
   const [, final] = x.ask("Will you let them go?", { lepas: "Let them go, with love", tahan: "Ask them to stay home" },
-    { suportif: "lepas", tegas: "tahan" }, "lepas", { obey: true });
+    { suportif: "lepas", tegas: "tahan" }, "lepas", { obey: true, fx: {
+      lepas: [["🏠", "moves out", "stays in the family tree"]],
+      tahan: [["🏠", "stays home"], ["💗", "−3"]] } });
   if (final === "lepas") {
     x.c.info.keluar = x.day;
     inc(x.home.stats, "pindah_keluar");
@@ -1169,7 +1219,9 @@ storylet("minta_jajan", ["anak", "remaja"], "kecil", { cooldown: 12 }, x => {
     [final] = x.by_rule(`pocket money is ${aturan === "besar" ? "generous" : "small"}`, aturan === "besar" ? "kasih" : "tolak", "kasih", opsi);
   } else {
     [, final] = x.ask(`${x.n} asks for ${barang}. Okay?`, opsi, { suportif: "kasih", tegas: "tolak" },
-      "kasih");
+      "kasih", { fx: {
+        kasih: [["😊", "+6"]],
+        tolak: [["🌱", tw(["rajin", 0.3])]] } });
   }
   if (final === "kasih") {   // v47: jajan dibayar dari dompet rumah, bukan dari jar makhluk (uang jajan Senin di remaja.js); angkanya nunggu keputusan dompet rumah
     x.need("mood", 6);
@@ -1182,7 +1234,9 @@ storylet("minta_jajan", ["anak", "remaja"], "kecil", { cooldown: 12 }, x => {
 
 storylet("main_game_kelamaan", ["anak", "remaja"], "kecil", { cooldown: 14 }, x => {
   const [, final] = x.ask(`It's 10 p.m. and ${x.n} is still playing games. Bedtime?`, { tidur: "Bedtime, now",
-    lanjut: "One more round" }, { suportif: "lanjut", tegas: "tidur" }, "lanjut");
+    lanjut: "One more round" }, { suportif: "lanjut", tegas: "tidur" }, "lanjut", { fx: {
+      tidur: [["⚡", "+15"]],
+      lanjut: [["⚡", "−15"], ["😊", "+5"]] } });
   if (final === "tidur") {
     x.need("energi", 15);
     x.say(`${x.n} turns off the console, grumbling. They wake up fresh in the morning.`);
@@ -1195,7 +1249,9 @@ storylet("main_game_kelamaan", ["anak", "remaja"], "kecil", { cooldown: 14 }, x 
 
 storylet("takut_gelap", ["anak"], "kecil", { cooldown: 20, weight: x => x.t("penakut") / 50 }, x => {
   const [, final] = x.ask(`${x.n} begs you not to turn off the bedroom light.`, { nyala: "Leave it on",
-    latih: "Practice sleeping in the dark" }, { suportif: "nyala", tegas: "latih" }, "nyala");
+    latih: "Practice sleeping in the dark" }, { suportif: "nyala", tegas: "latih" }, "nyala", { fx: {
+      nyala: [["🌱", "—"]],
+      latih: [["🌱", tw(["penakut", -1])]] } });
   if (final === "latih") {
     x.trait("penakut", -1);
     x.say(`${x.n} sleeps hugging their pillow tight. But they did it!`);
@@ -1208,7 +1264,9 @@ storylet("gaya_rambut", ["remaja"], "kecil", { cooldown: 40, cond: x => x.age < 
   x.c.info.dilema_hari = x.day;
   const warna = x.pick(["purple", "neon green", "half shaved"]);
   const [, final] = x.ask(`${x.n} wants their hair ${warna}.`, { boleh: "Sure", jangan: "No way" },
-    { suportif: "boleh", tegas: "jangan" }, "boleh");
+    { suportif: "boleh", tegas: "jangan" }, "boleh", { fx: {
+      boleh: [["🌱", tw(["kreatif", 0.5])]],
+      jangan: [["🌱", "—"]] } });
   if (final === "boleh") {
     x.trait("kreatif", 0.5);
     x.say(`${x.n}'s hair is ${warna} now. They take 40 selfies.`);
@@ -1221,7 +1279,9 @@ storylet("beli_barang_mahal", ["dewasa"], "kecil", { cooldown: 45, cond: x => x.
   const barang = x.pick(["racing bike", "used camera", "comfy sofa", "new phone"]);
   const [, final] = x.ask(`${x.n} really wants a ${barang}. Buy it now?`, { beli: "Buy it", nabung: "Save up first" },
     { suportif: "beli", tegas: "nabung" }, x.t("impulsif") > 50 ? "beli" : "nabung",
-    { obey: false });
+    { obey: false, fx: {
+      beli: [["🪙", sg(-4 * HK)], ["😊", "+8"]],
+      nabung: [["🪙", "keeps it"]], _note: moneyNote(x) } });
   if (final === "beli") {
     coins(x, -4 * HK);
     x.need("mood", 8);
@@ -1234,7 +1294,9 @@ storylet("beli_barang_mahal", ["dewasa"], "kecil", { cooldown: 45, cond: x => x.
 storylet("lembur_atau_nongkrong", ["dewasa"], "kecil", { cooldown: 20, cond: x => x.c.info.kerja }, x => {
   const [, final] = x.ask(`Friends invite ${x.n} to hang out, but work is piling up.`,
     { nongkrong: "Hang out", lembur: "Work late" }, { suportif: "nongkrong", tegas: "lembur" },
-    x.t("ramah") > x.t("rajin") ? "nongkrong" : "lembur", { obey: false });
+    x.t("ramah") > x.t("rajin") ? "nongkrong" : "lembur", { obey: false, fx: {
+      nongkrong: [["😊", "+8"]],
+      lembur: [["📈", "+0.8"], ["😊", "−4"]] } });
   if (final === "lembur") {
     x.stat("karier", 0.8);
     x.need("mood", -4);
@@ -1250,7 +1312,9 @@ storylet("urusan_anak_sekolah", GROWN, "kecil", { cooldown: 25,
   const k = x.pick(kids_here(x).filter(k => 60 <= k.age(x.day) && k.age(x.day) < 270));
   const [, final] = x.ask(`There's a parent meeting at ${k.name}'s school, and it clashes with ${x.n}'s work.`,
     { datang: "Go to the school", kerja: "Stay at work" }, { suportif: "datang", tegas: "datang" },
-    x.t("setia") > 45 ? "datang" : "kerja", { obey: false });
+    x.t("setia") > 45 ? "datang" : "kerja", { obey: false, fx: {
+      datang: [["🧒", `${k.name} +1`]],
+      kerja: [["📈", "+0.5"]] } });
   if (final === "datang") {
     k.bond = Math.min(100.0, k.bond + 1);
     x.say(`${x.n} goes to the meeting. ${k.name} acts embarrassed, but brags about it to friends.`);
@@ -1263,7 +1327,9 @@ storylet("urusan_anak_sekolah", GROWN, "kecil", { cooldown: 25,
 storylet("senam_lansia", ["tua"], "kecil", { cooldown: 30 }, x => {
   const [, final] = x.ask(`A neighbor invites ${x.n} to morning exercise in the park.`, { ikut: "Join in", rumah: "Stay home" },
     { suportif: "ikut", tegas: "ikut" }, x.t("penakut") > 55 ? "rumah" : "ikut",
-    { obey: false });
+    { obey: false, fx: {
+      ikut: [["🩺", "+2"]],
+      rumah: [["🩺", "—"]] } });
   if (final === "ikut") {
     x.stat("kesehatan", 2);
     x.say(`${x.n} keeps getting the moves wrong, but makes two new friends.`);
@@ -1411,10 +1477,12 @@ const skillUp = (x, k, v) => { if (x.c.st) x.c.st.skills[k] = Math.min(100, x.c.
 const SKILL_EN = { logic: "Logic", fitness: "Fitness", charm: "Charm", creativity: "Creativity" };
 
 storylet("proyek_besar", ["dewasa"], "sedang", { cooldown: 60, cond: working, weight: x => 0.6 + x.t("ambisius") / 80 }, x => {
-  const k = mainSkill(x);
+  const k = mainSkill(x), win = 0.35 + Math.min(100, x.c.st.skills[k] + 2.5) / 200;
   const [, final] = x.ask(`${x.n}'s boss offers them the lead on a big new project. It means long weeks.`,
     { ambil: "Take the lead", tolak: "Pass this time" }, { suportif: "ambil", tegas: "ambil" },
-    x.t("ambisius") > 50 ? "ambil" : "tolak");
+    x.t("ambisius") > 50 ? "ambil" : "tolak", { fx: {
+      ambil: [["🪙", `${pc(win)}: ${sg(800)}`, "bonus if it ships"], ["🛠️", `${SKILL_EN[k]} +2.5`], ["⚡", "−15"], ["😊", "−6"]],
+      tolak: [["😊", "+3"]], _note: moneyNote(x) } });
   if (final === "ambil") {
     skillUp(x, k, 2.5); x.need("mood", -6); x.need("energi", -15);
     if (x.chance(0.35 + x.c.st.skills[k] / 200)) {
@@ -1436,7 +1504,10 @@ storylet("rekan_curang", ["dewasa"], "sedang", { cooldown: 90, cond: working }, 
   x.say(`In a meeting, ${who} presents ${x.n}'s idea as their own.`);
   const [, final] = x.ask(`What should ${x.n} do?`,
     { hadapi: "Talk to them directly", bos: "Tell the boss", diam: "Let it go" },
-    { suportif: "hadapi", tegas: "bos" }, x.t("penakut") > 55 ? "diam" : x.t("impulsif") > 55 ? "bos" : "hadapi");
+    { suportif: "hadapi", tegas: "bos" }, x.t("penakut") > 55 ? "diam" : x.t("impulsif") > 55 ? "bos" : "hadapi", { fx: {
+      hadapi: [["🛠️", "Charm +1"], ["🌱", tw(["penakut", -1])]],
+      bos: [["📈", "+0.8"], ["😊", "−2"]],
+      diam: [["🌱", tw(["penakut", 1])], ["😊", "−6"]] } });
   if (final === "hadapi") {
     x.trait("penakut", -1); skillUp(x, "charm", 1);
     x.say(`${x.n} catches ${who} after the meeting. ${who} goes red and credits ${x.n} in the next email.`);
@@ -1451,7 +1522,9 @@ storylet("rekan_curang", ["dewasa"], "sedang", { cooldown: 90, cond: working }, 
 
 storylet("disuruh_curang", ["dewasa"], "sedang", { cooldown: 160, cond: working, weight: () => 0.6 }, x => {
   const [, final] = x.ask(`${x.n}'s boss asks them to make the quarterly numbers look "a bit nicer". Nobody would know.`,
-    { tolak: "Refuse", ikut: "Do it" }, { suportif: "tolak", tegas: "tolak" }, x.t("patuh") > 60 ? "ikut" : "tolak");
+    { tolak: "Refuse", ikut: "Do it" }, { suportif: "tolak", tegas: "tolak" }, x.t("patuh") > 60 ? "ikut" : "tolak", { fx: {
+      tolak: [["🌱", tw(["patuh", -1])], ["😊", "−3"]],
+      ikut: [["🪙", sg(400), "bonus"]], _note: moneyNote(x) } });
   if (final === "tolak") {
     x.trait("patuh", -1); x.need("mood", -3);
     x.say(`${x.n} says no. The boss is cold for a week, then quietly finds someone else.`);
@@ -1471,7 +1544,9 @@ storylet("mentor_junior", ["dewasa", "tua"], "kecil", { cooldown: 40, cond: x =>
 storylet("burnout", ["dewasa"], "sedang", { cooldown: 120, cond: x => working(x) && x.c.needs.mood < 45, weight: () => 1.5 }, x => {
   x.say(`${x.n} has been tired for weeks. Monday mornings feel heavy.`);
   const [, final] = x.ask(`Take a week off?`, { cuti: "Take the week off", lanjut: "Push through" },
-    { suportif: "cuti", tegas: "lanjut" }, x.t("rajin") > 60 ? "lanjut" : "cuti");
+    { suportif: "cuti", tegas: "lanjut" }, x.t("rajin") > 60 ? "lanjut" : "cuti", { fx: {
+      cuti: [["⏳", "1 week"], ["🪙", sg(-300)], ["⚡", "+30"], ["😊", "+18"]],
+      lanjut: [["📈", "+0.6"], ["🩺", "−1.5"], ["😊", "−5"]], _note: moneyNote(x) } });
   if (final === "cuti") {
     x.need("mood", 18); x.need("energi", 30); coins(x, -300);
     x.say(`${x.n} sleeps in, cooks, and walks a lot. They come back lighter, 300 coins poorer.`);
@@ -1485,8 +1560,14 @@ storylet("kelas_malam", ["dewasa"], "sedang", { cooldown: 150, cond: x => !!x.c.
   const opts = { logic: "Coding class", creativity: "Pottery class", charm: "Public speaking", fitness: "Boxing gym" };
   const low = Object.keys(opts).sort((a, b) => x.c.st.skills[a] - x.c.st.skills[b])[0];
   x.say(`The community center has evening classes this season. 300 coins for six weeks.`);
+  const fin = 0.55 + x.t("rajin") / 200, sk = x.c.st.skills;
+  // lima kolom: sel dibikin pendek (nama skill udah ada di judul kolom, "6 minggu" sama semua jadi pindah ke catatan)
+  const fx = Object.fromEntries(Object.keys(opts).map(k => [k, [["🪙", sg(-300)],
+    ["🛠️", `${Math.round(sk[k])}→${Math.round(Math.min(100, sk[k] + 6))}`, pc(fin)]]]));
+  fx.tidak = [["🪙", "—"]];
+  fx._note = [...moneyNote(x), "Every class runs 6 weeks", `🛠️ = skill if they finish (${pc(fin)} do), +2.5 if they stop`];
   const [, final] = x.ask(`Which class should ${x.n} take?`, { ...opts, tidak: "None this time" },
-    { suportif: low, tegas: "logic" }, x.t("ambisius") > 45 ? low : "tidak");
+    { suportif: low, tegas: "logic" }, x.t("ambisius") > 45 ? low : "tidak", { fx });
   if (final === "tidak") { x.say(`${x.n} keeps their evenings free.`); return; }
   coins(x, -300);
   x.c.info.kelas = { skill: final, label: opts[final], end: x.day + 42 };
@@ -1510,7 +1591,9 @@ storylet("kelas_selesai", ["dewasa", "tua"], "sedang", { priority: true, cond: x
 storylet("maraton_daftar", ["dewasa"], "sedang", { cooldown: 200, cond: x => !!x.c.st && !x.c.info.maraton }, x => {
   x.say(`Posters are up all over town: the Old Town Marathon is in three weeks.`);
   const [, final] = x.ask(`Should ${x.n} sign up?`, { daftar: "Sign up and train", nonton: "Cheer from the side" },
-    { suportif: "daftar", tegas: "daftar" }, x.t("ambisius") > 50 ? "daftar" : "nonton");
+    { suportif: "daftar", tegas: "daftar" }, x.t("ambisius") > 50 ? "daftar" : "nonton", { fx: {
+      daftar: [["⏳", "race in 21 days"], ["🛠️", "Fitness +2"], ["😊", "+4 to +15"]],
+      nonton: [["⏳", "—"]] } });
   if (final === "daftar") {
     x.c.info.maraton = { day: x.day + 21 };
     x.say(`${x.n} buys new running shoes and starts training before work.`);
@@ -1538,7 +1621,9 @@ storylet("tawaran_investasi", ["dewasa", "tua"], "sedang", { cooldown: 180, cond
   const who = x.pick(NAMES), idea = x.pick(["a bubble tea chain", "a phone app for pets", "a mushroom farm", "a tiny cinema"]);
   const [, final] = x.ask(`An old friend, ${who}, wants 1,000 coins to start ${idea}.`,
     { invest: "Invest 1,000", tolak: "Politely say no" }, { suportif: "invest", tegas: "tolak" },
-    x.t("impulsif") > 55 ? "invest" : "tolak");
+    x.t("impulsif") > 55 ? "invest" : "tolak", { fx: {
+      invest: [["🪙", sg(-1000), `35%: ${sg(2600)} back`]],
+      tolak: [["🪙", "keeps it"]], _note: moneyNote(x) } });
   if (final === "invest") {
     coins(x, -1000);
     if (x.chance(0.35)) { coins(x, 2600); x.say(`${idea[0].toUpperCase() + idea.slice(1)} takes off. ${x.n} gets 2,600 coins back.`); x.remember(`Invested in ${who}'s ${idea}. It paid off.`); }
@@ -1561,7 +1646,9 @@ storylet("relawan", ["dewasa", "tua"], "kecil", { cooldown: 45 }, x => {
 storylet("lomba_hobi", ["dewasa", "tua"], "sedang", { cooldown: 100, cond: x => !!x.c.st && x.c.st.skills.creativity > 30 }, x => {
   const what = x.pick(["the neighborhood baking contest", "the street photo contest", "the autumn craft fair"]);
   const [, final] = x.ask(`${x.n} could enter ${what}.`, { ikut: "Enter", skip: "Skip it" },
-    { suportif: "ikut", tegas: "ikut" }, x.t("penakut") > 60 ? "skip" : "ikut");
+    { suportif: "ikut", tegas: "ikut" }, x.t("penakut") > 60 ? "skip" : "ikut", { fx: {
+      ikut: [["🪙", `${sg(300)} if 1st`], ["🛠️", "Creativity +1"], ["😊", "up to +12"]],
+      skip: [["🪙", "—"]], _note: moneyNote(x) } });
   if (final === "skip") return x.say(`${x.n} goes to look, and quietly thinks they could have won.`);
   const s = x.c.st.skills.creativity + x.c.st.genes.talent.creativity * 3 + x.rng.uniform(-15, 15);
   if (s > 75) { coins(x, 300); x.say(`${x.n} wins first place at ${what}! 300 coins and a ribbon.`); x.remember(`Won ${what}.`); x.need("mood", 12); }
@@ -1581,7 +1668,10 @@ storylet("ribut_pasangan", GROWN, "sedang", { cooldown: 70, cond: x => married(x
   const p = x.c.partner(), topic = x.pick(["money", "whose turn it is to do the dishes", "where to spend the holidays", "being home too late"]);
   x.say(`${x.n} and ${p.nama} have a real argument about ${topic}.`);
   const [, final] = x.ask(`How should ${x.n} handle it?`, { minta_maaf: "Apologize first", bicara: "Talk it through", diam: "Give it a day" },
-    { suportif: "bicara", tegas: "bicara" }, x.t("setia") > 60 ? "minta_maaf" : x.t("impulsif") > 60 ? "diam" : "bicara");
+    { suportif: "bicara", tegas: "bicara" }, x.t("setia") > 60 ? "minta_maaf" : x.t("impulsif") > 60 ? "diam" : "bicara", { fx: {
+      minta_maaf: [["💑", "+4"], ["😊", "−1"]],
+      bicara: [["💑", "+6"]],
+      diam: [["💑", "−5"]] } });
   if (final === "minta_maaf") { p.skor = Math.min(100, p.skor + 4); x.need("mood", -1); x.say(`${x.n} apologizes. ${p.nama} hugs them and apologizes too.`); }
   else if (final === "bicara") { p.skor = Math.min(100, p.skor + 6); x.say(`They talk until midnight and make a plan together. It feels better than before.`); }
   else { p.skor = Math.max(0, p.skor - 5); x.say(`The house is quiet for a day. Things go back to normal, mostly.`); }
@@ -1590,7 +1680,9 @@ storylet("ribut_pasangan", GROWN, "sedang", { cooldown: 70, cond: x => married(x
 storylet("hari_jadi", GROWN, "kecil", { cooldown: 120, cond: x => married(x) }, x => {
   const p = x.c.partner();
   const [, final] = x.ask(`It's ${x.n} and ${p.nama}'s anniversary.`, { mewah: "Fancy dinner (200 coins)", rumah: "Cook at home" },
-    { suportif: "rumah", tegas: "rumah" }, x.t("impulsif") > 55 ? "mewah" : "rumah");
+    { suportif: "rumah", tegas: "rumah" }, x.t("impulsif") > 55 ? "mewah" : "rumah", { fx: {
+      mewah: wallet(x) >= 200 ? [["🪙", sg(-200)], ["💑", "+6"]] : [["🪙", "can't afford", "cooks instead"], ["💑", "+4"]],
+      rumah: [["🪙", "—"], ["💑", "+4"]], _note: moneyNote(x) } });
   if (final === "mewah" && wallet(x) >= 200) { coins(x, -200); p.skor = Math.min(100, p.skor + 6); x.say(`Candles, tiny portions, and a lot of laughing. ${p.nama} keeps the receipt as a souvenir.`); }
   else { p.skor = Math.min(100, p.skor + 4); x.say(`${x.n} cooks ${p.nama}'s favorite. It's a little burnt and perfect.`); }
 });
@@ -1599,7 +1691,9 @@ storylet("anak_sakit_malam", GROWN, "sedang", { cooldown: 60, cond: x => working
   const k = x.pick(kids_here(x).filter(k => k.age(x.day) < 180));
   const [, final] = x.ask(`${k.name} wakes up with a fever. ${x.n} has an important meeting this morning.`,
     { rumah: "Stay home with them", kerja: "Go to the meeting" }, { suportif: "rumah", tegas: "kerja" },
-    x.t("setia") > 50 ? "rumah" : "kerja");
+    x.t("setia") > 50 ? "rumah" : "kerja", { fx: {
+      rumah: [["📈", "−0.4"], ["🧒", `${k.name} +1.5`]],
+      kerja: [["📈", "+0.6"], ["🧒", `${k.name} −1`]] } });
   if (final === "rumah") { k.bond = Math.min(100, k.bond + 1.5); x.stat("karier", -0.4); x.say(`${x.n} stays home making soup. ${k.name} falls asleep on their lap.`); }
   else { x.stat("karier", 0.6); k.bond = Math.max(0, k.bond - 1); x.say(`${x.n} goes to the meeting and calls home three times. ${k.name} is fine, but asked where they were.`); }
 });
@@ -1644,7 +1738,8 @@ const kuliah = x => !!x.c.info.kuliah_aktif;
 storylet("kampus_ujian", ["dewasa"], "sedang", { cooldown: 40, cond: kuliah, weight: () => 1.6 }, x => {
   x.say(`Exam week at college. ${x.n} has three papers and one night.`);
   const [, final] = x.ask("What should they do the night before?", { begadang: "Pull an all-nighter", tidur: "Sleep, trust the notes" },
-    { suportif: "tidur", tegas: "begadang" }, x.t("rajin") > 55 ? "tidur" : "begadang");
+    { suportif: "tidur", tegas: "begadang" }, x.t("rajin") > 55 ? "tidur" : "begadang", { fx: Object.fromEntries(["begadang", "tidur"].map(o => [o,
+      [["🎓", `${pc(x.c.stats.kecerdasan / 100 * 0.6 + x.t("rajin") / 100 * 0.3 + (o === "tidur" ? 0.1 : 0.02))} ace it`], ["🧠", "+1.5, or +0.5"], ["😊", "+6, or −6"]]])) });
   const base = x.c.stats.kecerdasan / 100 * 0.6 + x.t("rajin") / 100 * 0.3 + (final === "tidur" ? 0.1 : 0.02);
   if (x.chance(base)) {
     x.say(final === "tidur" ? `${x.n} walks in rested and aces all three. The notes were enough.` : `${x.n} aces the papers on four hours of sleep and sleeps through the whole next day.`);
@@ -1666,7 +1761,9 @@ storylet("kampus_organisasi", ["dewasa"], "sedang", { once: true, cond: kuliah, 
 storylet("kampus_kerja_sambilan", ["dewasa"], "sedang", { cooldown: 200, cond: x => kuliah(x) && !!x.c.st }, x => {
   x.say(`The campus café is hiring students for weekend shifts. 90 coins a week.`);
   const [, final] = x.ask(`Should ${x.n} take it?`, { ambil: "Take the shifts", fokus: "Focus on studying" },
-    { suportif: "ambil", tegas: "fokus" }, x.t("rajin") > 50 ? "ambil" : "fokus");
+    { suportif: "ambil", tegas: "fokus" }, x.t("rajin") > 50 ? "ambil" : "fokus", { fx: {
+      ambil: [["⏳", "4 weekends"], ["🪙", sg(360)], ["🛠️", "Charm +1"]],
+      fokus: [["⏳", "weekends free"]], _note: moneyNote(x) } });
   if (final === "ambil") {
     coins(x, 360); skillUp(x, "charm", 1);
     x.say(`${x.n} works four weekends at the café. Tips are small, the regulars are not.`);
@@ -1699,7 +1796,9 @@ storylet("gap_puncak", ["dewasa"], "sedang", { once: true, cond: gap, weight: ()
 storylet("gap_pilihan", ["dewasa"], "sedang", { cooldown: 45, cond: x => gap(x) && !!x.c.st }, x => {
   x.say(`${x.n} finds a boat trip to the far islands. 150 coins, five days, no phone signal.`);
   const [, final] = x.ask("Go, or save the money?", { pergi: "Go, you only get one gap year", hemat: "Save it, the islands will wait" },
-    { suportif: "pergi", tegas: "hemat" }, x.t("impulsif") > 50 ? "pergi" : "hemat");
+    { suportif: "pergi", tegas: "hemat" }, x.t("impulsif") > 50 ? "pergi" : "hemat", { fx: {
+      pergi: wallet(x) >= 150 ? [["⏳", "5 days"], ["🪙", sg(-150)], ["😊", "+8"]] : [["⏳", "—"], ["🪙", "not enough"], ["😊", "−4"]],
+      hemat: [["⏳", "—"], ["🪙", "keeps it"]], _note: moneyNote(x) } });
   if (final === "pergi" && wallet(x) >= 150) { coins(x, -150); x.need("mood", 8); x.say(`Five days of salt, sunburn, and the best sleep of ${x.n}'s life.`); x.remember("Took the boat to the far islands."); }
   else if (final === "pergi") { x.say(`${x.n} counts the coins twice. Not enough. They watch the boat leave from the pier.`); x.need("mood", -4); }
   else x.say(`${x.n} keeps the money and swims at the public beach instead. Also good.`);

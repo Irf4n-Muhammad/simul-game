@@ -71,8 +71,11 @@
       const n = x.n;
       if (x.age > 183 || !gateOk(x)) { setAturan(x, "tengah", "default"); return `${n} is a teen now, with a phone of their own. The house keeps its usual rules: in by nine, dating's fine as long as we know, pocket money on Mondays.`; }
       x.say(`A phone of their own, a school up the hill, and a question at the dinner table that wasn't there yesterday: what are the rules now?`);
-      const [g, final] = tanya(x, `${n} is a teen now. House rules?`, Object.fromEntries(Object.entries(PAKET).map(([k, p]) => [k, p.label])),
-        { suportif: "longgar", tegas: "ketat" }, "tengah", { obey: false, safe: "tengah", alone: "so the house keeps its usual rules: in by nine, dating's fine as long as we know, pocket money on Mondays." });
+      const [g, final] = tanya(x, `${n} is a teen now. House rules?`, Object.fromEntries(Object.entries(PAKET).map(([k, p]) => [k, p.short[0].toUpperCase() + p.short.slice(1)])),   // v85: tombol pendek, rinciannya di tabel
+        { suportif: "longgar", tegas: "ketat" }, "tengah", { obey: false, safe: "tengah", alone: "so the house keeps its usual rules: in by nine, dating's fine as long as we know, pocket money on Mondays.", fx: {
+          longgar: [["⏳", "in by 11"], ["🪙", `${E.FX.money(JAJAN.besar)} a week`], ["💑", "dating fine"]],
+          tengah: [["⏳", "in by 9"], ["🪙", `${E.FX.money(JAJAN.besar)} a week`], ["💑", "fine if we know"]],
+          ketat: [["⏳", "in by 9"], ["🪙", `${E.FX.money(JAJAN.kecil)} a week`], ["💑", "waits till grown"]], _note: E.FX.note(x) } });
       setAturan(x, final, oleh(g));
       x.remember(`House rules, ${PAKET[final].short}: ${KATA.jam_malam[PAKET[final].rules.jam_malam]}, dating ${KATA.pacaran[PAKET[final].rules.pacaran]}.`);
       return TEKS_ATURAN[final](n);
@@ -219,7 +222,9 @@
     if (!gateOk(x)) { x.c.info.sambilan_izin = { id: "boleh", d: x.day, oleh: "default", tempat }; x.c.info.sambilan = tempat; x.c.info.sambilan_mulai = x.day + 3; return `A form from the ${tempat} comes home: Saturdays and two evenings, a signature on the dotted line. It goes back signed the same evening. ${n} starts in three days.`; }
     x.say(`${n} comes home with a form from the ${tempat}: Saturdays and two evenings, ${GAJI} coins a week, and a parent's signature on the dotted line.`);
     const [g, final] = tanya(x, `${n} wants a part-time job at the ${tempat}. Sign the form?`, { boleh: "Sign it", tidak: "Not till after the exams" },
-      { suportif: "boleh", tegas: "tidak" }, "boleh", { obey: false, safe: "boleh", alone: `so the form went back signed, and ${n} starts in three days.` });
+      { suportif: "boleh", tegas: "tidak" }, "boleh", { obey: false, safe: "boleh", alone: `so the form went back signed, and ${n} starts in three days.`, fx: {
+        boleh: [["⏳", "starts in 3 days"], ["🪙", `${E.FX.money(GAJI)} first shift`, `then ${E.FX.money(10)} a shift`], ["⚡", "−6 a shift"], ["😊", "+5"]],
+        tidak: [["⏳", "after the exams"], ["🪙", "—"], ["🌱", E.FX.trait(["ambisius", 1])], ["😊", "−4"]], _note: E.FX.note(x) } });
     x.c.info.sambilan_izin = { id: final, d: x.day, oleh: oleh(g), tempat };
     x.c.info.sambilan = tempat;
     if (final === "boleh") { x.c.info.sambilan_mulai = x.day + 3; x.need("mood", 5); return `Signed. ${n} starts at the ${tempat} in three days, and spends the three days practising a work face in the mirror.`; }
@@ -239,7 +244,9 @@
     x.say(`${n} is invited to ${s ? `${s.nama}'s` : "a"} birthday party, the first real one: a hall, a playlist, "everyone's going", and everyone's staying till the end.`);
     let final, followed;
     if (rule) [final, followed] = x.by_rule("curfew is " + (rule === "ketat" ? "nine" : "eleven"), rule === "ketat" ? "pulang" : "larut", "larut", options);
-    else [, final, followed] = tanya(x, "Everyone's staying till the end. Let them?", options, { suportif: "larut", tegas: "pulang" }, "larut", { safe: "pulang", alone: `so ${n} stayed till the end without waiting for your OK.` });
+    else [, final, followed] = tanya(x, "Everyone's staying till the end. Let them?", options, { suportif: "larut", tegas: "pulang" }, "larut", { safe: "pulang", alone: `so ${n} stayed till the end without waiting for your OK.`, fx: {
+      pulang: [["🎉", "home by 9"], ["😊", "+4"], ["💗", "+1"]],
+      larut: [["🎉", x.t("impulsif") > 55 ? "risky next day" : "till the lights"], ["😊", "+8"]] } });
     x.c.info.pesta_pertama = { d: x.day, pulang: final, nurut: followed }; x.c.info.pesta_hari = x.day;   // ekornya (masalah_di_pesta / pesta_aman) besok
     if (final === "pulang") { x.need("mood", 4); x.bond(1); return `${n} goes, dances badly and well, and is home by nine as agreed: first to leave, and minds, a little, and doesn't say so till morning.`; }
     x.flag("di_pesta", 1); x.need("mood", 8);
