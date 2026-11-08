@@ -322,8 +322,9 @@
     const fx = Object.fromEntries(M.map(o => {
       const g = Math.round(UNI_G * talentF(x.c, o.id) * minatF(o.m) * days), v = Math.round(eff(I, o.id));
       const to = Math.min(UNI_CAP, v + g);
-      return [o.id, [["⭐", `${N[o.id].label}: ${v} (${TIER[tierOf(v)]}) now, about ${to} (${TIER[tierOf(to)]}) by graduation in ${days} days`], ["😊", `${x.n} on ${N[fieldOf(o.spec)].label}: ${MINAT_WORD(o.m)}`]]];
+      return [o.id, [["⭐", `${N[o.id].label} ${v}→${to}`], ["😊", MINAT_WORD(o.m)]]];
     }));
+    fx._note = `⭐ = where the path should be by graduation, in about ${days} days (Junior under 25, Intermediate 25–54, Senior 55+).`;
     const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id, fx });
     I.jur = final; I.ver = (I.ver || 0) + 1;
     x.c.info.jurusan = LES[N[final].spec];
@@ -360,8 +361,9 @@
     const [, final] = x.ask(`${x.n} wants to quit ${K.name} (${k.n}/${SESI.length} sessions done).`,
       { lanjut: "Finish the course", berhenti: "Okay, you can stop" },
       { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut", fx: {
-        lanjut: [["⭐", pv.target ? `about +${r1(Math.min(pv.per * left0, pv.total))} ${pv.tlabel} over ${left0} more sessions` : "no more progress from this class"], ["😊", `−5 each session`], ["⚡", `−${K.sport ? 12 : 8} each session`]],
-        berhenti: [["🪙", `the ${K.price} 🪙 fee is not refunded`], ["😊", "+5, relieved"], ["⭐", k.gain > 0 ? `keeps the +${r1(k.gain)} so far` : "nothing gained"]] } });
+        lanjut: [["⭐", pv.target ? `+${r1(Math.min(pv.per * left0, pv.total))} ${pv.tlabel}` : "nothing more"], ["😊", `−5 × ${left0}`], ["⚡", `−${K.sport ? 12 : 8} × ${left0}`]],
+        berhenti: [["⭐", k.gain > 0 ? `keeps +${r1(k.gain)}` : "nothing"], ["😊", "+5"], ["🪙", `${K.price} 🪙 fee lost`]],
+        _note: `${left0} sessions left. ×${left0} = every session from here.` } });
     if (final === "lanjut") {
       x.need("mood", -3);
       I.minat[K.field] = Math.max(0, I.minat[K.field] - 2);

@@ -53,11 +53,27 @@ function countdownText(p) {
 }
 // v83: kartu keputusan berangka. Tiap pilihan nulis hasilnya (🪙 ⚡ 😊 ⭐ 💗 ...), dan pilihan yang bukan maunya makhluk nulis harganya.
 // Pilihan pemain selalu jalan (engine.js ask), jadi nggak ada lagi "mungkin dia nggak nurut".
-function dlOpt(p, k, l) {
-  const fx = (p.fx && p.fx[k]) || [], want = p.wish === k, cost = p.wish && !want && p.cost;
-  const rows = fx.map(([ic, tx]) => `<span><i>${ic}</i>${esc(tx)}</span>`).join("")
-    + (cost ? `<span class="cost"><i>😊</i>−${p.cost.mood} mood, 💗 −${p.cost.bond}: not what ${esc(p.name)} wants</span>` : "");
-  return `<button class="dl-opt${want ? " want" : ""}" data-opt="${esc(k)}"><b>${esc(l)}</b>${want ? `<em>${esc(p.name)} wants this</em>` : ""}${rows ? `<div class="dl-fx">${rows}</div>` : ""}</button>`;
+// v84: kartu keputusan jadi tabel perbandingan. Pilihan = kolom, hasil = baris pendek (⏳ 🪙 ⭐ 😊 💗 ...).
+// Pilihan yang bukan maunya makhluk dapet harga di baris 😊/💗 (merah). fx._note jadi catatan kecil di bawah.
+const DL_ROWS = [["⏳","Time"],["🪙","Money"],["⭐","Path"],["🎓","Later"],["📈","Career"],["🏠","Home"],["🎉","Party"],["👫","Friends"],["⚡","Energy"],["😊","Mood"],["💗","Bond"]];
+function dlTable(p) {
+  const opts = Object.entries(p.options), fx = p.fx || {};
+  const cell = (k, ic) => ((fx[k] || []).find(([i]) => i === ic) || [])[1];
+  const seen = new Set(); opts.forEach(([k]) => (fx[k] || []).forEach(([i]) => seen.add(i)));
+  if (p.wish && p.cost) { seen.add("😊"); seen.add("💗"); }
+  const rows = [...DL_ROWS.filter(([i]) => seen.has(i)), ...[...seen].filter(i => !DL_ROWS.some(([j]) => j === i)).map(i => [i, ""])];
+  const costOf = (k, ic) => p.wish && p.wish !== k && p.cost ? (ic === "😊" ? p.cost.mood : ic === "💗" ? p.cost.bond : 0) : 0;
+  const td = (k, ic) => {
+    const tx = cell(k, ic), c = costOf(k, ic);
+    const parts = [tx ? esc(tx) : "", c ? `<b class="cost">−${c}</b>` : ""].filter(Boolean);
+    return `<td>${parts.length ? parts.join(" ") : '<span class="nil">—</span>'}</td>`;
+  };
+  const head = opts.map(([k, l]) => `<th${p.wish === k ? ' class="want"' : ""}>${esc(l)}${p.wish === k ? `<em>♥ ${esc(p.name)} wants</em>` : ""}</th>`).join("");
+  const body = rows.map(([ic, lbl]) => `<tr><th scope="row"><i>${ic}</i>${lbl ? `<small>${lbl}</small>` : ""}</th>${opts.map(([k]) => td(k, ic)).join("")}</tr>`).join("");
+  const costNote = p.wish && p.cost ? `<span class="cost">−</span> = not what ${esc(p.name)} wants. ` : "";
+  const note = fx._note || costNote ? `<p class="dl-note">${costNote}${esc(fx._note || "")}</p>` : "";
+  const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
+  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
 }
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {
@@ -67,7 +83,7 @@ function showDilemma() {
   openSheet("dilemma", `
     <span class="ribbon" ${p.drama === "kecil" ? 'style="background: var(--plum)"' : ""}>${LEVEL[p.drama] || "DECISION"} · ${esc(p.name)}</span>
     <h2>${esc(p.question)}</h2>
-    ${p.fx || p.wish ? `<div class="dl-opts">${Object.entries(p.options).map(([k, l]) => dlOpt(p, k, l)).join("")}</div>`
+    ${p.fx || p.wish ? dlTable(p)
       : Object.entries(p.options).map(([k, l], i) => `<button class="choice ${i ? "no" : "yes"}" data-opt="${esc(k)}">${esc(l)}</button>`).join("")}
     <div class="meter"><i id="cdBar" style="width:${cd.frac * 100}%"></i></div>
     <div class="timer" id="cdText">${esc(cd.text)}</div>
