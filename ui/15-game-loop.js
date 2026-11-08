@@ -42,6 +42,8 @@ function boot() {
   if (state.ilmu_from == null) state.ilmu_from = oldSave ? liveDay() : 0;
   // v85: tawaran kerja pertama di sistem koin (kantor vs magang impian) hidup mulai hari ini buat save lama, dari awal buat yang baru
   if (state.kerja1_from == null) state.kerja1_from = oldSave ? liveDay() : 0;
+  // v86: tawaran pindah kerja (gaji dobel di kota lain) hidup lagi di sistem koin mulai hari ini buat save lama
+  if (state.pindah_from == null) state.pindah_from = oldSave ? liveDay() : 0;
   save();
   game = new GameLayer.Game(state);
   // tiap tindakan pemain dicatat jenisnya (bukan ke siapa) buat telemetry

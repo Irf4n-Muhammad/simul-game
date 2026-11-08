@@ -657,15 +657,18 @@ storylet("dipecat", ["dewasa"], "sedang", { cooldown: 150,
 storylet("tawaran_pindah_kerja", ["dewasa"], "sedang", { cooldown: 150,
   cond: x => x.c.info.kerja && (x.c.info.level ?? 1) >= 2 && x.t("ambisius") > 50 }, x => {
   const kota = x.pick(["the capital", "the port city", "the next country over"]);
-  x.say(`${x.n} gets a job offer in ${kota}. Double the pay, but far from home.`);
+  // v86: di ekonomi koin angkanya dari status.js moveOffer (gaji dan biaya hidup beneran, sesudah biaya hidup)
+  const M = x.c.st && STX() ? STX().moveOffer(x.c, x.day) : null;
+  x.say(`${x.n} gets a job offer in ${kota}. ${M ? `Same job, ${M.title}, for` : ""}${M ? " double" : "Double"} the pay, but far from home.`);
   const [, final] = x.ask("Take it?", { ambil: "Take it", tetap: "Stay here" },
-    { suportif: "SELF", tegas: "tetap" }, x.t("ambisius") > 65 ? "ambil" : "tetap", { fx: {
-      ambil: [["🪙", x.c.st && x.c.st.job ? `pay ${wdN(STX().salary(x.c.st.job))}→${wdN(STX().salary(x.c.st.job) * 2)} a day` : "pay ×2"], ["🏠", "moves far away"], ["💗", "−2"]],
-      tetap: [["🪙", x.c.st && x.c.st.job ? `stays ${wdN(STX().salary(x.c.st.job))} a day` : "same pay"], ["🏠", "stays close"], ["💗", "+2"]], _note: moneyNote(x) } });
+    { suportif: "SELF", tegas: "tetap" }, x.t("ambisius") > 65 ? "ambil" : "tetap", { safe: "tetap", fx: M ? {
+      ambil: [["🪙", `${sg(M.pay2 - M.live2)} a day`, `pay ${wdN(M.pay2)} minus living ${wdN(M.live2)}`], ["🏠", `moves to ${kota}`], ["💗", "−2"]],
+      tetap: [["🪙", `${sg(M.pay - M.live)} a day`, `pay ${wdN(M.pay)} minus living ${wdN(M.live)}`], ["🏠", "stays close"], ["💗", "+2"]], _note: moneyNote(x) } : {
+      ambil: [["🪙", "pay ×2"], ["🏠", "moves far away"], ["💗", "−2"]],
+      tetap: [["🪙", "same pay"], ["🏠", "stays close"], ["💗", "+2"]] } });
   if (final === "ambil") {
     x.c.info.gaji = (x.c.info.gaji ?? 3) * 2;
-    // v83: di ekonomi koin, gaji beneran ikut dobel (dulu cuma angka lama di info). Save lama tetap sama.
-    if (x.agency() && x.c.st && x.c.st.job) x.c.st.job.crowd = (x.c.st.job.crowd || 1) * 2;
+    if (M) STX().takeMove(x);   // v86: gaji beneran dobel (job.far), cuma jalan mulai home.pindah_from
     x.c.info.kota = kota;
     x.say(`${x.n} moves to ${kota}. They promise a video call every Sunday.`);
     x.bond(-2);
