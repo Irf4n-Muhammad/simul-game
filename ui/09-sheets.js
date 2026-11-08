@@ -75,7 +75,8 @@ function dlTable(p) {
     ...[].concat(fx._note || []).map(esc)];
   const note = lines.length ? `<ul class="dl-note" hidden>${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
   const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
-  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
+  // v85: catatan "?" jadi pop up yang nempel di tombolnya (nggak ndorong tabel ke bawah)
+  return `<div class="dl-box">${note}<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div></div><div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
 }
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {
@@ -91,7 +92,12 @@ function showDilemma() {
     <div class="timer" id="cdText">${esc(cd.text)}</div>
     <button class="close" data-later="1">Decide later</button>`);
   const help = sheet.querySelector(".dl-help"), note = sheet.querySelector(".dl-note");
-  if (help && note) help.onclick = () => { note.hidden = !note.hidden; help.setAttribute("aria-expanded", String(!note.hidden)); help.classList.toggle("on", !note.hidden); };
+  if (help && note) {
+    const set = open => { note.hidden = !open; help.setAttribute("aria-expanded", String(open)); help.classList.toggle("on", open); };
+    help.onclick = e => { e.stopPropagation(); set(note.hidden); };
+    note.onclick = () => set(false);
+    sheet.addEventListener("click", e => { if (!note.hidden && !note.contains(e.target)) set(false); });
+  }
   sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
     const late = Math.min(p.window, Math.max(0, liveDay() - p.day));
     Tele.dilema("jawab", p.key, { opt: b.dataset.opt, detik: Math.round((Date.now() - shownAt) / 1000), telat: late });
