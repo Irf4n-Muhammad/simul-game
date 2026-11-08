@@ -73,9 +73,9 @@ function dlTable(p) {
   const body = rows.map(([ic, lbl]) => `<tr><th scope="row"><i>${ic}</i>${lbl ? `<small>${lbl}</small>` : ""}</th>${opts.map(([k]) => td(k, ic)).join("")}</tr>`).join("");
   const lines = [...(p.wish && p.cost ? [`♥ = what ${esc(p.name)} would pick on their own`, `<b class="cost">−</b> red = ${esc(p.name)} is sad you overruled them`] : []),
     ...[].concat(fx._note || []).map(esc)];
-  const note = lines.length ? `<ul class="dl-note">${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
+  const note = lines.length ? `<ul class="dl-note" hidden>${lines.map(l => `<li>${l}</li>`).join("")}</ul>` : "";
   const btns = opts.map(([k, l]) => `<button class="dl-pick${p.wish === k ? " want" : ""}" data-opt="${esc(k)}">${esc(l)}</button>`).join("");
-  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
+  return `<div class="dl-wrap"><table class="dl-tbl"><thead><tr><th>${lines.length ? '<button class="dl-help" aria-label="What do these mean?" aria-expanded="false">?</button>' : ""}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}<div class="dl-picks" style="--n:${opts.length}">${btns}</div>`;
 }
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {
@@ -90,6 +90,8 @@ function showDilemma() {
     <div class="meter"><i id="cdBar" style="width:${cd.frac * 100}%"></i></div>
     <div class="timer" id="cdText">${esc(cd.text)}</div>
     <button class="close" data-later="1">Decide later</button>`);
+  const help = sheet.querySelector(".dl-help"), note = sheet.querySelector(".dl-note");
+  if (help && note) help.onclick = () => { note.hidden = !note.hidden; help.setAttribute("aria-expanded", String(!note.hidden)); help.classList.toggle("on", !note.hidden); };
   sheet.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
     const late = Math.min(p.window, Math.max(0, liveDay() - p.day));
     Tele.dilema("jawab", p.key, { opt: b.dataset.opt, detik: Math.round((Date.now() - shownAt) / 1000), telat: late });
