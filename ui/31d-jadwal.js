@@ -35,14 +35,14 @@ function showBlok(id, key, back, sel = undefined, keys = undefined) {
   const det = sel ? (f.kind === "topik" ? `<div class="bk-det"><h4>${f.ic} ${esc(f.label)}</h4><span class="q">${n}: “${esc(f.react)}”</span>
       <span class="fx">${fxBits(f.fx, true)} <em>each time</em></span>
       <span class="row">${esc(f.nodeLabel)} is at ${f.v}.${f.left ? ` Its ⭐ lights at ${f.star}: about ${f.left} more time${f.left === 1 ? "" : "s"}.` : f.star && f.v >= f.star ? " Its ⭐ is lit." : ""}${f.v >= f.cap ? ` Hobbies stop at ${f.cap}; classes go further.` : ` Hobbies take it up to ${f.cap}; past that it's classes.`}</span>
-      <span class="row">How ${n} feels about it: ${esc(f.word)}${f.minat < 25 ? ", so will often say no" : f.minat >= 55 ? ", so mood goes up" : ""}.</span></div>`
+      <span class="row">How ${n} feels about it: ${esc(f.word)}${f.minat < 25 ? ", so mood drops each time" : f.minat >= 55 ? ", so mood goes up" : ""}.</span></div>`
     : `<div class="bk-det"><h4>${f.ic} ${esc(f.label)}</h4><span class="fx">${fxBits(f.fx, true)} <em>each time</em></span><span class="row">An everyday thing. Grows a basic skill, not a star path.</span></div>`)
     : `<div class="bk-det"><h4>🎲 Up to ${n}</h4><span class="row">${n} picks, going by what ${n} likes.</span></div>`;
   const chips = Jadwal.ALL_KEYS.map(k => `<button class="chip${keys.has(k) ? " on" : ""}" data-k="${k}">${WK_SH[+k[0]]} ${WK_B[k.slice(1)]}${J[k] && J[k] === sel && !keys.has(k) ? " ·" : ""}</button>`).join("");
   openSheet("blok", `
     <span class="ribbon">FREE TIME · ${n}</span>
     <h2>${WK_DAYS[dow]} ${esc(Ilmu.BLOK_LBL[b].toLowerCase())}</h2>
-    <p class="muted small">Free time grows ${n}'s hobbies (each one a path in the star book, up to ${Jadwal.CAP}), basic skills, energy ⚡ and mood 😊. ♥ = things ${n} likes. Plans repeat every week; ${n} might still say no, or skip it when too tired.</p>
+    <p class="muted small">Free time grows ${n}'s hobbies (each one a path in the star book, up to ${Jadwal.CAP}), basic skills, energy ⚡ and mood 😊. ♥ = things ${n} likes. Plans repeat every week and always happen, unless ${n} is worn out. Things ${n} doesn't like cost mood.</p>
     <div class="tiles">${tile({ id: "" })}</div>
     ${roots.map(r => grp(esc(Tree.NODES[r].label), all.filter(o => o.kind === "topik" && Tree.NODES[o.node].root === r))).join("")}
     ${grp("Everyday", all.filter(o => o.kind === "agenda"))}

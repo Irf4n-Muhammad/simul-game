@@ -2,7 +2,7 @@
 // Hari dibagi 4 blok (ilmu.js): hari sekolah/kerja cuma Sore yang bebas, akhir pekan Pagi, Siang, Sore bebas, Malam selalu di rumah.
 // Pemain pasang rencana mingguan per blok ("jadwal:<hari><blok>:<kegiatan>", berlaku terus sampai diganti, seperti aturan rumah).
 // Kegiatan = kegiatan agenda biasa (Play with friends, Rest, ...) atau kegiatan topik pohon (Draw, Play chess, Cook, ...).
-// Makhluknya bisa nolak (peluang nurut, makin kecil kalau dia nggak suka topiknya), dan blok yang kosong dia isi sendiri sesuai minatnya.
+// Rencana pemain selalu jalan (v83); kalau dia nggak suka, mood dan minatnya yang turun. Blok yang kosong dia isi sendiri sesuai minatnya.
 // Kegiatan topik nambah sedikit ke jalurnya di pohon (jauh lebih kecil dari les, mentok di 35) dan pelan-pelan ngubah minatnya.
 // Blok yang kepakai les nggak bisa diisi. Hidup cuma kalau home.ilmu_from aktif, jadi save lama nggak berubah.
 "use strict";
@@ -56,6 +56,7 @@
   const ORDER_PH = ["bayi", "anak", "remaja", "dewasa", "tua"];
   const LEARN = 0.45, CAP = 35;              // kegiatan bebas: kecil, dan nggak bisa bawa jalurnya jauh tanpa les
   const SKILL_OF = { body: "fitness", mind: "logic", spark: "creativity", heart: "charm" };
+  const moodOf = mi => mi >= 55 ? 3 : mi >= 35 ? 1 : mi >= 20 ? -3 : -5;   // nggak suka tapi tetap dijalanin: mood turun
   const fieldOf = id => N[id].tier === "field" ? id : N[id].field;
 
   // ---------------------------------------------------------------- blok
@@ -93,7 +94,7 @@
   function doTopik(x, tid, how) {
     const c = x.c, t = TOPIK[tid], I = IL.il(c.st), f = fieldOf(t.node), mi = IL.minatOf(c, f);
     x.need("energi", t.energi);
-    x.need("mood", mi >= 55 ? 3 : mi >= 35 ? 1 : -2);
+    x.need("mood", moodOf(mi));
     const cur = I.v[t.node] ?? IL.eff(I, t.node);
     if (cur < CAP) {
       const tal = 0.6 + ((c.st.genes.talent[SKILL_OF[N[t.node].root]] || 5) - 1) / 9;
@@ -130,12 +131,7 @@
     const tired = c.needs.energi < 15;
     let tid = null, aid = null, how = "sendiri";
     if (plan && tired) how = "capek";
-    else if (plan) {
-      const isT = plan.startsWith("t."), mi = isT ? IL.minatOf(c, fieldOf(TOPIK[plan.slice(2)].node)) : 50;
-      const ob = Math.min(0.95, x.obey_chance() * (mi < 25 ? 0.5 : mi < 40 ? 0.8 : 1) + 0.2);
-      if (seed_rng(c.id, x.day, "nurut", b).random() < ob) { how = "nurut"; if (isT) tid = plan.slice(2); else aid = plan; }
-      else how = "kabur";
-    }
+    else if (plan) { how = "nurut"; if (plan.startsWith("t.")) tid = plan.slice(2); else aid = plan; }   // v83: rencana pemain selalu jalan
     const miss = how === "kabur" ? ` The plan was "${labelOf(plan)}", but ${x.n} wanted something else.` : how === "capek" ? ` Too tired for "${labelOf(plan)}".` : "";
     if (main && !tid && !aid) {
       // blok utama tanpa rencana yang jalan: agenda.js yang milih sesuai sifatnya
@@ -220,7 +216,7 @@
     if (id.startsWith("t.")) {
       const t = TOPIK[id.slice(2)], I = IL.il(c.st), f = fieldOf(t.node), mi = IL.minatOf(c, f);
       const tal = 0.6 + ((c.st.genes.talent[SKILL_OF[N[t.node].root]] || 5) - 1) / 9, v = IL.eff(I, t.node);
-      const per = v >= CAP ? 0 : Math.round(LEARN * tal * (0.5 + mi / 140) * 10) / 10, mood = mi >= 55 ? 3 : mi >= 35 ? 1 : -2;
+      const per = v >= CAP ? 0 : Math.round(LEARN * tal * (0.5 + mi / 140) * 10) / 10, mood = moodOf(mi);
       const star = STAR_AT[N[t.node].tier], left = star && v < star && per > 0 ? Math.ceil((star - v) / per) : null;
       return { id, ic: t.ic, label: t.label, kind: "topik", root: N[t.node].root, node: t.node, nodeLabel: N[t.node].label, v: Math.round(v), cap: CAP,
         energi: t.energi, mood, per, star, left, minat: mi, word: IL.MINAT_WORD(mi), react: REACT(mi, t.label), love: mi >= 55,

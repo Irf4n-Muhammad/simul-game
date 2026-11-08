@@ -51,6 +51,14 @@ function countdownText(p) {
   const who = state.wakil === "aman" ? "a helper picks the safe choice" : `${p.name} decides alone`;
   return { frac: left / ((p.window + 1) * state.jam.ms), text: `${wait} left. If you don't answer, ${who}. Time in the house waits for you.` };
 }
+// v83: kartu keputusan berangka. Tiap pilihan nulis hasilnya (🪙 ⚡ 😊 ⭐ 💗 ...), dan pilihan yang bukan maunya makhluk nulis harganya.
+// Pilihan pemain selalu jalan (engine.js ask), jadi nggak ada lagi "mungkin dia nggak nurut".
+function dlOpt(p, k, l) {
+  const fx = (p.fx && p.fx[k]) || [], want = p.wish === k, cost = p.wish && !want && p.cost;
+  const rows = fx.map(([ic, tx]) => `<span><i>${ic}</i>${esc(tx)}</span>`).join("")
+    + (cost ? `<span class="cost"><i>😊</i>−${p.cost.mood} mood, 💗 −${p.cost.bond}: not what ${esc(p.name)} wants</span>` : "");
+  return `<button class="dl-opt${want ? " want" : ""}" data-opt="${esc(k)}"><b>${esc(l)}</b>${want ? `<em>${esc(p.name)} wants this</em>` : ""}${rows ? `<div class="dl-fx">${rows}</div>` : ""}</button>`;
+}
 const LEVEL = { kecil: "SMALL DECISION", sedang: "DECISION", besar: "BIG DECISION" };
 function showDilemma() {
   const p = game.pending; if (!p) return;
@@ -59,7 +67,8 @@ function showDilemma() {
   openSheet("dilemma", `
     <span class="ribbon" ${p.drama === "kecil" ? 'style="background: var(--plum)"' : ""}>${LEVEL[p.drama] || "DECISION"} · ${esc(p.name)}</span>
     <h2>${esc(p.question)}</h2>
-    ${Object.entries(p.options).map(([k, l], i) => `<button class="choice ${i ? "no" : "yes"}" data-opt="${esc(k)}">${esc(l)}</button>`).join("")}
+    ${p.fx || p.wish ? `<div class="dl-opts">${Object.entries(p.options).map(([k, l]) => dlOpt(p, k, l)).join("")}</div>`
+      : Object.entries(p.options).map(([k, l], i) => `<button class="choice ${i ? "no" : "yes"}" data-opt="${esc(k)}">${esc(l)}</button>`).join("")}
     <div class="meter"><i id="cdBar" style="width:${cd.frac * 100}%"></i></div>
     <div class="timer" id="cdText">${esc(cd.text)}</div>
     <button class="close" data-later="1">Decide later</button>`);

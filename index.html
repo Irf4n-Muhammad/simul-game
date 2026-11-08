@@ -630,6 +630,12 @@ svg { stroke: currentColor; }
 .bk-det span.fx { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; } .bk-det span.fx u { font-size: 13px; } .bk-det span.fx em { font-size: 11px; color: var(--ink-soft); }
 .wk-sum { border-radius: 12px; background: rgba(59,125,216,.07); padding: 8px 10px; font-size: 12px; line-height: 1.5; margin: 2px 0 6px; } .wk-sum u { text-decoration: none; font-weight: 800; margin-right: 6px; white-space: nowrap; }
 .wk-sum u.p { color: #3B7DD8; } .wk-sum u.s { color: #6A5ACD; } .wk-sum u.g { color: #3E7A3B; } .wk-sum u.m { color: #C24A3A; }
+.dl-opts { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.dl-opt { text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 11px 13px; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 5px; position: relative; }
+.dl-opt b { font-size: 15.5px; font-weight: 800; color: var(--ink); } .dl-opt em { position: absolute; top: 10px; right: 12px; font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #C96B86; }
+.dl-opt.want { border-color: #E7B8C6; } .dl-opt:active { background: #FFF3E8; }
+.dl-fx { display: flex; flex-direction: column; gap: 3px; } .dl-fx span { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); } .dl-fx i { font-style: normal; display: inline-block; width: 20px; }
+.dl-fx span.cost { color: #C24A3A; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; } .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 9px; font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; } .chip:disabled { opacity: .4; } .wk-c.class { background: #3B7DD8; color: #fff; }
 .les-tier { display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--c); border-radius: 999px; padding: 2px 7px; vertical-align: 1px; margin-left: 4px; }

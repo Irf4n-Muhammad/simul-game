@@ -158,13 +158,13 @@
 
   // satu sesi les: energi, mood, minat, poin
   function sesi(x, k) {
-    const c = x.c, K = COURSES[k.id], I = il(c.st), rng = seed_rng(c.id, x.day, "les", k.id);
+    const c = x.c, K = COURSES[k.id], I = il(c.st);
     const mi = minatOf(c, K.field);
     k.n += 1;
     const tired = x.c.needs.energi < 20;
-    if (x.c.needs.mood < 15 || tired || (mi < 25 && rng.random() < 0.35)) {
+    if (x.c.needs.mood < 15 || tired) {   // v83: nggak suka bukan alasan bolos lagi (pilihan pemain jalan); capek atau sedih banget tetap kelewat
       k.bolos += 1;
-      I.ucap = { d: x.day, field: K.field, tx: tired ? `Too tired for ${K.name} after today...` : mi < 25 ? `Do I have to go to ${K.name}? I'm staying home.` : `Too tired for ${K.name} today...`, mood: -1 };
+      I.ucap = { d: x.day, field: K.field, tx: tired ? `Too tired for ${K.name} after today...` : `Too sad for ${K.name} today...`, mood: -1 };
       x.say(`_${x.n} skips ${K.name} today (${k.n}/${SESI.length})._`);
       return;
     }
@@ -180,7 +180,7 @@
       g = I.v[target] - cur; I.ver = (I.ver || 0) + 1;
     }
     k.gain = r1(k.gain + g);
-    x.need("energi", K.sport ? -12 : -8); x.need("mood", -2);
+    x.need("energi", K.sport ? -12 : -8); x.need("mood", mi < 25 ? -5 : -2);
     const sk = SKILL_OF[K.root]; if (c.st.skills && sk in c.st.skills) c.st.skills[sk] = Math.min(100, c.st.skills[sk] + 0.15);
     // minat: maju di kelas yang pas bikin suka, kelas yang nggak pas atau capek bikin bosan
     const dm = m >= 1 && g >= 1.5 ? 2 : m <= 0.2 ? -3 : c.needs.mood < 30 ? -1 : 0.5;
@@ -313,7 +313,12 @@
     const opts = Object.fromEntries(M.map(o => [o.id, o.label]));
     const self = M.slice().sort((a, b) => (b.m - a.m) || (b.v - a.v))[0].id;
     x.say(`${x.n} spreads the college brochures across the floor. Time to pick a major.`);
-    const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id });
+    const days = Math.max(30, (x.c.info.siap_kerja ?? x.day + 180) - x.day);
+    const fx = Object.fromEntries(M.map(o => {
+      const g = Math.round(UNI_G * talentF(x.c, o.id) * minatF(o.m) * days), v = Math.round(eff(I, o.id));
+      return [o.id, [["⭐", `${N[o.id].label} ${v} → ~${Math.min(UNI_CAP, v + g)} by graduation`], ["😊", `${x.n} on ${N[fieldOf(o.spec)].label}: ${MINAT_WORD(o.m)}`]]];
+    }));
+    const [, final] = x.ask(`Which major should ${x.n} take?`, opts, { suportif: "SELF", tegas: M[0].id }, self, { safe: M[0].id, fx });
     I.jur = final; I.ver = (I.ver || 0) + 1;
     x.c.info.jurusan = LES[N[final].spec];
     x.say(`${x.n} signs up for ${LES[N[final].spec]}. The path ahead: ${N[final].label}.`);
@@ -345,9 +350,12 @@
     k.tanya = x.day;
     x.c.info.dilema_hari = x.day;
     x.say(`${x.n} pushes their ${K.name} bag under the bed. "Can I stop going? I really don't like it."`);
+    const left0 = SESI.length - k.n, pv = preview(x.c, k.id);
     const [, final] = x.ask(`${x.n} wants to quit ${K.name} (${k.n}/${SESI.length} sessions done).`,
       { lanjut: "Finish the course", berhenti: "Okay, you can stop" },
-      { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut" });
+      { suportif: "berhenti", tegas: "lanjut" }, "berhenti", { safe: "lanjut", fx: {
+        lanjut: [["⭐", pv.target ? `about +${r1(Math.min(pv.per * left0, pv.total))} ${pv.tlabel} over ${left0} more sessions` : "no more progress from this class"], ["😊", `−5 each session`], ["⚡", `−${K.sport ? 12 : 8} each session`]],
+        berhenti: [["🪙", `fee not refunded (${K.price})`], ["😊", "+5, relieved"], ["⭐", k.gain > 0 ? `keeps the +${r1(k.gain)} so far` : "nothing gained"]] } });
     if (final === "lanjut") {
       x.need("mood", -3);
       I.minat[K.field] = Math.max(0, I.minat[K.field] - 2);

@@ -246,25 +246,46 @@ class Ctx {
       this.say(`_House rule: ${text}._`);
       return [wanted, true];
     }
+    if (this.agency()) {
+      this.need("mood", -2);
+      this.say(`_House rule: ${text}. ${this.n} would rather ${lower(options[self_pick])}, but sticks to it (mood −2)._`);
+      return [wanted, true];
+    }
     const followed = this.chance(this.obey_chance());
     inc(this.home.stats, followed ? "saran_diikuti" : "saran_ditolak");   // v47: persen penolakan buat dashboard
     this.say(`_House rule: ${text}. ` + (followed ? "They obeyed._" : `They broke it: ${lower(options[self_pick])}._`));
     return [followed ? wanted : self_pick, followed];
   }
   // Dilema dengan jendela keputusan. Return [pilihan_penjaga, pilihan_akhir, nurut].
-  ask(question, options, prefs, self_pick, { obey = true, alone = null, safe = null } = {}) {
+  // v83 (8 Nov): mulai home.agensi_from, pilihan penjaga selalu jalan. Kemauan makhluknya jadi harga: pilih yang dia nggak mau = mood
+  // dan ikatan turun (ditulis di kartu). Save lama (agensi_from null) tetap pakai peluang nurut seperti dulu.
+  agency() { return this.home.agensi_from != null && this.day >= this.home.agensi_from; }
+  against(choice, self_pick, options, how) {
+    const cost = AGAINST[this.drama] || AGAINST.sedang;
+    this.need("mood", -cost.mood); this.bond(-cost.bond);
+    inc(this.home.stats, "dipaksa");
+    return ` ${this.n} wanted "${lower(options[self_pick])}", but goes along with it${how ? " " + how : ""} (mood −${cost.mood}).`;
+  }
+  ask(question, options, prefs, self_pick, { obey = true, alone = null, safe = null, fx = null } = {}) {
     const g = this.guardian, stats = this.home.stats;
     inc(stats, "dilema");
     const w = WINDOW[this.drama];
     let late = null, human_choice = null;
+    const AG = this.agency();
     if (g.decide) {
-      const got = g.decide(this, question, options, w);
+      const got = g.decide(this, question, options, w, { fx, wish: obey && AG ? self_pick : null, cost: obey && AG ? (AGAINST[this.drama] || AGAINST.sedang) : null });
       if (got) [late, human_choice] = got;
     } else {
       for (let k = 0; k <= w; k++) if (g.attends(this.day + k)) { late = k; break; }
     }
     if (late === null) {
       safe = safe || prefs.tegas;
+      if (g.proxy === "aman" && safe in options && safe !== self_pick && AG) {
+        inc(stats, "diputus_wakil");
+        const note = obey ? this.against(safe, self_pick, options, "") : "";
+        this.say(`_Decision: ${question} You didn't open the app within ${w + 1} day${w ? "s" : ""}, so your helper picked the safe choice: ${lower(options[safe])}.${note}_`);
+        return [safe, safe, true];
+      }
       if (g.proxy === "aman" && safe in options && safe !== self_pick) {
         inc(stats, "diputus_wakil");
         const followed = obey ? this.chance(this.obey_chance() * 0.8) : true;
@@ -282,6 +303,10 @@ class Ctx {
     const when = late === 0 ? "" : ` (answered ${late} day${late > 1 ? "s" : ""} later)`;
     if (late) inc(stats, "dijawab_telat");
     const choice = human_choice !== null ? human_choice : g.choose(this.rng, options, prefs, self_pick);
+    if (AG && obey && choice !== self_pick) {
+      this.say(`_Decision: ${question} You chose: ${options[choice]}${when}.${this.against(choice, self_pick, options, "")}_`);
+      return [choice, choice, true];
+    }
     if (!obey || choice === self_pick) {
       this.say(`_Decision: ${question} You chose: ${options[choice]}${when}._`);
       return [choice, choice, true];
@@ -303,6 +328,7 @@ const FORCED = [];
 const HOOKS = {};
 
 // ---------------------------------------------------------------- bekas
+const AGAINST = { kecil: { mood: 3, bond: 0.5 }, sedang: { mood: 6, bond: 1 }, besar: { mood: 10, bond: 2 } };
 const SCAR_FLAG = { patah_hati: { k: "hati", min: 14 }, berduka: { k: "duka", min: 30 } };
 const SCARS = {
   hati: { label: "Guarded heart", note: "slower to fall for someone new" },

@@ -53,3 +53,26 @@ test("rekomendasi: topik yang lagi diles naik ke atas", () => {
   assert.equal(R.length, 3);
   assert.ok(R.some(r => ["t.gambar", "t.desain"].includes(r.id)), JSON.stringify(R.map(r => r.id)));
 });
+
+test("agensi (v83): pilihan penjaga/wakil selalu jalan; beda sama maunya = mood turun, bukan ditolak", () => {
+  for (const akun of ["akun-ag1", "akun-ag2", "akun-ag3"]) {
+    const st = { ...fresh(akun), wakil: "aman" }, g = new G.Game(st), c = g.home.members[0], d0 = c.born + 120;
+    g.advance(d0, null);
+    g.act(c.id, "les:science");
+    const K = c.st.ilmu.kursus[0];
+    const log = [];
+    for (let d = d0 + 1; d <= Ilmu.schedule(K)[7] + 1; d++) { care(c); c.st.ilmu.minat.science = Math.min(c.st.ilmu.minat.science ?? 10, 10); log.push(...g.advance(d, null)); }
+    assert.ok(K.tanya, akun);
+    assert.ok(!K.stop, `${akun}: wakil pilih lanjut dan itu yang jalan`);
+    assert.ok(log.some(l => l.lines.some(t => /wanted "okay, you can stop", but goes along/.test(t))), akun);
+  }
+});
+
+test("rencana pemain selalu jalan, juga hobi yang nggak disukai (mood turun)", () => {
+  const g = new G.Game(fresh("akun-j5")), c = g.home.members[0], d0 = c.born + 100;
+  g.advance(d0, null);
+  for (const k of ["6pagi", "0pagi"]) g.act(c.id, `jadwal:${k}:t.catur`);
+  let n = 0;
+  for (let d = d0 + 1; d <= d0 + 42; d++) { care(c); c.st.ilmu.minat.numbers = 5; g.advance(d, null); const B = c.st.ilmu.blog && c.st.ilmu.blog[d]; if (B && B.pagi && B.pagi.id === "t.catur") n++; }
+  assert.equal(n, 12, "6 minggu × 2 blok");
+});
