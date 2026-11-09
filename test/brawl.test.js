@@ -23,8 +23,8 @@ function load(seed) {
     globalThis.api = {
       start(daily, lvl) {
         FC = { daily, rnd: Math.random, score: 0, caught: 0, over: 0, drop: null };
-        brawlInit(); FC.br.diff = BR_DIFF[lvl == null ? 2 : lvl];
-        const me = FC.br.f[0]; me.ai = { t: 0, mx: 0, up: false, dn: false, hold: 0, tg: null }; me.cpu = BR_CPU[1]; FC.br.auto = true;
+        brawlInit(); brPick(Math.floor(Math.random() * 4)); FC.br.diff = BR_DIFF[lvl == null ? 2 : lvl];
+        const me = FC.br.f[0]; me.ai = { t: 0, mx: 0, up: false, dn: false, hold: 0, tg: null }; me.cpu = BR_AIP.bolt; FC.br.auto = true;
         return FC;
       },
       tick(dt) { T += dt * 1000; brTick(dt); },

@@ -17,12 +17,21 @@ const BR_BLAST = { x: 1060, top: -940, bot: 700 };
 const BR_PTS = [8, 4, 2, 0];
 const BR_ORD = ["1st", "2nd", "3rd", "4th"];
 const BR_SPAWN = [-260, 260, -90, 90];
-// watak CPU: re = waktu reaksi (detik), agg = suka nyerang, dodge = suka ngelak, heavy = suka pukulan berat, jumpy = suka loncat
-const BR_CPU = [
-  { name: "Kiko", col: "#E8506A", look: "cat", re: 0.15, agg: 0.9, dodge: 0.25, heavy: 0.4, jumpy: 0.5 },
-  { name: "Bolt", col: "#4A7BE0", look: "ant", re: 0.12, agg: 0.65, dodge: 0.5, heavy: 0.25, jumpy: 0.25 },
-  { name: "Mimi", col: "#F3A93C", look: "bun", re: 0.19, agg: 0.5, dodge: 0.65, heavy: 0.5, jumpy: 0.35 },
+// jagoan (v84c): pemain milih satu, tiga sisanya jadi CPU. st = pengali lari, gerak di udara, lompat, berat
+// (makin kecil makin susah dilempar), tenaga pukulan, gravitasi. bars = Speed, Power, Weight, Jump (1–5) buat layar pilih.
+const BR_HEROES = [
+  { id: "kai", name: "Kai", col: "#E8323F", look: "band", tag: "Balanced", sig: "Palm strike", st: { run: 1, air: 1, jump: 1, wt: 1, pow: 1, g: 1 }, bars: [3, 3, 3, 3] },
+  { id: "kiko", name: "Kiko", col: "#E8506A", look: "cat", tag: "Fast · light", sig: "Pounce", st: { run: 1.16, air: 1.12, jump: 1, wt: 1.1, pow: 0.92, g: 1 }, bars: [5, 2, 2, 3] },
+  { id: "bolt", name: "Bolt", col: "#4A7BE0", look: "ant", tag: "Heavy · strong", sig: "Laser", st: { run: 0.88, air: 0.9, jump: 0.93, wt: 0.92, pow: 1.06, g: 1.08 }, bars: [2, 5, 5, 2] },
+  { id: "mimi", name: "Mimi", col: "#F3A93C", look: "bun", tag: "High jump · floaty", sig: "Spin kick", st: { run: 1.02, air: 1.08, jump: 1.12, wt: 0.98, pow: 1, g: 0.86 }, bars: [3, 3, 3, 5] },
 ];
+// watak CPU per jagoan: re = waktu reaksi (detik), agg = suka nyerang, dodge = suka ngelak, heavy = suka pukulan berat, jumpy = suka loncat
+const BR_AIP = {
+  kai: { re: 0.14, agg: 0.75, dodge: 0.45, heavy: 0.35, jumpy: 0.3 },
+  kiko: { re: 0.15, agg: 0.9, dodge: 0.25, heavy: 0.4, jumpy: 0.5 },
+  bolt: { re: 0.12, agg: 0.65, dodge: 0.5, heavy: 0.3, jumpy: 0.25 },
+  mimi: { re: 0.19, agg: 0.5, dodge: 0.65, heavy: 0.5, jumpy: 0.35 },
+};
 // per peringkat (Rookie..Legend): tambahan waktu reaksi dan ketepatan
 const BR_DIFF = [{ re: 0.17, sk: 0.5 }, { re: 0.1, sk: 0.66 }, { re: 0.05, sk: 0.8 }, { re: 0.02, sk: 0.9 }, { re: 0, sk: 1 }, { re: -0.03, sk: 1.12 }];
 // jurus: st = mulai (detik), ac = aktif, rc = pulih, dmg = persen, kb = mental dasar, gr = tambahan mental per persen,
@@ -38,32 +47,48 @@ const BR_MV = {
   ham: { st: 0.1, ac: 0.12, rc: 0.24, dmg: 10, kb: 300, gr: 3.4, ang: -34, box: [64, -44, 88, 72], lunge: 120, arm: 4 },
   hamH: { st: 0.16, ac: 0.13, rc: 0.36, dmg: 17, kb: 400, gr: 4.8, ang: -40, box: [68, -36, 104, 86], lunge: 300, arm: 4, heavy: 1 },
   pie: { st: 0.06, ac: 0, rc: 0.2, dmg: 7, kb: 250, gr: 2.4, ang: -26, arm: 5 },
+  // jurus khas (pukulan berat ke samping) tiap jagoan
+  pounce: { st: 0.1, ac: 0.2, rc: 0.28, dmg: 11, kb: 300, gr: 3.8, ang: -30, box: [34, -34, 66, 50], dash: 900, arm: 1, heavy: 1 },
+  laser: { st: 0.14, ac: 0, rc: 0.32, dmg: 8, kb: 290, gr: 3.4, ang: -20, arm: 6, heavy: 1 },
+  spin: { st: 0.1, ac: 0.2, rc: 0.3, dmg: 12, kb: 320, gr: 3.9, ang: -40, box: [0, -32, 136, 54], both: 1, arm: 7, heavy: 1, hop: 320 },
 };
+const BR_SIG = { kai: BR_MV.side, kiko: BR_MV.pounce, bolt: BR_MV.laser, mimi: BR_MV.spin };
+const BR_ST0 = { run: 1, air: 1, jump: 1, wt: 1, pow: 1, g: 1 };
 const BR_WPN = { ham: { e: "🔨", n: 6 }, pie: { e: "🥧", n: 3 } };
 const brIn = () => ({ mx: 0, up: false, dn: false, jumpP: false, atkP: false, hvyP: false, hvyHeld: false, dodgeP: false, dnP: false });
 const brSign = v => v < 0 ? -1 : v > 0 ? 1 : 0;
 
 function brNew(i, p) {
-  return { i, name: p.name, col: p.col, look: p.look, me: !!p.me, cpu: p.me ? null : p, ai: p.me ? null : { t: 0, mx: 0, up: false, dn: false, hold: 0, tg: null },
+  return { i, name: p.name, col: p.col, look: p.look, hid: p.id || "kai", st: p.st || BR_ST0, me: !!p.me, cpu: p.me ? null : BR_AIP[p.id] || BR_AIP.kai, ai: p.me ? null : { t: 0, mx: 0, up: false, dn: false, hold: 0, tg: null },
+    ledge: 0, ledgeT: 0, ledgeCD: 0,
     x: BR_SPAWN[i], y: 0, vx: 0, vy: 0, face: BR_SPAWN[i] < 0 ? 1 : -1, ground: BR_MAIN, jumps: 1, upB: true, airDodge: true,
     dodgeT: 0, dodgeCD: 0, dvx: 0, dvy: 0, inv: 0, dmg: 0, stocks: BR_STOCK, stun: 0, atk: null, wpn: null, last: null,
     kos: 0, falls: 0, out: false, outT: 0, resp: 0, drop: 0, hover: 0, anim: 0, sq: 0, flash: 0, hits: 0 };
 }
 function brawlInit() {
   const lvl = FC.daily ? 2 : Dapur.tier("brawl", wallet().best.brawl).ix;
-  const ppl = [{ name: "You", col: "#FFF1D6", look: "band", me: true }].concat(BR_CPU);
-  FC.br = { f: ppl.map((p, i) => brNew(i, p)), diff: BR_DIFF[lvl], lvl, t: 0, left: BR_TIME, phase: "count", ct: 3.2, beep: 4, et: 0,
+  let sel = 0; try { sel = Math.max(0, BR_HEROES.findIndex(h => h.id === localStorage.getItem("mk-brawl-hero"))); } catch (e) { /* tanpa storage */ }
+  FC.br = { f: [], sel, diff: BR_DIFF[lvl], lvl, t: 0, left: BR_TIME, phase: "pick", ct: 3.2, beep: 4, et: 0, cards: [],
     freeze: 0, shake: 0, pies: [], crates: [], crateT: 6, fx: [], find: null, order: null,
     cam: { x: 0, y: -150, w: 1250 }, keys: {}, edge: {}, stick: null, held: {}, ptr: {}, touchUI: !!(window.matchMedia && matchMedia("(pointer: coarse)").matches),
     tip: wallet().best.brawl ? 0 : 6 };
   FC.place = null;
   const tm = $("mgTime"); if (tm) { tm.hidden = false; tm.textContent = brClock(BR_TIME); }
 }
+// layar pilih jagoan: pemain = pilihan, CPU = tiga sisanya
+function brPick(ix) {
+  const B = FC.br, h = BR_HEROES[ix];
+  B.sel = ix; B.f = [{ ...h, me: true }].concat(BR_HEROES.filter(o => o !== h)).map((p, i) => brNew(i, p));
+  B.phase = "count"; B.ct = 3.2; B.beep = 4;
+  try { localStorage.setItem("mk-brawl-hero", h.id); } catch (e) { /* tanpa storage */ }
+  Sfx.play("ambil");
+}
 const brClock = s => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, "0")}`;
 
 // ---- satu langkah logika
 function brTick(dt) {
   const B = FC.br;
+  if (B.phase === "pick") return;
   if (B.freeze > 0) { B.freeze -= dt; return; }   // jeda kena pukul: bikin pukulan kerasa
   if (B.slow > 0) { B.slow -= dt; dt *= 0.3; }
   B.t += dt; B.shake = Math.max(0, B.shake - dt);
@@ -115,6 +140,16 @@ function brFighter(f, I, dt) {
     if (I.mx || I.jumpP || I.atkP || I.hvyP || I.dodgeP || I.dn) f.hover = 0;
     else { f.vx = 0; f.vy = 0; return; }
   }
+  f.ledgeCD = Math.max(0, f.ledgeCD - dt);
+  if (f.ledge) {
+    // nyangkut di pinggir panggung: lompat/atas = naik lompat, dorong ke panggung/serang = manjat, bawah/menjauh = lepas
+    const M = BR_MAIN, sd = f.ledge, ex = sd < 0 ? M.x0 : M.x1;
+    f.ledgeT += dt; f.vx = 0; f.vy = 0; f.x = ex + sd * (BR_HW + 2); f.y = M.y + 58; f.face = -sd;
+    if (I.jumpP || I.up) { f.ledge = 0; f.vy = -BR_JUMP * 0.95 * f.st.jump; f.ledgeCD = 0.5; f.jumps = 1; Sfx.play("hop"); }
+    else if (I.mx * -sd > 0.3 || I.atkP) { f.ledge = 0; f.x = ex - sd * (BR_HW + 8); f.y = M.y; f.ground = M; f.inv = Math.max(f.inv, 0.25); f.ledgeCD = 0.5; brPuff(f.x, M.y, 3); }
+    else if (I.dn || I.mx * sd > 0.3 || f.ledgeT > 2.5) { f.ledge = 0; f.ledgeCD = 0.6; }
+    return;
+  }
   if (f.stun > 0) {
     f.stun -= dt; grav = 0.75;
     f.vx *= 1 - 0.55 * dt; f.vx += I.mx * 160 * dt;   // sedikit bisa ngarahin pas mental
@@ -123,14 +158,14 @@ function brFighter(f, I, dt) {
     f.dodgeT -= dt; f.vx = f.dvx; if (!f.ground) { f.vy = f.dvy; grav = 0; }
     if (f.dodgeT <= 0) { f.vx *= 0.3; f.vy *= 0.3; }
   } else {
-    const a = f.atk, lock = a && f.ground && a.mv !== BR_MV.pie;
-    const target = I.mx * (f.ground ? BR_RUN : BR_AIR), acc = f.ground ? 5200 : 2400;
+    const a = f.atk, lock = a && f.ground && a.mv !== BR_MV.pie && !a.mv.dash;
+    const target = I.mx * (f.ground ? BR_RUN * f.st.run : BR_AIR * f.st.air), acc = f.ground ? 5200 : 2400;
     if (lock) f.vx *= Math.max(0, 1 - 9 * dt);
     else if (I.mx || f.ground) f.vx += Math.max(-acc * dt, Math.min(acc * dt, target - f.vx));
     if (I.mx && !a) f.face = brSign(I.mx);
     if (I.jumpP && !a) {
-      if (f.ground) { f.vy = -BR_JUMP; f.ground = null; f.sq = -0.25; brPuff(f.x, f.y, 4); Sfx.play("hop"); }
-      else if (f.jumps > 0) { f.jumps -= 1; f.vy = -BR_DJUMP; f.sq = -0.2; B.fx.push({ k: "ring", x: f.x, y: f.y, t: 0, life: 0.3 }); Sfx.play("hop"); }
+      if (f.ground) { f.vy = -BR_JUMP * f.st.jump; f.ground = null; f.sq = -0.25; brPuff(f.x, f.y, 4); Sfx.play("hop"); }
+      else if (f.jumps > 0) { f.jumps -= 1; f.vy = -BR_DJUMP * f.st.jump; f.sq = -0.2; B.fx.push({ k: "ring", x: f.x, y: f.y, t: 0, life: 0.3 }); Sfx.play("hop"); }
     }
     if (I.dnP && f.ground && f.ground.soft) { f.drop = 0.25; f.ground = null; f.y += 2; }
     if (!f.ground && I.dn && !a && f.vy > -150) f.vy = Math.max(f.vy, BR_FF * 0.85);
@@ -161,12 +196,26 @@ function brFighter(f, I, dt) {
   }
   // gravitasi dan gerak
   if (!f.ground) {
-    f.vy += BR_G * grav * dt;
+    f.vy += BR_G * grav * f.st.g * dt;
     const cap = I.dn && f.stun <= 0 ? BR_FF : f.stun > 0 ? 2600 : BR_FALL;
     if (f.vy > cap) f.vy = cap;
   } else f.vy = 0;
   f.x += f.vx * dt; f.y += f.vy * dt;
   brCollide(f, px, py);
+  brLedge(f);
+}
+// nyangkut otomatis di pinggir pulau waktu jatuh di dekatnya (satu orang per pinggir)
+function brLedge(f) {
+  const M = BR_MAIN;
+  if (f.ledge || f.ground || f.stun > 0.1 || f.vy < 0 || f.ledgeCD > 0 || f.dodgeT > 0 || f.atk) return;
+  for (const sd of [-1, 1]) {
+    const ex = sd < 0 ? M.x0 : M.x1, dx = (f.x - ex) * sd;
+    if (dx > 0 && dx < BR_HW + 30 && f.y > M.y + 20 && f.y < M.y + 110) {
+      if (FC.br.f.some(o => o !== f && o.ledge === sd)) return;
+      Object.assign(f, { ledge: sd, ledgeT: 0, jumps: 1, upB: true, airDodge: true, inv: Math.max(f.inv, 0.5) });
+      Sfx.play("ambil"); return;
+    }
+  }
 }
 function brStartAtk(f, I) {
   const w = f.wpn && f.wpn.k, heavy = I.hvyP && !I.atkP;
@@ -174,7 +223,7 @@ function brStartAtk(f, I) {
   let mv;
   if (w === "pie" && !heavy) mv = BR_MV.pie;
   else if (w === "ham" && !(heavy && (I.up || I.dn))) mv = heavy ? BR_MV.hamH : BR_MV.ham;
-  else if (heavy) mv = I.up ? BR_MV.rise : I.dn ? BR_MV.pound : BR_MV.side;
+  else if (heavy) mv = I.up ? BR_MV.rise : I.dn ? BR_MV.pound : BR_SIG[f.hid] || BR_MV.side;
   else mv = I.up ? BR_MV.up : I.dn ? (f.ground ? BR_MV.low : BR_MV.spike) : BR_MV.jab;
   if (mv === BR_MV.rise && !f.ground && !f.upB) mv = BR_MV.up;   // naik cuma sekali per lompatan
   f.atk = { mv, t: 0, hit: new Set(), charge: 0, chg: !!mv.heavy && mv !== BR_MV.rise };
@@ -184,6 +233,12 @@ function brSwing(f, a) {
   if (mv.lunge) f.vx = f.face * mv.lunge * (f.ground ? 1 : 0.6) * (1 + a.charge * 0.4);
   if (mv.lift && (f.ground || f.upB)) { f.vy = -mv.lift; f.ground = null; f.upB = false; f.jumps = 0; }
   if (mv.drop && !f.ground) f.vy = mv.drop;
+  if (mv.dash) { f.vx = f.face * mv.dash * (1 + a.charge * 0.3); if (!f.ground) f.vy = -80; }
+  if (mv.hop && !f.ground) f.vy = Math.min(f.vy, -mv.hop);
+  if (mv === BR_MV.laser) {
+    B.pies.push({ x: f.x + f.face * 34, y: f.y - 44, vx: f.face * 1700, vy: 0, g: 0, own: f, t: 0, mv, c: a.charge, laser: true });
+    f.vx = -f.face * 140; Sfx.play("laser"); return;
+  }
   if (mv === BR_MV.pie) {
     B.pies.push({ x: f.x + f.face * 30, y: f.y - 40, vx: f.face * 1150 + f.vx * 0.3, vy: -180, own: f, t: 0 });
     f.wpn.n -= 1; Sfx.play("lempar"); return;
@@ -215,12 +270,12 @@ function brHits() {
 }
 function brHit(a, b, mv, charge, dir) {
   const B = FC.br, c = Math.min(1, (charge || 0) / 0.7);
-  const dmg = Math.round(mv.dmg * (1 + 0.5 * c));
+  const dmg = Math.round(mv.dmg * (1 + 0.5 * c) * (a.st || BR_ST0).pow);
   b.dmg = Math.min(999, b.dmg + dmg);
-  const K = (mv.kb + mv.gr * b.dmg) * (1 + 0.35 * c) * BR_KBS, ang = mv.ang * Math.PI / 180;
+  const K = (mv.kb + mv.gr * b.dmg) * (1 + 0.35 * c) * BR_KBS * (b.st || BR_ST0).wt, ang = mv.ang * Math.PI / 180;
   b.vx = Math.cos(ang) * K * dir; b.vy = Math.sin(ang) * K;
   if (b.ground && b.vy > 0) b.vy = -b.vy * 0.4;   // tusuk ke bawah ke yang lagi berdiri = mantul ke atas dikit
-  b.stun = 0.12 + K * 0.00042; b.ground = null; b.atk = null; b.hover = 0; b.flash = 0.12;
+  b.stun = 0.12 + K * 0.00042; b.ground = null; b.ledge = 0; b.atk = null; b.hover = 0; b.flash = 0.12;
   b.jumps = 1; b.upB = true; b.airDodge = true;   // kena pukul ngisi lagi lompatan, biar masih bisa balik
   b.last = { by: a, t: B.t }; a.hits += 1; b.face = -dir;
   B.freeze = Math.min(0.13, 0.03 + dmg * 0.005);
@@ -263,7 +318,7 @@ function brKO(f) {
   B.fx.push({ k: "blast", x: cx, y: cy, a: Math.atan2(-150 - cy, -cx), t: 0, life: 0.9, col: f.col });
   B.shake = 0.45; B.flash = 0.12; B.slow = 0.45; Sfx.play("ko");   // KO: kilat putih + gerak lambat sebentar
   if (f.me && navigator.vibrate) navigator.vibrate([60, 40, 90]);
-  Object.assign(f, { atk: null, wpn: null, stun: 0, vx: 0, vy: 0, ground: null, last: null, dodgeT: 0 });
+  Object.assign(f, { atk: null, wpn: null, stun: 0, vx: 0, vy: 0, ground: null, last: null, dodgeT: 0, ledge: 0 });
   if (f.stocks <= 0) { f.out = true; f.outT = B.t; } else f.resp = 1.4;
 }
 function brRank() {
@@ -282,15 +337,15 @@ function brFinish() {
 function brPies(dt) {
   const B = FC.br;
   for (const p of B.pies) {
-    const py = p.y; p.t += dt; p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    const py = p.y; p.t += dt; p.vy += (p.g == null ? 520 : p.g) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
     for (const b of B.f) {
       if (b === p.own || !brCan(b) || Math.abs(b.x - p.x) > BR_HW + 14 || p.y < b.y - BR_H - 10 || p.y > b.y + 6) continue;
-      brHit(p.own, b, BR_MV.pie, 0, brSign(p.vx)); p.dead = true; brSplat(p.x, p.y); break;
+      brHit(p.own, b, p.mv || BR_MV.pie, p.c || 0, brSign(p.vx)); p.dead = true; if (!p.laser) brSplat(p.x, p.y); break;
     }
-    if (!p.dead) for (const q of BR_PLATS) if (py <= q.y && p.y >= q.y && p.x > q.x0 && p.x < q.x1) { p.dead = true; brSplat(p.x, q.y); }
-    if (!p.dead && BR_MAIN.x0 < p.x && p.x < BR_MAIN.x1 && p.y > 0 && p.y < BR_MAIN.bot) { p.dead = true; brSplat(p.x, p.y); }
+    if (!p.dead && !p.laser) for (const q of BR_PLATS) if (py <= q.y && p.y >= q.y && p.x > q.x0 && p.x < q.x1) { p.dead = true; brSplat(p.x, q.y); }
+    if (!p.dead && BR_MAIN.x0 < p.x && p.x < BR_MAIN.x1 && p.y > 0 && p.y < BR_MAIN.bot) { p.dead = true; if (!p.laser) brSplat(p.x, p.y); }
   }
-  B.pies = B.pies.filter(p => !p.dead && p.t < 1.8);
+  B.pies = B.pies.filter(p => !p.dead && p.t < (p.laser ? 0.7 : 1.8));
 }
 function brSplat(x, y) {
   const B = FC.br; Sfx.play("splat");
@@ -335,9 +390,10 @@ function brFind(dt) {
 
 // ---- otak CPU: tiap beberapa ratus milidetik (waktu reaksinya) mutusin mau ngapain
 function brAI(f, dt) {
-  const B = FC.br, A = f.ai, P = f.cpu || BR_CPU[1], D = B.diff, I = brIn();
+  const B = FC.br, A = f.ai, P = f.cpu || BR_AIP.kai, D = B.diff, I = brIn();
   if (f.resp > 0 || f.out) return I;
   if (A.hold > 0) { A.hold -= dt; I.hvyHeld = A.hold > 0; I.mx = A.hmx; I.up = A.hup; return I; }
+  if (f.ledge) { if (FC.rnd() < (0.04 + 0.1 * D.sk) * dt * 60) { if (FC.rnd() < 0.5) I.jumpP = true; else I.mx = -f.ledge; } return I; }
   const M = BR_MAIN, off = !f.ground && (f.x < M.x0 + 4 || f.x > M.x1 - 4 || f.y > M.y + 2);
   if (off) {
     // pulang ke pulau: lompat ganda, lalu pukulan naik, lalu dodge ke atas
@@ -380,6 +436,7 @@ function brAI(f, dt) {
   const dx = t.x - f.x, dy = t.y - f.y, adx = Math.abs(dx), sx = brSign(dx) || f.face;
   const reach = f.wpn && f.wpn.k === "ham" ? 120 : 82, tOff = t.x < M.x0 || t.x > M.x1 || t.y > M.y + 20;
   if (f.wpn && f.wpn.k === "pie" && Math.abs(dy) < 60 && adx > 110 && adx < 650 && FC.rnd() < 0.55 * D.sk) { I.mx = sx * 0.01; I.atkP = true; return I; }
+  if (f.hid === "bolt" && !f.wpn && Math.abs(dy) < 50 && adx > 160 && adx < 750 && FC.rnd() < 0.12 * D.sk) { I.mx = sx * 0.01; I.hvyP = true; I.hvyHeld = true; A.hold = 0.05 + 0.3 * FC.rnd(); A.hmx = sx * 0.01; A.hup = false; return I; }
   if (adx < reach && dy > -75 && dy < 45 && !t.inv) {
     if (FC.rnd() > 0.35 + 0.6 * D.sk * P.agg) return I;   // ragu sebentar
     const heavy = FC.rnd() < P.heavy * (t.dmg > 85 ? 1.8 : 0.6);
@@ -428,6 +485,15 @@ const BR_KEYS = { ArrowLeft: "l", KeyA: "l", ArrowRight: "r", KeyD: "r", ArrowUp
   Space: "jump", KeyJ: "atk", KeyZ: "atk", KeyK: "hvy", KeyX: "hvy", KeyL: "dodge", KeyC: "dodge", ShiftLeft: "dodge", ShiftRight: "dodge" };
 function brawlKey(e, down) {
   if (!FC || !FC.br) return;
+  if (FC.br.phase === "pick") {
+    if (!down || e.repeat) return;
+    const B = FC.br, n = BR_HEROES.length;
+    if (e.code === "ArrowLeft" || e.code === "KeyA") { B.sel = (B.sel + n - 1) % n; Sfx.play("ui"); }
+    else if (e.code === "ArrowRight" || e.code === "KeyD") { B.sel = (B.sel + 1) % n; Sfx.play("ui"); }
+    else if (e.code === "Enter" || e.code === "Space" || e.code === "KeyJ") brPick(B.sel);
+    else return;
+    e.preventDefault(); return;
+  }
   const a = BR_KEYS[e.code]; if (!a) return;
   e.preventDefault();
   const B = FC.br;
@@ -458,6 +524,7 @@ function brawlDown(e) {
   const B = FC.br; if (!B) return;
   if (e.pointerType !== "mouse") B.touchUI = true;
   const [x, y] = brPos(e);
+  if (B.phase === "pick") { const ix = B.cards.findIndex(c => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h); if (ix >= 0) brPick(ix); return; }
   if (x < FC.cv.width * 0.45) { B.stick = { id: e.pointerId, x0: x, y0: y, x, y }; return; }
   let best = null, bd = 1e9;
   for (const b of brBtns()) { const d = Math.hypot(b.x - x, b.y - y); if (d < b.r * 1.5 && d < bd) { bd = d; best = b; } }
@@ -515,6 +582,7 @@ function brDraw(dt) {
   ctx.translate(W / 2 + (Math.random() - 0.5) * sh, H / 2 + (Math.random() - 0.5) * sh); ctx.scale(s, s); ctx.translate(-C.x, -C.y);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   brStage(ctx, t);
+  if (B.phase === "pick") { ctx.restore(); brVignette(ctx, W, H); brPickDraw(ctx, W, H, dpr, t); return; }
   if (B.find) { const F = B.find; findDraw(ctx, F.kind, F.x, F.y + Math.sin(t * 3) * 6, 60); }
   for (const c of B.crates) brCrate(ctx, c, t);
   for (const f of B.f) if (!f.out && f.resp <= 0) brShadow(ctx, f);
@@ -523,7 +591,16 @@ function brDraw(dt) {
     brGhosts(ctx, f, dt);
     brHero(ctx, f, t);
   }
-  for (const p of B.pies) brOrb(ctx, p.x, p.y, 15, t, p.own.col);
+  for (const p of B.pies) {
+    if (!p.laser) { brOrb(ctx, p.x, p.y, 15, t, p.own.col); continue; }
+    // sinar laser Bolt: batang cahaya biru dengan ekor
+    const d = brSign(p.vx), L = Math.min(220, p.t * 1700);
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createLinearGradient(p.x - d * L, 0, p.x, 0); g.addColorStop(0, "rgba(127,243,255,0)"); g.addColorStop(1, "rgba(127,243,255,.95)");
+    ctx.fillStyle = g; ctx.fillRect(Math.min(p.x, p.x - d * L), p.y - 7 - 4 * (p.c || 0), L, 14 + 8 * (p.c || 0));
+    ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.fillRect(Math.min(p.x, p.x - d * L * 0.6), p.y - 2, L * 0.6, 4);
+    ctx.restore();
+  }
   brFx(ctx, s);
   ctx.restore();
   brVignette(ctx, W, H);
@@ -718,6 +795,7 @@ function brPose(f, t) {
     f.tum = (f.tum || 0) + Math.hypot(f.vx, f.vy) * 0.00004 * (f.vx >= 0 ? 1 : -1) * f.face;
     return set({ rot: Math.max(-1.2, Math.min(1.2, Math.sin(t * 20) * 0.1 + (f.tum % 1.2))), hf: [20, -66], hb: [-18, -62], ff: [14, -8], fb: [-12, -2], sh: [-2, -46], head: [-4, -59] });
   }
+  if (f.ledge) return set({ hf: [12, -66], hb: [6, -68], ff: [2, 0], fb: [-6, 4], sh: [0, -46], head: [-2, -58] });
   if (f.dodgeT > 0) return set({ hip: [0, -22], sh: [5, -38], head: [9, -49], hf: [16, -30], hb: [4, -32], ff: [9, -8], fb: [-7, -10] });
   if (!f.ground) {
     if (f.vy < 0) set({ ff: [9, -16], fb: [-7, -8], hf: [18, -54], hb: [-14, -50] });
@@ -747,6 +825,12 @@ function brPose(f, t) {
     else if (mv === BR_MV.spike) set({ ff: [6, 6 + 10 * k], fb: [-4, 4 + 8 * k], hf: [14, -62], hb: [-14, -60], arc: on ? [6, 16, 54, 3] : null });
     else set({ hf: on ? [26, -6] : [6, -84], hb: on ? [-22, -6] : [-4, -82], hip: on ? [0, -20] : P.hip, sh: on ? [6, -36] : P.sh, head: on ? [10, -47] : P.head, ff: [16, 0], fb: [-16, 0], arc: on ? [0, -14, 164, 4] : null });
   } else if (mv.arm === 5) set({ hf: on ? [28, -52] : [-16, -70], hb: [6, -40] });
+  else if (mv.arm === 6) set({ hf: on ? [32, -44] : [10, -44], hb: on ? [26, -42] : [4, -42], sh: on ? [-2, -45] : P.sh, ff: [14, 0], fb: [-14, 0] });   // laser: dua tangan ke depan
+  else if (mv.arm === 7) {
+    // tendangan putar: badan muter sekali, dua kaki melebar
+    const k2 = on ? Math.min(1, (a.t - mv.st) / mv.ac) : 0;
+    set({ rot: k2 * Math.PI * 2, ff: [34, -30], fb: [-30, -26], hf: [10, -56], hb: [-10, -56], arc: on && k2 < 1 ? [0, -32, 136, 4] : null });
+  }
   return P;
 }
 // gambar satu tokoh. flat = siluet satu warna (dipakai buat bayangan sisa gerak)
@@ -819,7 +903,7 @@ function brHero(ctx, f, t, flat) {
   // tebasan: bulan sabit bergradasi di depan pukulan yang lagi aktif
   if (P.arc && !flat && a && a.t < a.mv.st + a.mv.ac) brSlash(ctx, P.arc, f, (a.t - a.mv.st) / Math.max(0.01, a.mv.ac));
   ctx.restore();
-  if (flat) return;
+  if (flat || f.noLabel) return;
   // label: segitiga emas buat pemain, nama kecil buat CPU
   const s = FC.br._s || 1, ty = f.y - BR_H - 22 - (f.look === "bun" ? 26 : f.look === "ant" ? 14 : f.look === "cat" ? 8 : 4);
   ctx.save(); ctx.translate(f.x, ty); ctx.scale(1 / s, 1 / s);
@@ -1118,3 +1202,40 @@ MG_ART.brawl = (ctx, S) => {
   const keep = FC; FC = { br: { _s: 1 }, dpr: 1 };
   try { brHero(ctx, f, 1.3); } finally { FC = keep; }
 };
+// layar pilih jagoan: empat kartu (tokoh besar, ciri, batang statistik, jurus khas). Ketuk = langsung main; keyboard ← → + Enter
+function brPickDraw(ctx, W, H, dpr, t) {
+  const B = FC.br, u = dpr, n = BR_HEROES.length, gap = 12 * u;
+  ctx.fillStyle = "rgba(10,6,20,.55)"; ctx.fillRect(0, 0, W, H);
+  const top = 70 * u, cw = Math.min(190 * u, (W - 48 * u - gap * (n - 1)) / n), ch = Math.min(H - top - 46 * u, 300 * u), x0 = W / 2 - (cw * n + gap * (n - 1)) / 2;
+  brTitle(ctx, "CHOOSE YOUR FIGHTER", W / 2, 38 * u, Math.min(34, W / u / 22));
+  B.cards = [];
+  BR_HEROES.forEach((h, i) => {
+    const on = i === B.sel, x = x0 + i * (cw + gap), y = top - (on ? 6 * u : 0), sk = 14 * u;
+    B.cards.push({ x, y, w: cw, h: ch });
+    brPanel(ctx, x, y, cw, ch, sk, on ? "rgba(40,26,64,.95)" : "rgba(16,10,28,.86)", null);
+    ctx.lineWidth = (on ? 2.5 : 1.5) * u; brPanel(ctx, x, y, cw, ch, sk, null, on ? BR_GOLD : "rgba(255,255,255,.18)");
+    // cahaya warna jagoan di belakang tokoh
+    const hx = x + cw / 2, hy = y + ch * 0.5;
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(hx, hy - 20 * u, 0, hx, hy - 20 * u, cw * 0.55); g.addColorStop(0, h.col + (on ? "88" : "44")); g.addColorStop(1, h.col + "00"); ctx.fillStyle = g; ctx.fillRect(x, y, cw, ch * 0.7); ctx.restore();
+    const f = brNew(0, h); Object.assign(f, { x: 0, y: 0, ground: BR_MAIN, face: 1, noLabel: true, anim: t });
+    if (on) { const k = (t * 1.2) % 2; if (k < 0.5) f.atk = { mv: BR_SIG[h.id], t: BR_SIG[h.id].st + k * 0.4, hit: new Set(), charge: 0, chg: false }; }
+    const sc = Math.min(ch * 0.4 / 80, cw / 110);
+    ctx.save(); ctx.translate(hx - 4 * u, hy); ctx.scale(sc, sc);
+    const keep = FC.br._s; FC.br._s = sc; brHero(ctx, f, t); FC.br._s = keep; ctx.restore();
+    // nama, ciri, jurus khas
+    const ty = hy + 22 * u;
+    brTxt(ctx, h.name.toUpperCase(), hx, ty, Math.min(22, cw / u / 7), on ? "#FFF7DA" : "rgba(255,247,218,.85)", "center", 0, true);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `700 ${10 * u}px system-ui, sans-serif`; ctx.fillStyle = h.col; ctx.fillText(h.tag.toUpperCase(), hx, ty + 18 * u);
+    // batang statistik
+    const labs = ["SPD", "POW", "WGT", "JMP"], bx = x + 18 * u, bw = cw - 36 * u;
+    labs.forEach((lb, j) => {
+      const yy = ty + 36 * u + j * 13 * u; if (yy > y + ch - 26 * u) return;
+      ctx.textAlign = "left"; ctx.font = `800 ${8 * u}px system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.fillText(lb, bx, yy);
+      for (let k = 0; k < 5; k++) { const px = bx + 28 * u + k * (bw - 28 * u) / 5; ctx.fillStyle = k < h.bars[j] ? (on ? BR_GOLD : "rgba(232,182,76,.6)") : "rgba(255,255,255,.12)"; ctx.fillRect(px, yy - 3 * u, (bw - 28 * u) / 5 - 3 * u, 6 * u); }
+    });
+    ctx.textAlign = "center"; ctx.font = `italic 800 ${9.5 * u}px system-ui, sans-serif`; ctx.fillStyle = on ? BR_GOLD : "rgba(232,182,76,.7)";
+    ctx.fillText(`★ ${h.sig}`, hx - sk / 2, y + ch - 13 * u);
+  });
+  ctx.textAlign = "center"; ctx.font = `700 ${11 * u}px system-ui, sans-serif`; ctx.fillStyle = "rgba(255,247,218,.75)";
+  ctx.fillText(B.touchUI ? "Tap a fighter to start" : "← → to choose · Enter to fight", W / 2, top + ch + 22 * u);
+}

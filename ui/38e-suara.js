@@ -66,6 +66,7 @@ const Sfx = (() => {
     ko: () => { hiss(0.8, { f: 1400, to: 70, kind: "lowpass", vol: 0.6 }); tone(70, 0.6, { type: "sine", to: 35, vol: 0.45 }); tone(900, 0.5, { type: "sawtooth", to: 120, vol: 0.08 }); },
     splat: () => { hiss(0.18, { f: 500, to: 180, kind: "lowpass", vol: 0.4 }); tone(170, 0.1, { to: 90, vol: 0.2 }); },
     ambil: () => arp(660, [0, 7, 12], 0.05, { type: "triangle", vol: 0.14, dur: 0.1 }),
+    laser: () => { tone(1800, 0.25, { type: "sawtooth", to: 300, vol: 0.09 }); tone(900, 0.2, { type: "square", to: 200, vol: 0.05 }); },
   };
   // suara mesin kart: satu nada gergaji lewat filter yang terus nyala, nadanya ikut kecepatan. motor(null) = mati
   let mo = null;
