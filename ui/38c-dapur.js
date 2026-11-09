@@ -55,7 +55,7 @@ const MG_GAMES = {
   ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear a board for +5, or +10 with no mistakes. Boards get bigger, and two misses in a row shuffle two cards." },
   kuis: { name: "Quiz rush", icon: "🧠", color: "#2F8FD8", timed: false, how: "Race Kiko, Bolt and Mimi through 10 quick questions. Right is +2, the fastest right answer +1, winning +3." },
   kart: { name: "Kart cup", icon: "🏎️", color: "#D8432F", timed: false, how: "Three laps against Kiko, Bolt, Mimi and Pip. Drag to steer, hold a sharp turn to drift and let go for a boost. Tap to use items from the ? boxes. Coins +1, hits +2, and your finish adds up to +12." },
-  brawl: { name: "Bonk brawl", icon: "🥊", color: "#7A4FD8", timed: false, how: "Knock Kiko, Bolt and Mimi off the floating island. Hits raise their %, and the higher it is the farther they fly. Grab hammers and pies from the sky. Three lives each. A KO is +3, and 1st place adds +8." },
+  brawl: { name: "Bonk brawl", icon: "🥊", color: "#7A4FD8", timed: false, how: "Knock Kiko, Bolt and Mimi off the floating temple. Hits raise their %, and the higher it is the farther they fly. Grab hammers and spark orbs from the sky. Three lives each. A KO is +3, and 1st place adds +8." },
   lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
 const MG_ORDER = Object.keys(MG_GAMES);
