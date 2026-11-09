@@ -341,7 +341,7 @@ function runRevive() { FC.obs = FC.obs.filter(o => o !== FC.hitObs && o.x > FC.c
 // luar angkasa (planet bercincin, bintang jatuh). Zona ngikutin skor, warnanya nyampur halus.
 const SKY_Z = [["#4FB3FF", "#8ED6FF", "#DDF5FF"], ["#7B6CF6", "#FF9EB5", "#FFD59E"], ["#141A4A", "#2C2F7A", "#5A4A9A"], ["#07061A", "#1A0F3D", "#2E1660"]];
 function wSky(ctx, W, H, dpr, t) {
-  const cam = FC.cam || 0;
+  const cam = (FC.cam || 0) * WK;
   FC.zs = (FC.zs || 0) + (hopZone(FC.hopTop || 0) - (FC.zs || 0)) * 0.03;
   const zf = FC.zs, z0 = Math.min(3, Math.floor(zf)), z1 = Math.min(3, z0 + 1), f = zf - z0;
   const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -429,7 +429,7 @@ function wTable(ctx, W, H, dpr, t) {
 }
 // Town run: jalan kota senja, rumah dan lampu jalan geser beda kecepatan
 function wTown(ctx, W, H, dpr, t) {
-  const d = FC.dist || 0, gy = FC.ground || H - 120 * dpr;
+  const d = (FC.dist || 0) * WK, gy = FC.ground ? FC.ground * WK : H - 120 * dpr;
   ctx.fillStyle = wGrad(ctx, 0, H, [[0, "#3A2A6E"], [0.5, "#D9708A"], [0.8, "#FFB070"], [1, "#FFD08A"]]); ctx.fillRect(0, 0, W, H);
   wGlow(ctx, W * 0.75, gy - 120 * dpr, W * 0.5, "rgba(255,200,110,.5)");
   for (let i = 0; i < 3; i++) { const s = (16 + i * 4) * dpr, x = ((W + 200 * dpr) - ((d * 0.05 + t * 8 * dpr + i * W * 0.45) % (W + 200 * dpr))) - 100 * dpr; wCloud(ctx, x, H * (0.12 + i * 0.1), s, "#FFD3C0"); }
