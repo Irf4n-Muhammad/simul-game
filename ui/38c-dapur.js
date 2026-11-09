@@ -66,6 +66,7 @@ function showKitchen() {
   document.body.appendChild(el);
   ARC = { el, played: new Set(), rounds: 0, t0: now(), ranks: MG_ORDER.map(k => Dapur.tier(k, wallet().best[k]).ix).join("") };
   arcDraw();
+  setTimeout(ktWarm, 400);   // Kart cup: adegan 3D disiapin di belakang selagi pemain milih game
   Tele.ev("minigame", { a: "hub" });
 }
 function arcDraw() {

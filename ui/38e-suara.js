@@ -62,9 +62,9 @@ const Sfx = (() => {
   };
   // suara mesin kart: satu nada gergaji lewat filter yang terus nyala, nadanya ikut kecepatan. motor(null) = mati
   let mo = null;
-  function motor(f) {
+  function motor(f, sk = 0) {
     if (f == null || off || reduceSound()) {
-      if (mo) { const m = mo; mo = null; try { m.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); setTimeout(() => { try { m.o.stop(); m.o2.stop(); } catch (e) { /* udah berhenti */ } }, 300); } catch (e) { /* abaikan */ } }
+      if (mo) { const m = mo; mo = null; try { m.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); m.ng.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); setTimeout(() => { try { m.o.stop(); m.o2.stop(); m.n.stop(); } catch (e) { /* udah berhenti */ } }, 300); } catch (e) { /* abaikan */ } }
       return;
     }
     init(); if (!ac) return;
@@ -73,16 +73,22 @@ const Sfx = (() => {
       const o = ac.createOscillator(), o2 = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
       o.type = "sawtooth"; o2.type = "square"; fl.type = "lowpass"; fl.Q.value = 2; g.gain.value = 0.0001;
       o.connect(fl); o2.connect(fl); fl.connect(g); g.connect(out); o.start(); o2.start();
-      g.gain.setTargetAtTime(0.045, ac.currentTime, 0.15); mo = { o, o2, fl, g };
+      g.gain.setTargetAtTime(0.045, ac.currentTime, 0.15);
+      // decit ban: desis yang terus muter, kerasnya diatur sk (0 = diam)
+      const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
+      n.buffer = noiseBuf; n.loop = true; nf.type = "bandpass"; nf.frequency.value = 2400; nf.Q.value = 3; ng.gain.value = 0.0001;
+      n.connect(nf); nf.connect(ng); ng.connect(out); n.start();
+      mo = { o, o2, fl, g, n, nf, ng };
     }
     const t = ac.currentTime;
     mo.o.frequency.setTargetAtTime(f, t, 0.06); mo.o2.frequency.setTargetAtTime(f * 0.5, t, 0.06); mo.fl.frequency.setTargetAtTime(250 + f * 3.5, t, 0.06);
+    mo.ng.gain.setTargetAtTime(Math.max(0.0001, sk * 0.05), t, 0.05); mo.nf.frequency.setTargetAtTime(1900 + sk * 900, t, 0.08);
   }
   return {
     get off() { return off; },
     unlock() { if (off) return; init(); if (ac && ac.state === "suspended") ac.resume(); },
     play(name, n) { if (off || reduceSound()) return; init(); if (!ac || !S[name]) return; if (ac.state === "suspended") ac.resume(); try { S[name](n); } catch (e) { /* suara gagal nggak boleh ganggu game */ } },
-    motor(f) { try { motor(f); } catch (e) { /* suara gagal nggak boleh ganggu game */ } },
+    motor(f, sk) { try { motor(f, sk); } catch (e) { /* suara gagal nggak boleh ganggu game */ } },
     toggle() { off = !off; if (off) motor(null); try { localStorage.setItem("mk-sfx-off", off ? "1" : "0"); } catch (e) { /* tanpa storage */ } if (!off) this.unlock(); return off; },
   };
 })();

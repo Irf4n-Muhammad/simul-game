@@ -10,10 +10,10 @@ const KT_PTS = [12, 8, 5, 3, 1];
 const KT_ORD = ["1st", "2nd", "3rd", "4th", "5th"];
 // watak CPU: v = kecepatan dasar, wob = goyang di jalur, brake = ngerem di tikungan, aim = suka nembak item
 const KT_CPU = [
-  { name: "Kiko", col: "#E8506A", v: 30.6, wob: 1.8, brake: 1.0, aim: 0.6, lane: -2 },
-  { name: "Bolt", col: "#4A7BE0", v: 30.0, wob: 0.5, brake: 0.75, aim: 0.4, lane: 1.5 },
-  { name: "Mimi", col: "#F3A93C", v: 29.4, wob: 0.8, brake: 0.35, aim: 0.3, lane: 0 },
-  { name: "Pip", col: "#3FA34D", v: 30.2, wob: 1.2, brake: 0.8, aim: 0.9, lane: -1 },
+  { name: "Kiko", col: "#E8506A", v: 30.75, wob: 1.8, brake: 1.0, aim: 0.6, lane: -2 },
+  { name: "Bolt", col: "#4A7BE0", v: 30.15, wob: 0.5, brake: 0.75, aim: 0.4, lane: 1.5 },
+  { name: "Mimi", col: "#F3A93C", v: 29.55, wob: 0.8, brake: 0.35, aim: 0.3, lane: 0 },
+  { name: "Pip", col: "#3FA34D", v: 30.35, wob: 1.2, brake: 0.8, aim: 0.9, lane: -1 },
 ];
 const KT_ITEM = { turbo: "🚀", ball: "🥎", goo: "🛢️", bee: "🐝", shield: "🛡️" };
 // bobot item per posisi (0 = paling depan): yang depan dapet alat bertahan, yang belakang dapet alat ngejar
@@ -136,10 +136,14 @@ function ktBuild() {
   }
   // partikel (percikan drift, debu, api turbo): sprite dipakai ulang
   const dot = ktTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.4, "rgba(255,255,255,.7)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 32, 32);
-  const PM = {}; for (const [k, c] of [["b", "#5FC8FF"], ["o", "#FF9A2E"], ["p", "#C45CFF"], ["d", "#C9B79A"], ["f", "#FFC14A"], ["w", "#FFFFFF"]]) { PM[k] = new THREE.SpriteMaterial({ map: dot, color: new THREE.Color(c), transparent: true, depthWrite: false, blending: k === "d" ? THREE.NormalBlending : THREE.AdditiveBlending }); }
+  const PM = {}; for (const [k, c] of [["b", "#5FC8FF"], ["o", "#FF9A2E"], ["p", "#C45CFF"], ["d", "#C9B79A"], ["f", "#FFC14A"], ["w", "#FFFFFF"]]) { PM[k] = new THREE.SpriteMaterial({ map: dot, color: new THREE.Color(c), transparent: true, opacity: k === "w" ? 0.6 : k === "d" ? 0.7 : 0.85, depthWrite: false, blending: k === "d" ? THREE.NormalBlending : THREE.AdditiveBlending }); }
   const parts = []; for (let i = 0; i < 140; i++) { const s = new THREE.Sprite(PM.w); s.visible = false; sc.add(s); parts.push({ s, t: 0, life: 0 }); }
   const shadowT = ktTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(0,0,0,.45)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 64, 64);
-  KR = { r, cv, sc, cam, T, pads, boxes, coins, parts, PM, shadowM: new THREE.MeshBasicMaterial({ map: shadowT, transparent: true, depthWrite: false }), karts: [], projG: new THREE.Group() };
+  // jejak ban: kotak gelap tipis di aspal, dipakai bergiliran
+  const markM = new THREE.MeshBasicMaterial({ color: 0x1a1620, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  const markG = new THREE.PlaneGeometry(0.32, 0.9); markG.rotateX(-Math.PI / 2);
+  const marks = []; for (let i = 0; i < 260; i++) { const m = new THREE.Mesh(markG, markM); m.visible = false; sc.add(m); marks.push(m); }
+  KR = { r, cv, sc, cam, T, pads, marks, mi: 0, pr: dpr, prMax: dpr, boxes, coins, parts, PM, shadowM: new THREE.MeshBasicMaterial({ map: shadowT, transparent: true, depthWrite: false }), karts: [], projG: new THREE.Group() };
   sc.add(KR.projG);
   return KR;
 }
@@ -186,11 +190,20 @@ function kartInit() {
   KR.karts = who.map((w, n) => {
     const s = slots[n], i = (KT_N - 8 - s * 6) % KT_N, lat = (s % 2 ? 1 : -1) * 3, p = ktAt(T, i, lat), mm = ktKartMesh(w.col);
     KR.sc.add(mm.g);
-    return Object.assign(w, mm, { x: p.x, y: p.y, z: p.z, h: T.h[i], v: 0, base: w.v, idx: i, lap: -1, half: true, fin: 0, s: 0, drift: 0, dT: 0, sT: 0, boost: 0, spin: 0, shield: 0, item: null, roll: 0, coins: 0, hop: 0, wallT: 0, ph: FC.rnd() * 6, laneNow: w.lane || 0, itemT: 1 + FC.rnd() * 3, stall: 0 });
+    return Object.assign(w, mm, { x: p.x, y: p.y, z: p.z, h: T.h[i], v: 0, base: w.v, idx: i, lap: -1, half: true, fin: 0, s: 0, drift: 0, dT: 0, sT: 0, boost: 0, spin: 0, shield: 0, item: null, roll: 0, coins: 0, hop: 0, wallT: 0, ph: FC.rnd() * 6, laneNow: w.lane || 0, itemT: 1 + FC.rnd() * 3, stall: 0, sm: 0, sUse: 0, by: 0, bv: 0, pitch: 0, vPrev: 0, mark: null });
   });
-  FC.kt = { t: 0, cd: 4, beep: 4, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(wallet().best.kart) };
+  // intro kamera keliling cuma di balapan pertama sesi ini; main lagi langsung hitung mundur
+  const intro = KR.raced ? 0.25 : 1.4; KR.raced = true;
+  FC.kt = { t: 0, cd: 3 + intro, intro, beep: 4, camH: KR.karts[0].h, punch: 0, slow: 0, ft: 1 / 60, qT: 0, upT: 0, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(wallet().best.kart) };
   FC.place = null;
+  KR.marks.forEach(m => { m.visible = false; }); KR.mi = 0;
+  if (!KR.warm) { KR.r.compile(KR.sc, KR.cam); KR.warm = true; }
   Sfx.motor(null);
+}
+// disiapin waktu layar Games kebuka, biar start pertama nggak patah-patah (bikin adegan + kompilasi shader)
+function ktWarm() {
+  if (KR || FC) return;
+  try { ktBuild(); KR.r.compile(KR.sc, KR.cam); KR.warm = true; } catch (e) { /* nanti dibikin waktu main */ }
 }
 function kartStop() { Sfx.motor(null); }
 document.addEventListener("visibilitychange", () => { if (document.hidden) Sfx.motor(null); });
@@ -260,8 +273,9 @@ function ktHit(k, by) {
   if (k.shield > 0) { k.shield = 0; if (k.me) Sfx.play("pas", 6); ktBurst(k, "w", 14); return; }
   k.spin = 1.15; k.drift = 0; k.dT = 0; k.boost = 0;
   ktBurst(k, "w", 10);
-  if (by && by.me && !k.me) { mgAdd(2); FC.kt.hits += 1; ktMsg(`Hit ${k.name}! +2`); }
-  if (k.me) { Sfx.play("spin"); navigator.vibrate && navigator.vibrate([40, 30, 60]); FC.kt.shake = 0.4; }
+  k.bv += 2;
+  if (by && by.me && !k.me) { mgAdd(2); FC.kt.hits += 1; ktMsg(`Hit ${k.name}! +2`); FC.kt.slow = 0.12; navigator.vibrate && navigator.vibrate(20); }
+  if (k.me) { FC.kt.slow = 0.15; Sfx.play("spin"); navigator.vibrate && navigator.vibrate([40, 30, 60]); FC.kt.shake = 0.4; }
 }
 function ktProjStep(dt) {
   const { T } = KR, P = KR.proj || [];
@@ -336,9 +350,9 @@ function ktDrive(k, dt, s, hold) {
       const tight = s * k.drift, lv0 = ktLv(k.dT);
       rate = k.drift * (1.2 + 0.7 * tight) * sf;
       k.dT += dt * (0.75 + 0.6 * Math.max(0, tight));
-      const lv = ktLv(k.dT); if (lv > lv0) Sfx.play("pas", lv * 3);
+      const lv = ktLv(k.dT); if (lv > lv0) { Sfx.play("pas", lv * 3); k.bv += 1.2; if (!reduce) for (let j = 0; j < 12; j++) ktPart(["d", "b", "o", "p"][lv], k.x, k.y + 0.4, k.z, (Math.random() - 0.5) * 9, 2 + Math.random() * 4, (Math.random() - 0.5) * 9, 0.4, 0.55); }
     } else rate = 1.95 * s * sf;
-    k.h -= rate * dt;
+    k.h -= rate * dt; k.sUse = s;
   }
   const fx = Math.sin(k.h), fz = Math.cos(k.h);
   k.x += fx * k.v * dt; k.z += fz * k.v * dt;
@@ -347,8 +361,14 @@ function ktDrive(k, dt, s, hold) {
   const lat = ktLat(T, k.idx, k.x, k.z), lim = KT_WALL - 1.1;
   if (Math.abs(lat) > lim) {
     const push = lat - Math.sign(lat) * lim; k.x -= T.nx[k.idx] * push; k.z -= T.nz[k.idx] * push;
-    const dh = ktWrap(T.h[k.idx] - k.h); k.h += dh * 0.35;
-    if (k.wallT <= 0) { k.v *= 0.72; k.wallT = 0.4; if (k.me) { Sfx.play("dinding"); FC.kt.shake = 0.2; navigator.vibrate && navigator.vibrate(30); } }
+    // nabrak miring = cuma nyerempet: kecepatan turun sesuai sudut, arah dibelokin sejajar dinding
+    const dh = ktWrap(T.h[k.idx] - k.h), imp = Math.min(1, Math.abs(Math.sin(dh)) * 1.7);
+    k.h += dh * (0.18 + 0.3 * imp);
+    if (k.wallT <= 0 && imp > 0.15) {
+      k.v *= 1 - 0.34 * imp; k.wallT = 0.35; k.bv -= 2.2 * imp;
+      if (k.me) { if (imp > 0.3) Sfx.play("dinding"); FC.kt.shake = 0.08 + 0.18 * imp; if (imp > 0.45) navigator.vibrate && navigator.vibrate(25); }
+    } else k.v *= 1 - 0.35 * dt;
+    if (k.me && k.v > 8 && !reduce && Math.random() < 0.6) ktPart("o", k.x + T.nx[k.idx] * Math.sign(lat) * 0.9, k.y + 0.4, k.z + T.nz[k.idx] * Math.sign(lat) * 0.9, (Math.random() - 0.5) * 4, 1 + Math.random() * 3, (Math.random() - 0.5) * 4, 0.3, 0.35);
   }
   k.wallT -= dt;
   // lap: wajib lewat tengah lintasan dulu biar nggak bisa curang mundur
@@ -357,8 +377,15 @@ function ktDrive(k, dt, s, hold) {
   else if (prev < KT_N * 0.1 && k.idx > KT_N * 0.9) { k.lap -= 1; k.half = true; }
   // tinggi ikut jalan, lompat kecil waktu mulai drift
   const a = k.idx, b = (a + 1) % KT_N, ty = T.y[a] + (T.y[b] - T.y[a]) * 0.5;
-  k.hop = Math.max(0, k.hop - dt);
+  const hop0 = k.hop; k.hop = Math.max(0, k.hop - dt);
+  if (hop0 > 0 && k.hop === 0) k.bv -= 1.6;   // mendarat
   k.y = ty + (k.hop > 0 ? Math.sin((k.hop / 0.18) * Math.PI) * 0.35 : 0);
+  // per: badan mantul pelan, digoyang curb dan rumput
+  const al = Math.abs(lat);
+  if (al > KT_HW && k.v > 6) k.bv += (Math.random() - 0.5) * (al > KT_HW + 1.3 ? 9 : 14) * dt * Math.min(1, k.v / 20);
+  k.bv += (-k.by * 110 - k.bv * 10) * dt; k.by += k.bv * dt;
+  const acc = (k.v - k.vPrev) / Math.max(dt, 1e-3); k.vPrev = k.v;
+  k.pitch += (Math.max(-0.08, Math.min(0.06, -acc * 0.006)) - k.pitch) * Math.min(1, dt * 6);
   k.shield = Math.max(0, k.shield - dt);
 }
 const ktLv = t => t > 2.4 ? 3 : t > 1.45 ? 2 : t > 0.7 ? 1 : 0;
@@ -373,7 +400,7 @@ function ktLap(k) {
 function ktFinish() {
   const K = FC.kt, me = KR.karts[0];
   const place = KR.karts.filter(k => k.fin && k.fin < me.fin).length;
-  K.end = K.t; K.place = place; FC.place = place; me.drift = 0;
+  K.end = K.t; K.place = place; FC.place = place; me.drift = 0; K.slow = 0.45;
   mgAdd(KT_PTS[place]); Sfx.play(place === 0 ? "rekor" : "kombo", 5); navigator.vibrate && navigator.vibrate([40, 40, 80]);
   ktMsg(place === 0 ? "You win!" : `${KT_ORD[place]} place`, 3);
 }
@@ -389,7 +416,7 @@ function ktCpu(k, dt) {
   const s = Math.max(-1, Math.min(1, -diff * 2.4));
   const j2 = (k.idx + Math.round(32 / T.seg)) % KT_N, bend = Math.abs(ktWrap(T.h[j2] - T.h[k.idx]));
   const gap = ktProg(me) - ktProg(k);
-  const rb = me.fin ? 0 : Math.max(-0.07, Math.min(0.09, gap / 700));
+  const rb = me.fin ? 0 : Math.max(-0.07, Math.min(0.11, gap / 650));
   k.vk = (1 - k.brake * 0.3 * Math.min(1, bend / 1.3)) * (1 + rb);
   // item: tunggu sebentar, pakai kalau masuk akal
   if (k.item && k.roll <= 0) {
@@ -406,18 +433,34 @@ function ktCpu(k, dt) {
 
 // ---------- tiap frame
 function kartStep(dt) {
-  const K = FC.kt, { T, karts, r, sc, cam, cv } = KR, me = karts[0];
+  const K = FC.kt, { r, cv } = KR;
   // ukuran kanvas 3D ikut layar
   const W = FC.el.clientWidth, H = FC.el.clientHeight;
   if (cv.width !== Math.round(W * r.getPixelRatio()) || cv.height !== Math.round(H * r.getPixelRatio())) { r.setSize(W, H, false); }
-  cv.style.width = "100%"; cv.style.height = "100%";
+  // kualitas adaptif: frame berat terus → resolusi turun; lancar lama → naik lagi pelan-pelan
+  K.ft += (dt - K.ft) * 0.05; K.qT += dt;
+  if (K.qT > 1.5) {
+    K.qT = 0;
+    if (K.ft > 1 / 42 && KR.pr > 0.6) { KR.pr = Math.max(0.6, KR.pr - 0.25); r.setPixelRatio(KR.pr); K.upT = 0; }
+    else if (K.ft < 1 / 57 && KR.pr < KR.prMax) { K.upT += 1; if (K.upT >= 3) { KR.pr = Math.min(KR.prMax, KR.pr + 0.25); r.setPixelRatio(KR.pr); K.upT = 0; } }
+    else K.upT = 0;
+  }
+  // gerak lambat sesaat (kena item, lewat garis finish)
+  if (K.slow > 0) { K.slow -= dt; dt *= 0.35; }
+  // langkah fisika dipecah kalau frame panjang, biar tabrakan dinding tetap rapi di HP lambat
+  const n = Math.min(3, Math.ceil(dt / (1 / 55)));
+  for (let i = 0; i < n; i++) ktSim(dt / n);
+  ktDraw(dt, W, H);
+}
+function ktSim(dt) {
+  const K = FC.kt, { T, karts } = KR, me = karts[0];
   K.t += dt;
   // hitung mundur 3-2-1-GO; tahan jari waktu "2" sampai GO = start roket, kecepetan = mesin mogok sebentar
   if (K.cd > 0) {
     K.cd -= dt; const n = Math.ceil(K.cd);
     if (n < K.beep && n >= 1) { K.beep = n; Sfx.play("beep", 0); }
     if (K.cd <= 0) {
-      Sfx.play("beep", 1);
+      Sfx.play("beep", 1); K.camH = me.h;
       const held = K.hold || K.keyHold;
       if (held && K.rocket != null) { if (K.rocket <= 2) { me.boost = 1.1; ktMsg("Rocket start!", 1); Sfx.play("turbo"); } else { me.stall = 0.7; ktMsg("Too early!", 1); } }
       karts.forEach((k, n2) => { if (!k.me && FC.rnd() < 0.5) k.boost = 0.4 + 0.15 * n2; });
@@ -427,12 +470,21 @@ function kartStep(dt) {
   const go = K.cd <= 0;
   if (go) {
     const s = K.ptr != null ? K.s : (K.keyR ? 1 : 0) - (K.keyL ? 1 : 0), hold = K.ptr != null || K.keyL || K.keyR;
-    if (me.fin) { ktCpu(me, dt); } else ktDrive(me, dt, s, hold);
+    // setir dihaluskan dikit: nggak kaku, tapi balik ke tengah tetap cepat
+    me.sm += (s - me.sm) * Math.min(1, dt * (Math.abs(s) < Math.abs(me.sm) ? 16 : 10));
+    const b0 = me.boost;
+    if (me.fin) { ktCpu(me, dt); } else ktDrive(me, dt, me.sm, hold);
+    if (b0 <= 0 && me.boost > 0) K.punch = 1;
     for (const k of karts) if (!k.me) ktCpu(k, dt);
     // tabrakan antar kart
     for (let a = 0; a < karts.length; a++) for (let b = a + 1; b < karts.length; b++) {
       const A = karts[a], B = karts[b], dx = B.x - A.x, dz = B.z - A.z, d2 = dx * dx + dz * dz;
-      if (d2 < 4.4 && d2 > 1e-4) { const d = Math.sqrt(d2), o = (2.1 - d) / 2, nx = dx / d, nz = dz / d; A.x -= nx * o; A.z -= nz * o; B.x += nx * o; B.z += nz * o; if ((A.me || B.me) && !K.bumpT) { Sfx.play("dinding"); K.bumpT = 0.3; } }
+      if (d2 < 4.4 && d2 > 1e-4) {
+        const d = Math.sqrt(d2), o = (2.1 - d) / 2, nx = dx / d, nz = dz / d; A.x -= nx * o; A.z -= nz * o; B.x += nx * o; B.z += nz * o;
+        // senggolan: yang lebih kencang ngedorong, dua-duanya mantul dikit
+        const dv = (A.v - B.v) * 0.15; A.v -= dv; B.v += dv; A.bv += 0.8; B.bv += 0.8;
+        if ((A.me || B.me) && !K.bumpT) { Sfx.play("dinding"); K.bumpT = 0.3; K.shake = Math.max(K.shake, 0.12); navigator.vibrate && navigator.vibrate(15); }
+      }
     }
     K.bumpT = Math.max(0, (K.bumpT || 0) - dt) || 0;
     // kotak item, koin, bantalan turbo
@@ -464,13 +516,30 @@ function kartStep(dt) {
     // CPU yang belum finish waktu pemain udah selesai lama: urutannya pakai posisi sekarang
     if (K.end && K.t - K.end > 2.8 && !FC.over) { FC.over = now(); FC.cont = true; ktSnap(); kartStop(); }
     if (!K.end && K.t > 240) { const pl = ktRank(me); K.end = K.t; K.place = pl; FC.place = pl; mgAdd(KT_PTS[pl]); ktMsg("Time!", 2); }
+    ktMarks();
   }
-  // ---- gambar kart, partikel, kamera
+}
+// jejak ban di roda belakang waktu drift atau muter
+function ktMarks() {
+  for (const k of KR.karts) {
+    if (!((k.drift || k.spin > 0) && k.v > 6 && k.hop <= 0)) { k.mark = null; continue; }
+    if (k.mark && (k.x - k.mark[0]) ** 2 + (k.z - k.mark[1]) ** 2 < 0.5) continue;
+    k.mark = [k.x, k.z];
+    const yaw = k.h + k.b.rotation.y, bx = Math.sin(yaw), bz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    for (const sd of [-0.92, 0.92]) {
+      const m = KR.marks[KR.mi = (KR.mi + 1) % KR.marks.length];
+      m.position.set(k.x - bx * 0.85 + rx * sd, k.y - (k.hop > 0 ? 0.3 : 0) + 0.035, k.z - bz * 0.85 + rz * sd); m.rotation.y = yaw; m.visible = true;
+    }
+  }
+}
+function ktDraw(dt, W, H) {
+  const K = FC.kt, { T, karts, r, sc, cam } = KR, me = karts[0], go = K.cd <= 0;
   for (const k of karts) {
     k.g.position.set(k.x, k.y, k.z); k.g.rotation.y = k.h;
-    const tgtYaw = k.spin > 0 ? k.b.rotation.y : k.drift * 0.42, lean = k.drift ? -k.drift * 0.08 : 0;
+    const tgtYaw = k.spin > 0 ? k.b.rotation.y : k.drift * 0.42, lean = k.drift ? -k.drift * 0.1 : -(k.sUse || 0) * Math.min(1, k.v / 25) * 0.07;
     if (k.spin <= 0) k.b.rotation.y += (tgtYaw - k.b.rotation.y) * Math.min(1, dt * 10);
     k.b.rotation.z += (lean - k.b.rotation.z) * Math.min(1, dt * 8);
+    k.b.rotation.x = k.pitch; k.b.position.y = k.by; k.b.scale.set(1 - k.by * 0.25, 1 + k.by * 0.5, 1 - k.by * 0.25);
     for (const w of k.wheels) w.rotation.x += k.v * dt * 2.4;
     k.flame.visible = k.boost > 0; if (k.boost > 0) k.flame.scale.set(1, 1, 0.7 + Math.random() * 0.6);
     k.bub.visible = k.shield > 0; if (k.shield > 0) k.bub.material.opacity = 0.2 + 0.1 * Math.sin(K.t * 10) + (k.shield < 2 ? 0.15 * Math.sin(K.t * 30) : 0);
@@ -485,27 +554,33 @@ function kartStep(dt) {
     if (!p.s.visible) continue;
     p.t += dt; if (p.t >= p.life) { p.s.visible = false; continue; }
     p.vy -= 9 * dt; p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt;
-    const f = 1 - p.t / p.life; p.s.material.opacity = 1; p.s.scale.setScalar(p.sz * (0.4 + f));
+    const f = 1 - p.t / p.life; p.s.scale.setScalar(p.sz * (0.4 + f));
   }
   for (const bx of KR.boxes) { bx.m.rotation.y += dt * 1.6; bx.m.rotation.x = Math.sin(K.t * 1.3) * 0.3; bx.m.position.y = bx.y + 1.1 + Math.sin(K.t * 2.5 + bx.x) * 0.15; }
   for (const c of KR.coins) c.m.rotation.y += dt * 4;
-  // kamera kejar dari belakang; habis finish muter pelan di sekitar pemain
-  const fx = Math.sin(me.h), fz = Math.cos(me.h), aspect = W / Math.max(1, H);
-  let px, py, pz, lx, ly, lz;
+  // kamera: arah kamera ngikut arah kart dengan sedikit telat (kerasa pas belok), intro muter dari depan grid,
+  // habis finish muter pelan di sekitar pemain
+  K.camH += ktWrap(me.h - K.camH) * Math.min(1, dt * (me.drift ? 3.5 : 5));
+  const ch = K.camH, fx = Math.sin(ch), fz = Math.cos(ch), hx = Math.sin(me.h), hz = Math.cos(me.h), aspect = W / Math.max(1, H);
+  let px, py, pz, lx, ly, lz, snap = false;
   if (K.end) { const a = me.h + Math.PI * 0.75 + (K.t - K.end) * 0.6; px = me.x + Math.sin(a) * 8.5; pz = me.z + Math.cos(a) * 8.5; py = me.y + 4; lx = me.x; ly = me.y + 1; lz = me.z; }
-  else if (!go) { px = me.x - fx * 7.5; pz = me.z - fz * 7.5; py = me.y + 3 + Math.max(0, K.cd - 1) * 1.5; lx = me.x + fx * 5; ly = me.y + 1.2; lz = me.z + fz * 5; }
-  else { const back = 7.2 + Math.min(1, me.v / 30) * 0.8; px = me.x - fx * back; pz = me.z - fz * back; py = me.y + 3.1; lx = me.x + fx * 6; ly = me.y + 1.2; lz = me.z + fz * 6; }
+  else if (K.cd > 3) {
+    const u = Math.min(1, (K.cd - 3) / K.intro), e = u * u * (3 - 2 * u), a = me.h + Math.PI * e, R = 7.5 + 7 * e;
+    px = me.x - Math.sin(a) * R; pz = me.z - Math.cos(a) * R; py = me.y + 3 + 3 * e; lx = me.x; ly = me.y + 1.2; lz = me.z; snap = true;
+  } else if (!go) { px = me.x - hx * 7.5; pz = me.z - hz * 7.5; py = me.y + 3; lx = me.x + hx * 5; ly = me.y + 1.2; lz = me.z + hz * 5; }
+  else { const back = 7.2 + Math.min(1, me.v / 30) * 0.8 + K.punch * 0.8; px = me.x - fx * back; pz = me.z - fz * back; py = me.y + 3.1 - K.punch * 0.3; lx = me.x + hx * 6; ly = me.y + 1.2; lz = me.z + hz * 6; }
   if (!K.camP) K.camP = new THREE.Vector3(px, py, pz);
-  const kk = 1 - Math.exp(-dt * (K.end ? 3 : 9)); K.camP.x += (px - K.camP.x) * kk; K.camP.y += (py - K.camP.y) * kk; K.camP.z += (pz - K.camP.z) * kk;
+  K.punch = Math.max(0, K.punch - dt * 2);
+  const kk = snap ? 1 : 1 - Math.exp(-dt * (K.end ? 3 : 10)); K.camP.x += (px - K.camP.x) * kk; K.camP.y += (py - K.camP.y) * kk; K.camP.z += (pz - K.camP.z) * kk;
   cam.position.copy(K.camP);
   K.shake = Math.max(0, K.shake - dt);
   if (K.shake > 0 && !reduce) { cam.position.x += (Math.random() - 0.5) * K.shake * 1.2; cam.position.y += (Math.random() - 0.5) * K.shake * 0.8; }
   cam.lookAt(lx, ly, lz);
-  const fov = (aspect < 1 ? 74 : 62) + (me.boost > 0 ? 8 : 0) + Math.min(1, me.v / 32) * 4;
+  const fov = (aspect < 1 ? 74 : 62) + (me.boost > 0 ? 8 : 0) + Math.min(1, me.v / 32) * 4 + K.punch * 6;
   if (Math.abs(cam.fov - fov) > 0.05 || cam.aspect !== aspect) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 5); cam.aspect = aspect; cam.updateProjectionMatrix(); }
   r.render(sc, cam);
   // suara mesin ikut kecepatan
-  if (go && !FC.over) Sfx.motor(70 + me.v * 4.2 + (me.boost > 0 ? 50 : 0) + (me.drift ? 15 : 0));
+  if (go && !FC.over) Sfx.motor(70 + me.v * 4.2 + (me.boost > 0 ? 50 : 0) + (me.drift ? 15 : 0), me.drift || me.spin > 0 ? 0.6 + 0.2 * ktLv(me.dT) : 0);
   ktHud(dt);
 }
 // gambar terakhir 3D ke kanvas dunia, biar kartu Share punya latar
