@@ -366,7 +366,10 @@ function resize() {
 }
 addEventListener("resize", resize); resize();
 
-let last = now(), townT = 0, coverT = 0;
+let last = now(), townT = 0, coverT = 0, homeT = 0, homeShT = 0, inputT = 0, coverDrawn = false;
+// v87: sentuhan terakhir ke adegan 3D (bukan ke lembar atau tombol); rumah yang diam dan nggak disentuh digambar 30 kali per detik (lihat frame())
+canvas.addEventListener("pointerdown", () => { inputT = now(); }, { passive: true });
+canvas.addEventListener("pointermove", () => { inputT = now(); }, { passive: true });
 // Layar penuh yang menutupi adegan 3D (HP, Burrow, Bazaar, langit bintang, buku). Selama terbuka, adegan nggak digambar:
 // kanvas tetap menampilkan gambar terakhir, GPU bebas buat scroll dan blur di atasnya.
 const isUp = o => !!(o && o.el && o.el.isConnected);   // elemen yang sudah dicopot nggak pernah membekukan adegan
@@ -381,6 +384,7 @@ function frame(t) {
   if (!game3d && sheetKind && !sheet.classList.contains("clear")) { if (t - coverT < 48) return; coverT = t; }
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   qFull = !sheetKind;
+  renderer.shadowMap.autoUpdate = true;   // v79: kota (dan rumah yang diam, v87) boleh mematikannya; adegan lain selalu hitung bayangan
   if (LIAR && LIAR.on) { renderer.shadowMap.autoUpdate = true; LIAR.frame(t, dt); renderer.render(LIAR.scene, LIAR.camera); liarFps(t); return; }
   if (KONSER && KONSER.on) { KONSER.frame(t, dt); renderer.render(KONSER.scene, KONSER.camera); if (Math.floor(ts * 4) !== Math.floor((ts - dt) * 4)) konserHud(); return; }
   if (GLOBE && GLOBE.on) {
@@ -395,7 +399,6 @@ function frame(t) {
     if (Math.floor(ts * 2) !== Math.floor((ts - dt) * 2)) townChips();
     return;
   }
-  renderer.shadowMap.autoUpdate = true;   // v79: kota boleh mematikannya di peta; adegan lain selalu hitung bayangan
   if (TOWN && TOWN.on) {
     // v79: kamera diam > 1,5 detik = kota digambar 30 kali per detik, bukan 60 (HP lebih adem, baterai lebih awet)
     if (TOWN.calm && TOWN.calm(t)) { qFull = false; if (t - townT < 31) return; }
@@ -407,10 +410,24 @@ function frame(t) {
     return;
   }
   if (!K) { renderer.render(scene, camera); return; }
+  // v87: makhluk diam (nggak ada animasi, ngomong, makan, atau sentuhan > 2,5 detik) = 30 fps dan bayangan dihitung ulang
+  // ~8 kali per detik; begitu ada gerakan atau disentuh, balik 60 fps. HP lebih adem, jadi nggak makin lambat karena panas.
+  const calm = !anim && !idle && !bubble && t > inputT + 2500 && t > talkUntil && t > chewUntil && t > joyUntil && t > surpriseUntil;
+  if (calm) {
+    qFull = false;
+    // di balik lembar berlatar blur, gambar yang diam nggak usah digambar ulang sama sekali: blur-nya nggak perlu dihitung ulang tiap frame,
+    // jadi scroll lembarnya mulus. Begitu makhluknya gerak (iseng, animasi), digambar lagi.
+    if (sheetKind && !sheet.classList.contains("clear")) { if (coverDrawn) return; coverDrawn = true; }
+    if (t - homeT < 31) return;
+  }
+  if (!calm || !sheetKind) coverDrawn = false;
+  const hdt = Math.min(0.05, (t - homeT) / 1000); homeT = t;
+  renderer.shadowMap.autoUpdate = false;
+  if (!calm || t - homeShT > 120) { renderer.shadowMap.needsUpdate = true; homeShT = t; }
   const napping = t < napUntil, gone = cur && (cur.fase === "meninggal" || cur.fase === "merantau");
   K.root.visible = !gone;
   const lights = napping ? 0.3 : 1; hemi.intensity += (LIT.hemi * lights - hemi.intensity) * 0.1; sun.intensity += (LIT.sunI * lights - sun.intensity) * 0.1;
-  if (Math.floor(ts / 30) !== Math.floor((ts - dt) / 30)) applyLight();
+  if (Math.floor(ts / 30) !== Math.floor((ts - hdt) / 30)) applyLight();
   const lampOn = napping ? Math.max(LIT.lamp, 0.4) : LIT.lamp;
   for (const r of ROOMS) if (r.g.visible) for (const { l, strength } of r.g.userData.lamps || []) l.intensity += (lampOn * strength - l.intensity) * 0.1;
   let y = 0, sx = 1, sy = 1, rz = 0;
@@ -490,8 +507,8 @@ function frame(t) {
   if (alertEl && (!game || !game.pending)) { alertEl.remove(); alertEl = null; }
   if (alertEl) { alertEl.style.left = top.x + 90 + "px"; alertEl.style.top = top.y + 20 + "px"; }
   if (snapEl) { snapEl.style.left = top.x - 90 + "px"; snapEl.style.top = top.y + 40 + "px"; }
-  if (napping && Math.floor(ts * 1.2) !== Math.floor((ts - dt) * 1.2)) burst(["Z"], 1, "#fff", 30, "zzz");
-  if (cur && !gone && !napping && !anim && !bubble && Math.random() < dt * 0.06) {
+  if (napping && Math.floor(ts * 1.2) !== Math.floor((ts - hdt) * 1.2)) burst(["Z"], 1, "#fff", 30, "zzz");
+  if (cur && !gone && !napping && !anim && !bubble && Math.random() < hdt * 0.06) {
     if (cur.needs.lapar < 30) say("I'm hungry...", 1800); else if (cur.needs.kebersihan < 30) say("I smell funny", 1800); else if (cur.needs.energi < 25) say("So sleepy...", 1800);
   }
   renderer.render(scene, camera);

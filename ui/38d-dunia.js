@@ -9,14 +9,41 @@ function wLayer(key, w, h, draw) {
   if (!WCACHE[id]) { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); WCACHE[id] = c; }
   return WCACHE[id];
 }
+// Latar digambar lebih kasar dari kanvas permainan (lag di HP, v87): dunia penuh layar tiap frame itu kerja piksel
+// terbesar di mini game 2D. Resolusinya dibatasi (garis tebelnya tetap kelihatan rapi), dan dunia yang kameranya diam
+// cukup digambar 30 kali per detik. WK = pengali dari satuan kanvas permainan (FC.cam, FC.dist, FC.ground) ke satuan latar.
+// Kualitas adaptif (mgQ): kalau lebih dari separuh frame di bawah ~42 fps selama ~2 detik, latar turun satu tingkat
+// (lebih kasar, semua dunia 30 fps; tingkat 2 juga kanvas permainan 1,5x mulai game berikutnya). Diingat di browser (mk-mgq).
+// Kalau turun nggak bikin lebih cepat (HP dikunci 30 fps), dibatalkan dan berhenti, sama seperti adegan 3D (ui/03-scene.js).
+const WBG_STILL = { pisau: 1, potong: 1, buah: 1, ingat: 1, kuis: 1 };
+const MGQ = [[1.5, false], [1, true], [0.75, true]], MGQ_KEY = "mk-mgq";   // [batas rasio piksel latar, semua dunia 30 fps]
+let mgQ = (() => { try { return Math.min(MGQ.length - 1, Math.max(0, Math.floor(+localStorage.getItem(MGQ_KEY) || 0))); } catch (e) { return 0; } })();
+let WK = 1, mgqN = 0, mgqSlow = 0, mgqSum = 0, mgqBefore = 0, mgqDone = false;
+function mgQMeter(d) {
+  if (mgqDone || d > 250 || document.visibilityState !== "visible") return;
+  mgqN++; mgqSum += d; if (d > 24) mgqSlow++;
+  if (mgqN < 30 || (mgqN < 120 && mgqSum < 2000)) return;
+  const avg = mgqSum / mgqN, slow = mgqSlow > mgqN * 0.5;
+  mgqN = mgqSlow = mgqSum = 0;
+  if (!slow) { mgqBefore = 0; return; }
+  if (mgqBefore && avg > mgqBefore * 0.9) { mgQ--; mgqDone = true; }   // turun terakhir nggak menolong: balikkan, berhenti
+  else if (mgQ >= MGQ.length - 1) { mgqDone = true; return; }
+  else { mgQ++; mgqBefore = avg; }
+  try { localStorage.setItem(MGQ_KEY, String(mgQ)); } catch (e) { /* tanpa storage */ }
+  if (globalThis.Tele && Tele.teknis) Tele.teknis("kualitas_mg", { lv: mgQ, ms: Math.round(avg), k: FC ? FC.k : "" });
+}
 function worldDraw(dt) {
   const cv = $("mgBg");
-  if (!cv || !FC) return;
-  const dpr = FC.dpr, W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
+  if (!cv || !FC || FC.k === "kart") return;   // Kart cup: adegan 3D nutupin latar sepenuhnya (ktSnap yang ngisi buat kartu Share)
+  const [cap, half] = MGQ[mgQ];
+  FC.wAcc = (FC.wAcc || 0) + (dt || 0);
+  if (dt && (half || WBG_STILL[FC.k]) && !reduce && (FC.wSkip = !FC.wSkip)) return;
+  const dpr = Math.min(FC.dpr, cap), W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
   if (!W || !H) return;
+  WK = dpr / FC.dpr;
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  const t = reduce ? 0 : now() / 1000, ctx = cv.getContext("2d");
-  (WORLDS[FC.k] || wOrchard)(ctx, W, H, dpr, t, dt || 0);
+  const t = reduce ? 0 : now() / 1000, ctx = cv.getContext("2d"), wdt = FC.wAcc; FC.wAcc = 0;
+  (WORLDS[FC.k] || wOrchard)(ctx, W, H, dpr, t, wdt);
 }
 // alat gambar kecil
 const wGrad = (ctx, y0, y1, stops) => { const g = ctx.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; };
@@ -111,7 +138,7 @@ function wDojo(ctx, W, H, dpr, t) {
 
 // Stack: kota senja. Makin tinggi menaranya, kamera naik: kota turun pelan (parallax) dan langit berubah jadi malam berbintang.
 function wCity(ctx, W, H, dpr, t) {
-  const cam = FC.cam || 0, hi = Math.min(1, cam / (H * 2.5));
+  const cam = (FC.cam || 0) * WK, hi = Math.min(1, cam / (H * 2.5));
   const mix = (a, b) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * hi)).join(",")})`;
   ctx.fillStyle = wGrad(ctx, 0, H, [[0, mix([58, 42, 110], [10, 12, 36])], [0.45, mix([214, 96, 120], [40, 30, 80])], [0.75, mix([255, 170, 100], [90, 50, 110])], [1, mix([255, 205, 130], [120, 70, 120])]]);
   ctx.fillRect(0, 0, W, H);

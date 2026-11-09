@@ -136,7 +136,9 @@ function mgStart(k = "potong", daily = false) {
   // skor gede di tengah atas, di BELAKANG kanvas: buah dan pisau tetap kegambar di atasnya, jadi ga pernah nutupin permainan
   el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em><small id="mgBest" hidden></small></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x snd" id="mgSnd" aria-label="Sound">${Sfx.off ? "🔇" : "🔊"}</button><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
-  const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
+  // game melintang (Kart cup, Bonk brawl) layarnya lebih lebar: kanvas 2D dibatasi 1,5x biar pikselnya nggak kebanyakan (lag di HP, v87);
+  // HP yang sudah turun ke kualitas mini game terendah (mgQ, ui/38d) juga
+  const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(MG_LAND[k] || mgQ >= 2 ? 1.5 : 2, window.devicePixelRatio || 1);
   // game melintang (Kart cup, Bonk brawl): HP dikunci miring kalau bisa, kalau nggak layarnya diputar (ui/38h ktOrient)
   if (MG_LAND[k]) ktLock();
   const size = () => { if (MG_LAND[k]) ktOrient(el); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
@@ -251,6 +253,7 @@ function mgRun() {
 function mgFrame() {
   if (!FC || !FC.run) return;
   const t = now(), dt = Math.min(0.05, (t - FC.last) / 1000), el = (t - FC.t0) / 1000;
+  if (FC.k !== "kart") mgQMeter(t - FC.last);   // Kart cup punya pengatur resolusinya sendiri (ui/38h kartStep)
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";

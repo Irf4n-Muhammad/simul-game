@@ -622,7 +622,8 @@ function kartStep(dt) {
   const K = FC.kt, { r, cv } = KR;
   // ukuran kanvas 3D ikut layar
   const W = FC.el.clientWidth, H = FC.el.clientHeight;
-  if (cv.width !== Math.round(W * r.getPixelRatio()) || cv.height !== Math.round(H * r.getPixelRatio())) { r.setSize(W, H, false); }
+  // three.js membulatkan ke bawah (floor): dibandingkan pakai round, rasio 1,25 atau 0,75 bikin setSize (alokasi ulang buffer) tiap frame
+  if (cv.width !== Math.floor(W * r.getPixelRatio()) || cv.height !== Math.floor(H * r.getPixelRatio())) { r.setSize(W, H, false); }
   // kualitas adaptif: frame berat terus → resolusi turun; lancar lama → naik lagi pelan-pelan
   K.ft += (dt - K.ft) * 0.05; K.qT += dt;
   if (K.qT > 1.5) {
