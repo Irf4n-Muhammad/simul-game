@@ -52,12 +52,38 @@ const Sfx = (() => {
     jackpot: () => { for (let i = 0; i < 6; i++) { tone(988, 0.08, { type: "square", vol: 0.08, at: i * 0.09 }); tone(1319, 0.12, { type: "square", vol: 0.08, at: i * 0.09 + 0.045 }); } },
     rekor: () => { arp(523, [0, 4, 7], 0.12, { type: "square", vol: 0.1, dur: 0.14 }); [0, 4, 7, 12].forEach(n => tone(semi(523, n), 0.7, { type: "triangle", vol: 0.12, at: 0.38 })); },
     selesai: () => arp(392, [0, -3, -5], 0.12, { type: "triangle", vol: 0.15, dur: 0.2 }),
+    // Kart cup (v83)
+    beep: n => tone(n ? 1320 : 660, n ? 0.45 : 0.16, { type: "square", vol: 0.1 }),
+    turbo: () => { hiss(0.5, { f: 400, to: 4000, q: 0.8, vol: 0.28 }); tone(180, 0.4, { type: "sawtooth", to: 520, vol: 0.08 }); },
+    spin: () => { tone(620, 0.55, { type: "triangle", to: 110, vol: 0.2 }); hiss(0.35, { f: 900, to: 200, vol: 0.2 }); },
+    kotak: () => arp(660, [0, 5, 9, 12], 0.04, { type: "square", vol: 0.07, dur: 0.08 }),
+    dinding: () => { tone(90, 0.12, { type: "square", to: 50, vol: 0.22 }); hiss(0.08, { f: 600, vol: 0.18 }); },
+    lap: () => arp(784, [0, 4, 7, 12], 0.08, { type: "triangle", vol: 0.15, dur: 0.16 }),
   };
+  // suara mesin kart: satu nada gergaji lewat filter yang terus nyala, nadanya ikut kecepatan. motor(null) = mati
+  let mo = null;
+  function motor(f) {
+    if (f == null || off || reduceSound()) {
+      if (mo) { const m = mo; mo = null; try { m.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); setTimeout(() => { try { m.o.stop(); m.o2.stop(); } catch (e) { /* udah berhenti */ } }, 300); } catch (e) { /* abaikan */ } }
+      return;
+    }
+    init(); if (!ac) return;
+    if (ac.state === "suspended") ac.resume();
+    if (!mo) {
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = "sawtooth"; o2.type = "square"; fl.type = "lowpass"; fl.Q.value = 2; g.gain.value = 0.0001;
+      o.connect(fl); o2.connect(fl); fl.connect(g); g.connect(out); o.start(); o2.start();
+      g.gain.setTargetAtTime(0.045, ac.currentTime, 0.15); mo = { o, o2, fl, g };
+    }
+    const t = ac.currentTime;
+    mo.o.frequency.setTargetAtTime(f, t, 0.06); mo.o2.frequency.setTargetAtTime(f * 0.5, t, 0.06); mo.fl.frequency.setTargetAtTime(250 + f * 3.5, t, 0.06);
+  }
   return {
     get off() { return off; },
     unlock() { if (off) return; init(); if (ac && ac.state === "suspended") ac.resume(); },
     play(name, n) { if (off || reduceSound()) return; init(); if (!ac || !S[name]) return; if (ac.state === "suspended") ac.resume(); try { S[name](n); } catch (e) { /* suara gagal nggak boleh ganggu game */ } },
-    toggle() { off = !off; try { localStorage.setItem("mk-sfx-off", off ? "1" : "0"); } catch (e) { /* tanpa storage */ } if (!off) this.unlock(); return off; },
+    motor(f) { try { motor(f); } catch (e) { /* suara gagal nggak boleh ganggu game */ } },
+    toggle() { off = !off; if (off) motor(null); try { localStorage.setItem("mk-sfx-off", off ? "1" : "0"); } catch (e) { /* tanpa storage */ } if (!off) this.unlock(); return off; },
   };
 })();
 // tab di latar belakang: jangan bunyi

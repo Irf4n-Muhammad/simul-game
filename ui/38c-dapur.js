@@ -54,6 +54,7 @@ const MG_GAMES = {
   hop: { name: "Frog hop", icon: "🐸", color: "#3FA34D", timed: false, how: "The frog bounces by itself. Slide your finger left and right to land on clouds. Cracked clouds break." },
   ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear a board for +5, or +10 with no mistakes. Boards get bigger, and two misses in a row shuffle two cards." },
   kuis: { name: "Quiz rush", icon: "🧠", color: "#2F8FD8", timed: false, how: "Race Kiko, Bolt and Mimi through 10 quick questions. Right is +2, the fastest right answer +1, winning +3." },
+  kart: { name: "Kart cup", icon: "🏎️", color: "#D8432F", timed: false, how: "Three laps against Kiko, Bolt, Mimi and Pip. Drag to steer, hold a sharp turn to drift and let go for a boost. Tap to use items from the ? boxes. Coins +1, hits +2, and your finish adds up to +12." },
   lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
 const MG_ORDER = Object.keys(MG_GAMES);
@@ -155,6 +156,14 @@ function mgStart(k = "potong", daily = false) {
     cv.addEventListener("pointerdown", e => { e.preventDefault(); if (FC.run) quizTap(...pos(e)); });
     FC.key = e => { const n = "1234".indexOf(e.key); if (n >= 0 && FC.run && FC.phase === "ask") qzAnswer(FC.ppl[0], n); };
     window.addEventListener("keydown", FC.key);
+  } else if (k === "kart") {
+    // Kart cup: geser = belok, tahan = drift, ketuk atau jari kedua = item; keyboard: panah + spasi
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); cv.setPointerCapture && cv.setPointerCapture(e.pointerId); if (FC.run) kartDown(e.pointerId, ...pos(e)); });
+    cv.addEventListener("pointermove", e => { if (FC.run) kartMove(e.pointerId, ...pos(e)); });
+    const up = e => { if (FC.kt) kartUp(e.pointerId); };
+    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    FC.key = e => kartKey(e, true); FC.keyUp = e => kartKey(e, false);
+    window.addEventListener("keydown", FC.key); window.addEventListener("keyup", FC.keyUp);
   } else if (!g.timed) {
     // Stack, Knife throw, Town run: satu tap = satu aksi
     const tap = { stack: stackTap, pisau: knifeTap, lari: runTap }[k];
@@ -212,7 +221,7 @@ function mgRun() {
   Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, chain: 0, note: null, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
-  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit }[FC.k];
+  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit, kart: kartInit }[FC.k];
   FC.got = []; FC.drop = dropPlan();
   if (init) init();
   if (ARC) ARC.played.add(FC.k);
@@ -225,7 +234,7 @@ function mgFrame() {
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
-  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep, kuis: quizStep }[FC.k];
+  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep, kuis: quizStep, kart: kartStep }[FC.k];
   worldDraw(dt);
   step(dt, el);
   mgJuice(dt);
@@ -764,7 +773,7 @@ function mgDone() {
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
   const W = wallet(), k = FC.k, { r, fresh, dly, hist, who } = FC.res;
-  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped`, kuis: `${["1st", "2nd", "3rd", "4th"][FC.place] || ""} place · ${FC.caught}/${QZ_N} right` }[k];
+  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped`, kuis: `${["1st", "2nd", "3rd", "4th"][FC.place] || ""} place · ${FC.caught}/${QZ_N} right`, kart: `${KT_ORD[FC.place] || ""} place · ${FC.caught} coins${FC.kt && FC.kt.hits ? ` · ${FC.kt.hits} hits` : ""}` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
   const sub = r.best && FC.score ? `${what}` : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `${gap} short of your record (${W.best[k]})` : `${what} · record ${W.best[k] || 0}`;
@@ -888,6 +897,8 @@ function mgEnd(quit) {
   if (quit && FC.run && FC.got && FC.got.length) { const W = wallet(); FC.got.forEach(kind => kind === "piece" ? Dapur.addPiece(W) : Dapur.openBox(W, Math.random(), Math.random())); save(); }
   FC.run = false;
   if (FC.key) window.removeEventListener("keydown", FC.key);
+  if (FC.keyUp) window.removeEventListener("keyup", FC.keyUp);
+  if (FC.k === "kart") kartStop();
   window.removeEventListener("resize", FC.size);
   FC.el.remove(); FC = null;
   dapurChip(); arcDraw();
