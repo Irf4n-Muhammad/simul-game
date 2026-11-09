@@ -135,10 +135,13 @@ function mgStart(k = "potong", daily = false) {
   el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x snd" id="mgSnd" aria-label="Sound">${Sfx.off ? "🔇" : "🔊"}</button><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
-  const size = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
+  // Kart cup main landscape: HP dikunci miring kalau bisa, kalau nggak layarnya diputar (ui/38h ktOrient)
+  if (k === "kart") ktLock();
+  const size = () => { if (k === "kart") ktOrient(el); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
   size();
   FC = { k, daily, el, cv, ctx, dpr, items: [], bits: [], pops: [], score: 0, caught: 0, bx: cv.width / 2, t0: 0, last: 0, spawn: 0, run: false, shake: 0, size };
-  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; };
+  // layar diputar 90°: sumbu x game = ke bawah di layar, sumbu y game = ke kiri
+  const pos = e => { const r = cv.getBoundingClientRect(); return el.classList.contains("fcx-rot") ? [(e.clientY - r.top) * dpr, (r.right - e.clientX) * dpr] : [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; };
   if (k === "buah") {
     const aim = e => { FC.bx = Math.max(0, Math.min(cv.width, pos(e)[0])); };
     cv.addEventListener("pointerdown", aim); cv.addEventListener("pointermove", aim);
@@ -899,7 +902,7 @@ function mgEnd(quit) {
   FC.run = false;
   if (FC.key) window.removeEventListener("keydown", FC.key);
   if (FC.keyUp) window.removeEventListener("keyup", FC.keyUp);
-  if (FC.k === "kart") kartStop();
+  if (FC.k === "kart") { kartStop(); ktUnlock(); }
   window.removeEventListener("resize", FC.size);
   FC.el.remove(); FC = null;
   dapurChip(); arcDraw();

@@ -796,6 +796,14 @@ svg { stroke: currentColor; }
 /* v60: pop up gaya game: layar belakang redup, kartu mental, pita judul, cincin waktu "Keep going?", skor besar, medali peringkat */
 .fcx .fcx-card { box-shadow: 0 8px 0 #22182B, 0 0 0 100vmax rgba(14,10,24,.58); padding-top: 34px; align-items: stretch; }
 .fcx .fcx-card.pop { animation: ppIn .42s cubic-bezier(.2,1.5,.4,1); }
+/* Kart cup landscape: HP tegak → layar game diputar 90°; layar pendek → kartu dibikin ringkas di tengah */
+.fcx.fcx-rot { inset: auto; top: 0; left: 0; width: 100vh; width: 100dvh; height: 100vw; transform-origin: top left; transform: translateX(100vw) rotate(90deg); }
+.fcx-land .fcx-top { top: 10px; } .fcx-land .fcx-card { left: 50%; right: auto; width: min(480px, 86%); top: 54%; transform: translate(-50%, -50%); padding: 26px 18px 14px; gap: 6px; }
+.fcx-land .fcx-card.pop { animation: ppInL .42s cubic-bezier(.2,1.5,.4,1); }
+@keyframes ppInL { from { transform: translate(-50%, -50%) scale(.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.fcx-land .pp-head { font-size: 18px; padding: 6px 20px; top: -20px; } .fcx-land .pp-score { font-size: 44px; margin-top: 0; } .fcx-land .pp-icon { width: 56px; height: 56px; font-size: 32px; margin: 0; }
+.fcx-land .pp-rank { padding: 6px 10px; } .fcx-land .pp-rank i { width: 36px; height: 36px; font-size: 20px; }
+.fcx-land.fcx .fcx-card .pp-big { padding: 10px; font-size: 17px; } .fcx-land.fcx .fcx-card .row3 .choice { padding: 8px 6px; }
 @keyframes ppIn { from { transform: translateY(-50%) scale(.6); opacity: 0; } to { transform: translateY(-50%) scale(1); opacity: 1; } }
 .pp-head { position: absolute; top: -24px; left: 50%; transform: translateX(-50%) rotate(-2deg); white-space: nowrap; padding: 9px 26px; border-radius: 14px; border: 3px solid #22182B; box-shadow: 0 5px 0 #22182B; background: linear-gradient(#8F7CFF, #5B45E0); color: #fff; font-weight: 900; font-size: 22px; letter-spacing: .02em; text-transform: uppercase; -webkit-text-stroke: 1.5px #22182B; paint-order: stroke fill; }
 .pp-head.pp-gold { background: linear-gradient(#FFE16B, #FF9F1C); } .pp-head.pp-red { background: linear-gradient(#FF8A6B, #E8434E); }

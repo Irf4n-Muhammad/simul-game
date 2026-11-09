@@ -216,6 +216,27 @@ function ktWarm() {
   try { ktBuild(); KR.r.compile(KR.sc, KR.cam); KR.warm = true; } catch (e) { /* nanti dibikin waktu main */ }
 }
 function kartStop() { Sfx.motor(null); }
+// ---------- landscape: di Android coba layar penuh + kunci miring; kalau nggak bisa (iPhone, browser lain) dan HP masih tegak,
+// seluruh layar game diputar 90° lewat CSS (.fcx-rot), jadi pemain tinggal miringin HP-nya
+let KT_FS = false;
+function ktLock() {
+  try {
+    const d = document.documentElement;
+    if (document.fullscreenElement || !d.requestFullscreen || !(screen.orientation && screen.orientation.lock) || !/Android/i.test(navigator.userAgent)) return;
+    d.requestFullscreen({ navigationUI: "hide" }).then(() => { KT_FS = true; return screen.orientation.lock("landscape"); }).catch(() => { /* nggak didukung: pakai putar CSS */ });
+  } catch (e) { /* abaikan */ }
+}
+function ktUnlock() {
+  if (!KT_FS) return; KT_FS = false;
+  try { screen.orientation.unlock && screen.orientation.unlock(); } catch (e) { /* abaikan */ }
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+}
+function ktOrient(el) {
+  const port = window.innerHeight > window.innerWidth * 1.05;
+  el.classList.toggle("fcx-rot", port);
+  const w = port ? window.innerHeight : window.innerWidth, h = port ? window.innerWidth : window.innerHeight;
+  el.classList.toggle("fcx-land", w > h && h < 560);
+}
 document.addEventListener("visibilitychange", () => { if (document.hidden) Sfx.motor(null); });
 
 // ---------- input: satu jempol (geser = belok, tahan belok tajam = drift, ketuk = item), jari kedua = item juga
@@ -700,8 +721,8 @@ function ktHud(dt) {
     if (n >= 1 && n <= 3) txt(String(n), W / 2, H * 0.36, 96 * p, ["", "#5BD07A", "#FFE36B", "#FF7A85"][n], "center", 10);
     if (K.hint) { ktPill(ctx, W / 2 - 160 * dpr, H * 0.52 - 40 * dpr, 320 * dpr, 92 * dpr, "rgba(20,14,30,.65)"); txt("Drag left/right to steer", W / 2, H * 0.52 - 18 * dpr, 16, "#fff", "center", 0.01); txt("Hold a sharp turn to drift, let go to boost", W / 2, H * 0.52 + 6 * dpr, 13, "#FFE36B", "center", 0.01); txt("Tap to use an item · hold on 2 for a rocket start", W / 2, H * 0.52 + 28 * dpr, 12, "#CDB8FF", "center", 0.01); }
   } else if (K.t < 0.8 && !K.end) txt("GO!", W / 2, H * 0.36, 96 * (1 + K.t * 0.4), "#5BD07A", "center", 10);
-  if (K.end && K.msg2) txt(K.msg2, W / 2, H * 0.3 + 40 * dpr, 16, K.msg2.startsWith("Ghost beaten") ? "#7FF3A0" : "#CDB8FF", "center", 4);
-  if (K.msgT > 0) { K.msgT -= dt; ctx.globalAlpha = Math.min(1, K.msgT * 3); txt(K.msg, W / 2, H * (K.end ? 0.3 : 0.25), K.end ? 46 : 30, "#FFFFFF", "center", 7); ctx.globalAlpha = 1; }
+  if (K.end && K.msg2) txt(K.msg2, W / 2, (W > H ? H * 0.22 : H * 0.3) + 40 * dpr, 16, K.msg2.startsWith("Ghost beaten") ? "#7FF3A0" : "#CDB8FF", "center", 4);
+  if (K.msgT > 0) { K.msgT -= dt; ctx.globalAlpha = Math.min(1, K.msgT * 3); txt(K.msg, W / 2, H * (K.end ? (W > H ? 0.22 : 0.3) : 0.25), K.end ? 46 : 30, "#FFFFFF", "center", 7); ctx.globalAlpha = 1; }
   if (K.wrong > 1) txt("↺ WRONG WAY", W / 2, H * 0.42, 28, "#FF7A85", "center", 6);
   // petunjuk drift (balapan awal): tikungan tajam di depan → "tahan", lagi drift → "terus", muatan cukup → "lepas!"
   if (K.tut && K.cd <= 0 && !K.end && K.tutDone < KT_TUT && K.msgT <= 0 && me.spin <= 0) {
@@ -715,14 +736,14 @@ function ktHud(dt) {
       if (Math.abs(dh) > 0.75) { line = dh < 0 ? "Hold & drag right →" : "← Hold & drag left"; sub = "Steer hard into the turn to drift"; col = "#FFE36B"; }
     }
     if (line) {
-      const p = me.drift && ktLv(me.dT) ? 1 + 0.08 * Math.sin(K.t * 18) : 1, y = H * 0.66;
+      const p = me.drift && ktLv(me.dT) ? 1 + 0.08 * Math.sin(K.t * 18) : 1, y = W > H ? H * 0.7 : H * 0.66;
       ktPill(ctx, W / 2 - 150 * dpr, y - 30 * dpr, 300 * dpr, 64 * dpr, "rgba(20,14,30,.6)");
       txt(line, W / 2, y - 8 * dpr, 24 * p, col, "center", 5); txt(sub, W / 2, y + 18 * dpr, 12, "#FFFFFF", "center", 3);
     }
   }
   // urutan akhir
   if (K.end) {
-    const order = [...karts].sort((a, b) => ktProg(b) - ktProg(a)), y0 = H * 0.5, a = Math.min(1, (K.t - K.end) / 0.5);
+    const order = [...karts].sort((a, b) => ktProg(b) - ktProg(a)), y0 = Math.min(H * 0.5, H - (karts.length * 40 + 16) * dpr), a = Math.min(1, (K.t - K.end) / 0.5);
     order.forEach((k, i) => { const y = y0 + i * 40 * dpr, x = W / 2 - 120 * dpr + (1 - a) * W; ktPill(ctx, x, y, 240 * dpr, 32 * dpr, k.me ? "#FFE36B" : "rgba(255,248,236,.92)"); ctx.textAlign = "left"; ctx.font = f(15); ctx.fillStyle = OUTL; ctx.fillText(`${KT_ORD[i]}   ${k.name}`, x + 16 * dpr, y + 17 * dpr); ctx.textAlign = "right"; ctx.fillText(k.fin ? `${k.fin.toFixed(1)}s` : "…", x + 224 * dpr, y + 17 * dpr); });
   }
   ctx.restore();
