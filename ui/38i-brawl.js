@@ -856,7 +856,7 @@ function wBrawl(ctx, W, H, dpr, t) {
 Object.assign(WORLDS, { brawl: wBrawl });
 // ikon game: si pemain ngepalin tangan
 MG_ART.brawl = (ctx, S) => {
-  const k = S / 128; ctx.translate(S * 0.5, S * 0.86); ctx.scale(k * 1.45, k * 1.45);
+  const k = S / 128; ctx.translate(S * 0.44, S * 0.84); ctx.scale(k * 1.2, k * 1.2);
   const f = brNew(0, { name: "You", col: "#FFF1D6", look: "band", me: true });
   f.atk = { mv: BR_MV.jab, t: 0.08, hit: new Set(), charge: 0, chg: false }; f.ground = BR_MAIN;
   const keep = FC; FC = { br: { _s: 1 }, dpr: 1 };
