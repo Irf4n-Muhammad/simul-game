@@ -1,5 +1,5 @@
 // ================================================================ v84: Bonk brawl, mini game adu jotos di pulau melayang
-// Gaya platform fighter: lu lawan 3 CPU (Kiko, Bolt, Mimi) di Sunspire, kuil marmer melayang. Tiap pukulan nambah persen kerusakan;
+// Gaya platform fighter: lu lawan 3 CPU di Sunspire (kuil marmer melayang) atau Moonharbor (dermaga malam). Tiap pukulan nambah persen kerusakan;
 // makin tinggi persennya, makin jauh mentalnya. Keluar dari batas layar = jatuh (KO). Tiga nyawa, 2 menit.
 // Senjata turun dari langit dalam pilar cahaya: palu (pukulan lebih jauh dan keras) dan bola percik (dilempar; di kode masih `pie`). Dodge = kebal sebentar.
 // Dimainkan melintang (landscape) lewat jalur yang sama dengan Kart cup (MG_LAND, ktLock/ktOrient): HP tegak → layarnya diputar 90°.
@@ -11,12 +11,40 @@ const BR_STOCK = 3, BR_TIME = 120;
 const BR_G = 2500, BR_RUN = 470, BR_AIR = 420, BR_JUMP = 1000, BR_DJUMP = 930, BR_FALL = 1300, BR_FF = 1850;
 const BR_HW = 24, BR_H = 64;                  // setengah lebar dan tinggi badan (satuan dunia)
 const BR_KBS = 1.6;                            // pengali mental global (hasil uji simulasi 4 CPU: ~9 jatuh per ronde 2 menit, hampir semua karena dipukul)
+// arena (v84d): BR_MAIN/BR_PLATS/BR_SPAWN tetap objek yang sama, isinya diganti brUseStage() waktu arena dipilih.
+// mv = lempeng yang geser kiri-kanan (jarak ax, periode per detik).
+const BR_STAGES = [
+  { id: "sun", name: "Sunspire", main: { x0: -430, x1: 430, bot: 230 }, spawn: [-260, 260, -90, 90],
+    plats: [{ x0: -345, x1: -145, y: -170 }, { x0: 145, x1: 345, y: -170 }, { x0: -95, x1: 95, y: -320 }] },
+  { id: "moon", name: "Moonharbor", main: { x0: -390, x1: 390, bot: 200 }, spawn: [-250, 250, -80, 80],
+    plats: [{ x0: -385, x1: -215, y: -135 }, { x0: 215, x1: 385, y: -135 }, { x0: -110, x1: 110, y: -285, mv: { ax: 190, per: 9 } }] },
+];
 const BR_MAIN = { x0: -430, x1: 430, y: 0, bot: 230, solid: true };
-const BR_PLATS = [BR_MAIN, { x0: -345, x1: -145, y: -170, soft: true }, { x0: 145, x1: 345, y: -170, soft: true }, { x0: -95, x1: 95, y: -320, soft: true }];
+const BR_PLATS = [BR_MAIN];
 const BR_BLAST = { x: 1060, top: -940, bot: 700 };
 const BR_PTS = [8, 4, 2, 0];
 const BR_ORD = ["1st", "2nd", "3rd", "4th"];
 const BR_SPAWN = [-260, 260, -90, 90];
+function brUseStage(ix) {
+  const S = BR_STAGES[ix] || BR_STAGES[0];
+  Object.assign(BR_MAIN, S.main);
+  BR_PLATS.length = 1; for (const p of S.plats) BR_PLATS.push({ ...p, bx: p.x0, soft: true });
+  BR_SPAWN.length = 0; BR_SPAWN.push(...S.spawn);
+  return S;
+}
+brUseStage(0);
+// lempeng yang geser: yang berdiri (dan peti) di atasnya ikut kebawa
+function brPlatMove(t) {
+  const B = FC.br;
+  for (const p of BR_PLATS) {
+    if (!p.mv) continue;
+    const w = p.x1 - p.x0, nx = p.bx + Math.sin(t * Math.PI * 2 / p.mv.per) * p.mv.ax, dx = nx - p.x0;
+    p.x0 = nx; p.x1 = nx + w; p.dx = dx;
+    if (!dx) continue;
+    for (const f of B.f) if (f.ground === p) f.x += dx;
+    for (const c of B.crates) if (c.on === p) c.x += dx;
+  }
+}
 // jagoan (v84c): pemain milih satu, tiga sisanya jadi CPU. st = pengali lari, gerak di udara, lompat, berat
 // (makin kecil makin susah dilempar), tenaga pukulan, gravitasi. bars = Speed, Power, Weight, Jump (1–5) buat layar pilih.
 const BR_HEROES = [
@@ -67,8 +95,10 @@ function brNew(i, p) {
 }
 function brawlInit() {
   const lvl = FC.daily ? 2 : Dapur.tier("brawl", wallet().best.brawl).ix;
-  let sel = 0; try { sel = Math.max(0, BR_HEROES.findIndex(h => h.id === localStorage.getItem("mk-brawl-hero"))); } catch (e) { /* tanpa storage */ }
-  FC.br = { f: [], sel, diff: BR_DIFF[lvl], lvl, t: 0, left: BR_TIME, phase: "pick", ct: 3.2, beep: 4, et: 0, cards: [],
+  let sel = 0, stage = 0;
+  try { sel = Math.max(0, BR_HEROES.findIndex(h => h.id === localStorage.getItem("mk-brawl-hero"))); stage = Math.max(0, BR_STAGES.findIndex(s => s.id === localStorage.getItem("mk-brawl-stage"))); } catch (e) { /* tanpa storage */ }
+  brUseStage(stage);
+  FC.br = { f: [], sel, stage, diff: BR_DIFF[lvl], lvl, t: 0, left: BR_TIME, phase: "pick", ct: 3.2, beep: 4, et: 0, cards: [],
     freeze: 0, shake: 0, pies: [], crates: [], crateT: 6, fx: [], find: null, order: null,
     cam: { x: 0, y: -150, w: 1250 }, keys: {}, edge: {}, stick: null, held: {}, ptr: {}, touchUI: !!(window.matchMedia && matchMedia("(pointer: coarse)").matches),
     tip: wallet().best.brawl ? 0 : 6 };
@@ -78,10 +108,16 @@ function brawlInit() {
 // layar pilih jagoan: pemain = pilihan, CPU = tiga sisanya
 function brPick(ix) {
   const B = FC.br, h = BR_HEROES[ix];
+  brUseStage(B.stage);
   B.sel = ix; B.f = [{ ...h, me: true }].concat(BR_HEROES.filter(o => o !== h)).map((p, i) => brNew(i, p));
   B.phase = "count"; B.ct = 3.2; B.beep = 4;
-  try { localStorage.setItem("mk-brawl-hero", h.id); } catch (e) { /* tanpa storage */ }
+  try { localStorage.setItem("mk-brawl-hero", h.id); localStorage.setItem("mk-brawl-stage", BR_STAGES[B.stage].id); } catch (e) { /* tanpa storage */ }
   Sfx.play("ambil");
+}
+// ganti arena di layar pilih (tombol di bawah kartu / ↑ ↓)
+function brStageSet(d) {
+  const B = FC.br, n = BR_STAGES.length;
+  B.stage = (B.stage + d + n) % n; brUseStage(B.stage); Sfx.play("ui");
 }
 const brClock = s => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, "0")}`;
 
@@ -92,6 +128,7 @@ function brTick(dt) {
   if (B.freeze > 0) { B.freeze -= dt; return; }   // jeda kena pukul: bikin pukulan kerasa
   if (B.slow > 0) { B.slow -= dt; dt *= 0.3; }
   B.t += dt; B.shake = Math.max(0, B.shake - dt);
+  brPlatMove(B.t);
   if (B.phase === "count") {
     B.ct -= dt;
     const n = Math.ceil(B.ct);
@@ -490,6 +527,8 @@ function brawlKey(e, down) {
     const B = FC.br, n = BR_HEROES.length;
     if (e.code === "ArrowLeft" || e.code === "KeyA") { B.sel = (B.sel + n - 1) % n; Sfx.play("ui"); }
     else if (e.code === "ArrowRight" || e.code === "KeyD") { B.sel = (B.sel + 1) % n; Sfx.play("ui"); }
+    else if (e.code === "ArrowUp" || e.code === "KeyW") brStageSet(-1);
+    else if (e.code === "ArrowDown" || e.code === "KeyS" || e.code === "Tab") brStageSet(1);
     else if (e.code === "Enter" || e.code === "Space" || e.code === "KeyJ") brPick(B.sel);
     else return;
     e.preventDefault(); return;
@@ -524,7 +563,10 @@ function brawlDown(e) {
   const B = FC.br; if (!B) return;
   if (e.pointerType !== "mouse") B.touchUI = true;
   const [x, y] = brPos(e);
-  if (B.phase === "pick") { const ix = B.cards.findIndex(c => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h); if (ix >= 0) brPick(ix); return; }
+  if (B.phase === "pick") {
+    const S = B.stBtn; if (S && x >= S.x && x <= S.x + S.w && y >= S.y && y <= S.y + S.h) { brStageSet(x < S.x + S.w / 2 && S.arrows ? -1 : 1); return; }
+    const ix = B.cards.findIndex(c => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h); if (ix >= 0) brPick(ix); return;
+  }
   if (x < FC.cv.width * 0.45) { B.stick = { id: e.pointerId, x0: x, y0: y, x, y }; return; }
   let best = null, bd = 1e9;
   for (const b of brBtns()) { const d = Math.hypot(b.x - x, b.y - y); if (d < b.r * 1.5 && d < bd) { bd = d; best = b; } }
@@ -634,8 +676,9 @@ function brTitle(ctx, t, x, y, px, a = 1) {
   ctx.fillStyle = g; ctx.fillText(t, x, y); ctx.restore();
 }
 
+function brStage(ctx, t) { if (BR_STAGES[FC.br.stage || 0].id === "moon") brStageMoon(ctx, t); else brStageSun(ctx, t); }
 // ---- panggung: Sunspire, kuil marmer melayang dengan pinggiran emas, panji, dan dua tungku api
-function brStage(ctx, t) {
+function brStageSun(ctx, t) {
   const M = BR_MAIN, L = M.x0 - 12, R = M.x1 + 12;
   // dasar batu: tangga terbalik yang mengecil ke ujung kristal
   const steps = [[32, 0], [96, 34], [150, 90], [200, 160], [250, 250], [300, 330]];
@@ -707,6 +750,112 @@ function brStage(ctx, t) {
     ctx.fillStyle = BR_GOLD; ctx.fillRect(p.x0 - 2, p.y + 13, w + 4, 5); ctx.strokeRect(p.x0 - 2, p.y + 13, w + 4, 5);
     ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(p.x0 - 2, p.y + 2, w + 4, 2);
   }
+}
+// ---- panggung kedua: Moonharbor, dermaga kayu di atas batu karang melayang, malam bulan purnama.
+// Dua rakit di pinggir, satu perahu kecil di atas yang geser kiri-kanan. Lampu: lentera kertas hangat + ubur-ubur biru.
+function brStageMoon(ctx, t) {
+  const M = BR_MAIN, L = M.x0 - 10, R = M.x1 + 10, O = "#120C1E";
+  // batu karang: bongkahan meruncing ke bawah, sisi bergerigi
+  const rk = [[30, 0], [80, 22], [130, 70], [175, 130], [215, 205], [250, 290]];
+  ctx.beginPath(); ctx.moveTo(L + 4, 30);
+  rk.forEach(([y, ins], i) => ctx.lineTo(L + 4 + ins + (i % 2 ? 10 : -4), y));
+  ctx.lineTo(-20, 330); ctx.lineTo(12, 352); ctx.lineTo(40, 318);
+  for (let i = rk.length - 1; i >= 0; i--) { const [y, ins] = rk[i]; ctx.lineTo(R - 4 - ins - (i % 2 ? 6 : -6), y); }
+  ctx.closePath();
+  ctx.fillStyle = wGrad(ctx, 30, 350, [[0, "#3E5A6E"], [0.45, "#26394E"], [1, "#101A2C"]]); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = O; ctx.stroke();
+  // retakan + teritip
+  ctx.strokeStyle = "rgba(10,16,30,.5)"; ctx.lineWidth = 2;
+  for (const [x, y, dx, dy] of [[-260, 60, 30, 70], [-120, 90, -20, 90], [60, 70, 26, 110], [220, 80, -14, 70], [-40, 200, 18, 70]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * 0.5, y + dy * 0.5); ctx.lineTo(x + dx, y + dy); ctx.stroke(); }
+  ctx.fillStyle = "rgba(200,230,235,.35)";
+  for (const [x, y] of [[-300, 48], [-286, 56], [250, 52], [262, 60], [-60, 150], [120, 120], [132, 128]]) { ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); }
+  // lumut laut menjuntai dari pinggir dek, goyang pelan
+  for (const [x, len] of [[-350, 70], [-200, 46], [-30, 60], [140, 52], [300, 80]]) {
+    ctx.beginPath(); ctx.moveTo(x - 7, 32);
+    for (let i = 1; i <= 5; i++) ctx.lineTo(x + Math.sin(t * 1.5 + x + i) * 4 * i / 5, 32 + len * i / 5);
+    for (let i = 5; i >= 1; i--) ctx.lineTo(x + 6 + Math.sin(t * 1.5 + x + i) * 4 * i / 5, 32 + len * i / 5 - 4);
+    ctx.closePath(); ctx.fillStyle = "#2F7A5C"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = O; ctx.stroke();
+  }
+  // jangkar tergantung rantai di bawah
+  const ay = 236 + Math.sin(t * 1.1) * 5, ax = 150 + Math.sin(t * 0.8) * 4;
+  ctx.strokeStyle = "#8A93A0"; ctx.lineWidth = 3; ctx.setLineDash([7, 5]); ctx.beginPath(); ctx.moveTo(160, 120); ctx.lineTo(ax, ay - 30); ctx.stroke(); ctx.setLineDash([]);
+  ctx.save(); ctx.translate(ax, ay);
+  ctx.strokeStyle = O; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(0, 16); ctx.moveTo(-20, -18); ctx.lineTo(20, -18); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 22, 0.25, Math.PI - 0.25); ctx.stroke();
+  ctx.strokeStyle = "#A9B3C0"; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(0, 16); ctx.moveTo(-20, -18); ctx.lineTo(20, -18); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 22, 0.25, Math.PI - 0.25); ctx.stroke();
+  ctx.restore();
+  // ubur-ubur lampu di bawah pulau
+  for (const [x, y, r, ph] of [[-230, 250, 15, 0], [-70, 330, 11, 2], [290, 240, 12, 4]]) brJelly(ctx, x, y + Math.sin(t * 1.2 + ph) * 10, r, t + ph);
+  // tiang dermaga
+  for (const x of [L + 22, -150, 150, R - 22]) {
+    ctx.fillStyle = wGrad(ctx, 20, 70, [[0, "#6B4A34"], [1, "#3A2618"]]); ctx.fillRect(x - 9, 18, 18, 52); ctx.lineWidth = 2.5; ctx.strokeStyle = O; ctx.strokeRect(x - 9, 18, 18, 52);
+    ctx.strokeStyle = "#C9A46A"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 9, 40); ctx.lineTo(x + 9, 46); ctx.moveTo(x - 9, 46); ctx.lineTo(x + 9, 40); ctx.stroke();
+  }
+  // dek papan kayu
+  ctx.beginPath(); ctx.moveTo(L, 0); ctx.lineTo(R, 0); ctx.lineTo(R - 3, 24); ctx.lineTo(L + 3, 24); ctx.closePath();
+  ctx.fillStyle = wGrad(ctx, 0, 24, [[0, "#C98E5A"], [0.5, "#9C6638"], [1, "#6E4424"]]); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = O; ctx.stroke();
+  ctx.strokeStyle = "rgba(40,22,10,.55)"; ctx.lineWidth = 1.6;
+  for (let x = L + 44, i = 0; x < R; x += 44, i++) { ctx.beginPath(); ctx.moveTo(x, 1); ctx.lineTo(x, 23); ctx.stroke(); ctx.fillStyle = "rgba(40,22,10,.6)"; ctx.fillRect(x - 6, 5, 2.5, 2.5); ctx.fillRect(x + 4, 16, 2.5, 2.5); }
+  ctx.fillStyle = "rgba(255,226,170,.55)"; ctx.fillRect(L + 4, 2, R - L - 8, 2.5);
+  ctx.fillStyle = "#4A2E1A"; ctx.fillRect(L + 3, 24, R - L - 6, 6); ctx.strokeRect(L + 3, 24, R - L - 6, 6);
+  const pX = M.x1 - 24, hy = -78;
+  // tiang lampu di dua ujung
+  for (const sx of [-1, 1]) {
+    const x = sx * pX;
+    ctx.fillStyle = "#2B2238"; ctx.fillRect(x - 4, hy, 8, -hy); ctx.lineWidth = 2.5; ctx.strokeStyle = O; ctx.strokeRect(x - 4, hy, 8, -hy);
+    ctx.fillRect(x - 10, -8, 20, 8); ctx.strokeRect(x - 10, -8, 20, 8);
+    ctx.beginPath(); ctx.moveTo(x, hy); ctx.lineTo(x - sx * 18, hy - 4); ctx.stroke();
+    brLantern(ctx, x - sx * 18, hy + 14, 15, "#FFB25C", t + sx, true);
+  }
+  // rakit dan perahu
+  for (const p of BR_PLATS) if (p.soft) (p.mv ? brBoat : brRaft)(ctx, p, t);
+}
+function brLantern(ctx, x, y, r, col, t, big) {
+  const fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
+  wGlowW(ctx, x, y, r * (big ? 7 : 4.5), col, (big ? 0.55 : 0.35) * fl);
+  ctx.beginPath(); ctx.ellipse(x, y, r * 0.8, r, 0, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = big ? 2.5 : 1.8; ctx.strokeStyle = "#120C1E"; ctx.stroke();
+  ctx.fillStyle = "rgba(255,250,220,.75)"; ctx.beginPath(); ctx.ellipse(x - r * 0.2, y - r * 0.15, r * 0.25, r * 0.5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#2B2238"; ctx.fillRect(x - r * 0.45, y - r - 3, r * 0.9, 4); ctx.fillRect(x - r * 0.35, y + r - 1, r * 0.7, 3);
+}
+// cahaya lembut dengan warna hex (wGlow butuh rgba)
+function wGlowW(ctx, x, y, r, hex, a) {
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, hex + "AA"); g.addColorStop(1, hex + "00");
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.restore();
+}
+function brJelly(ctx, x, y, r, t) {
+  wGlowW(ctx, x, y, r * 4, "#6FE8FF", 0.5 + 0.2 * Math.sin(t * 2));
+  ctx.strokeStyle = "rgba(160,240,255,.7)"; ctx.lineWidth = 2;
+  for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(x + i * r * 0.35, y); for (let k = 1; k <= 4; k++) ctx.lineTo(x + i * r * 0.35 + Math.sin(t * 3 + k + i) * 3, y + k * r * 0.45); ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.quadraticCurveTo(x, y + r * 0.35, x - r, y); ctx.closePath();
+  ctx.fillStyle = wGrad(ctx, y - r, y, [[0, "#E8FDFF"], [1, "#58C8E8"]]); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#120C1E"; ctx.stroke();
+}
+// rakit: papan kayu diikat tali, ada ubur-ubur kecil di bawah
+function brRaft(ctx, p, t) {
+  const cx = (p.x0 + p.x1) / 2, w = p.x1 - p.x0, bob = Math.sin(t * 1.4 + p.x0) * 1.5;
+  brJelly(ctx, cx, p.y + 46 + Math.sin(t * 2 + p.x0) * 4, 10, t + p.x0);
+  ctx.save(); ctx.translate(0, bob);
+  for (const sx of [-1, 1]) { const x = cx + sx * w * 0.32; ctx.fillStyle = "#3A2618"; ctx.fillRect(x - 6, p.y + 10, 12, 16); ctx.lineWidth = 2; ctx.strokeStyle = "#120C1E"; ctx.strokeRect(x - 6, p.y + 10, 12, 16); }
+  qzRR(ctx, p.x0 - 6, p.y, w + 12, 14, 3); ctx.fillStyle = wGrad(ctx, p.y, p.y + 14, [[0, "#D39A64"], [1, "#7E5030"]]); ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = "#120C1E"; ctx.stroke();
+  ctx.strokeStyle = "rgba(40,22,10,.5)"; ctx.lineWidth = 1.4;
+  for (let x = p.x0 + 26; x < p.x1; x += 30) { ctx.beginPath(); ctx.moveTo(x, p.y + 1); ctx.lineTo(x, p.y + 13); ctx.stroke(); }
+  ctx.strokeStyle = "#E7D3A6"; ctx.lineWidth = 2.5;
+  for (const sx of [-1, 1]) { const x = cx + sx * w * 0.32; ctx.beginPath(); ctx.moveTo(x - 7, p.y - 1); ctx.lineTo(x + 7, p.y + 15); ctx.moveTo(x + 7, p.y - 1); ctx.lineTo(x - 7, p.y + 15); ctx.stroke(); }
+  ctx.fillStyle = "rgba(255,226,170,.6)"; ctx.fillRect(p.x0 - 3, p.y + 2, w + 6, 2);
+  ctx.restore();
+}
+// perahu kecil dengan tiang lentera, geser kiri-kanan
+function brBoat(ctx, p, t) {
+  const cx = (p.x0 + p.x1) / 2, w = p.x1 - p.x0, tilt = Math.cos(t * Math.PI * 2 / p.mv.per) * 0.025;
+  ctx.save(); ctx.translate(cx, p.y); ctx.rotate(tilt);
+  // jejak cahaya di belakang
+  ctx.beginPath(); ctx.moveTo(-w / 2 - 14, 0); ctx.lineTo(w / 2 + 14, 0); ctx.quadraticCurveTo(w / 2 + 4, 34, w / 2 - 26, 40); ctx.lineTo(-w / 2 + 26, 40); ctx.quadraticCurveTo(-w / 2 - 4, 34, -w / 2 - 14, 0); ctx.closePath();
+  ctx.fillStyle = wGrad(ctx, 0, 40, [[0, "#3C6E8C"], [1, "#1C3448"]]); ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = "#120C1E"; ctx.stroke();
+  ctx.strokeStyle = "#E8B64C"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-w / 2 - 6, 12); ctx.lineTo(w / 2 + 6, 12); ctx.stroke();
+  qzRR(ctx, -w / 2 - 10, 0, w + 20, 8, 3); ctx.fillStyle = "#C98E5A"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#120C1E"; ctx.stroke();
+  ctx.fillStyle = "rgba(255,226,170,.6)"; ctx.fillRect(-w / 2 - 6, 1.5, w + 12, 2);
+  ctx.restore();
+  // lentera gantung di bawah lunas, bergoyang
+  brLantern(ctx, cx + Math.sin(t * 2) * 3, p.y + 56, 9, "#FFB25C", t, false);
+  ctx.strokeStyle = "rgba(30,20,14,.8)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, p.y + 40); ctx.lineTo(cx + Math.sin(t * 2) * 3, p.y + 46); ctx.stroke();
 }
 function brCrystal(ctx, x, y, r, t) {
   ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -1140,6 +1289,7 @@ function brIcon(ctx, k, x, y, r, col) {
 // dunia Bonk brawl: senja di atas lautan awan. Langit + matahari diam, sinar matahari muter pelan,
 // pegunungan jauh dan reruntuhan melayang geser ikut kamera (paralaks), awan bawah jalan pelan
 function wBrawl(ctx, W, H, dpr, t) {
+  if (FC && FC.br && BR_STAGES[FC.br.stage || 0].id === "moon") return wHarbor(ctx, W, H, dpr, t);
   const C = FC && FC.br ? FC.br.cam : { x: 0, y: -150 }, px = k => -C.x * k * (W / 1250), py = k => -(C.y + 150) * k * (H / 600);
   ctx.drawImage(wLayer("brSky", W, H, (c, w, h) => {
     c.fillStyle = wGrad(c, 0, h, [[0, "#0E0B2A"], [0.35, "#352663"], [0.62, "#9A4F86"], [0.8, "#F08A6A"], [1, "#FFC977"]]); c.fillRect(0, 0, w, h);
@@ -1191,6 +1341,71 @@ function wBrawl(ctx, W, H, dpr, t) {
   ctx.restore();
   wFlies(ctx, W, H, dpr, t, 10, "rgba(255,220,150,.7)", [0.3, 0.9]);
 }
+// dunia Moonharbor: malam bulan purnama, aurora pelan, tebing jauh dengan mercusuar (sorot lampunya muter),
+// laut di bawah dengan pantulan bulan berkilau. Paralaks sama kayak Sunspire.
+function wHarbor(ctx, W, H, dpr, t) {
+  const C = FC.br.cam, px = k => -C.x * k * (W / 1250), py = k => -(C.y + 150) * k * (H / 600);
+  const mx = W * 0.72;
+  ctx.drawImage(wLayer("hbSky", W, H, (c, w, h) => {
+    c.fillStyle = wGrad(c, 0, h, [[0, "#060B1E"], [0.45, "#10264A"], [0.75, "#1D4A66"], [1, "#2E6E7E"]]); c.fillRect(0, 0, w, h);
+    const r = Dapur.rng(77);
+    for (let i = 0; i < 110; i++) { c.fillStyle = `rgba(230,245,255,${0.15 + r() * 0.6})`; const s = (r() < 0.08 ? 2.4 : 1.2) * dpr; c.fillRect(r() * w, r() * h * 0.6, s, s); }
+    wGlow(c, w * 0.72, h * 0.24, Math.min(w, h) * 0.5, "rgba(170,220,255,.35)");
+    const x = w * 0.72, y = h * 0.24, R = Math.min(w, h) * 0.1;
+    c.beginPath(); c.arc(x, y, R, 0, 7); c.fillStyle = wGrad(c, y - R, y + R, [[0, "#FFFDF2"], [1, "#D8E6F0"]]); c.fill();
+    c.fillStyle = "rgba(150,170,195,.35)";
+    for (const [dx, dy, rr] of [[-0.3, -0.2, 0.22], [0.25, 0.1, 0.16], [-0.05, 0.38, 0.12], [0.35, -0.35, 0.09]]) { c.beginPath(); c.arc(x + dx * R, y + dy * R, rr * R, 0, 7); c.fill(); }
+  }), 0, 0);
+  // aurora: pita hijau-biru yang bergelombang pelan
+  if (!reduce) {
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) { const x = W * i / 24, y = H * (0.16 + k * 0.08) + Math.sin(i * 0.5 + t * 0.25 + k * 2) * H * 0.04; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      for (let i = 24; i >= 0; i--) { const x = W * i / 24, y = H * (0.16 + k * 0.08) + Math.sin(i * 0.5 + t * 0.25 + k * 2) * H * 0.04 + H * (0.07 + 0.03 * Math.sin(i * 0.9 + t * 0.4)); ctx.lineTo(x, y); }
+      ctx.closePath(); ctx.fillStyle = k ? "rgba(120,140,255,.07)" : "rgba(90,255,190,.08)"; ctx.fill();
+    }
+    ctx.restore();
+  }
+  // tebing jauh + mercusuar
+  const far = wLayer("hbFar", Math.round(W * 1.6), H, (c, w, h) => {
+    const r = Dapur.rng(13);
+    for (const [base, amp, col] of [[0.66, 0.12, "rgba(24,52,78,.75)"], [0.72, 0.08, "rgba(16,38,60,.9)"]]) {
+      c.beginPath(); c.moveTo(0, h);
+      for (let x = 0; x <= w; x += w / 10) { const pk = r(); c.lineTo(x, h * (base - amp * pk)); c.lineTo(x + w / 20, h * (base - amp * pk * 0.7)); }
+      c.lineTo(w, h); c.closePath(); c.fillStyle = col; c.fill();
+    }
+    const lx = w * 0.18, ly = h * 0.56;
+    c.fillStyle = "rgba(30,50,72,1)"; c.beginPath(); c.moveTo(lx - 9 * dpr, ly); c.lineTo(lx - 6 * dpr, ly - 46 * dpr); c.lineTo(lx + 6 * dpr, ly - 46 * dpr); c.lineTo(lx + 9 * dpr, ly); c.closePath(); c.fill();
+    c.fillStyle = "rgba(255,226,150,1)"; c.fillRect(lx - 5 * dpr, ly - 54 * dpr, 10 * dpr, 8 * dpr);
+    c.fillStyle = "rgba(30,50,72,1)"; c.beginPath(); c.moveTo(lx - 8 * dpr, ly - 54 * dpr); c.lineTo(lx, ly - 64 * dpr); c.lineTo(lx + 8 * dpr, ly - 54 * dpr); c.closePath(); c.fill();
+  });
+  const fx = (W - far.width) / 2 + px(0.05), fy = py(0.03);
+  ctx.drawImage(far, fx, fy);
+  if (!reduce) {
+    const lx = fx + far.width * 0.18, ly = fy + H * 0.56 - 50 * dpr, a = t * 0.6, L = W * 0.7, sp = 0.08;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const k = Math.abs(Math.cos(a));
+    for (const d of [1, -1]) { ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + d * L * k, ly - L * sp); ctx.lineTo(lx + d * L * k, ly + L * sp); ctx.closePath(); ctx.fillStyle = `rgba(255,230,160,${0.1 * (d * Math.sin(a) > 0 ? 1 : 0.25)})`; ctx.fill(); }
+    ctx.restore();
+    wGlow(ctx, lx, ly, 26 * dpr, "rgba(255,230,160,.9)");
+  }
+  // laut: garis gelombang + pantulan bulan
+  const sy = H * 0.8 + py(0.12);
+  ctx.fillStyle = wGrad(ctx, sy, H, [[0, "#0F3550"], [1, "#061528"]]); ctx.fillRect(0, sy, W, H - sy);
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 14; i++) {
+    const y = sy + 6 * dpr + i * (H - sy) / 14, w = (60 - i * 2.5) * dpr * (1 + 0.3 * Math.sin(t * 1.5 + i)), x = mx + Math.sin(t * 0.8 + i * 1.7) * 6 * dpr + px(0.12);
+    ctx.fillStyle = `rgba(220,240,255,${0.32 - i * 0.018})`; ctx.fillRect(x - w / 2, y, w, 2 * dpr);
+  }
+  ctx.restore();
+  ctx.strokeStyle = "rgba(140,200,230,.25)"; ctx.lineWidth = 1.5 * dpr;
+  for (let row = 0; row < 4; row++) {
+    const y = sy + (8 + row * 16) * dpr, off = (t * (8 + row * 6) * dpr + px(0.2 + row * 0.05)) % (W / 6);
+    for (let i = -1; i < 8; i++) { const x = i * W / 6 + off; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 14 * dpr, y - 5 * dpr, x + 28 * dpr, y); ctx.stroke(); }
+  }
+  wFlies(ctx, W, H, dpr, t, 8, "rgba(140,230,255,.6)", [0.35, 0.85]);
+}
 Object.assign(WORLDS, { brawl: wBrawl });
 // ikon game: si pemain lagi nonjok, di depan lingkaran emas
 MG_ART.brawl = (ctx, S) => {
@@ -1236,6 +1451,14 @@ function brPickDraw(ctx, W, H, dpr, t) {
     ctx.textAlign = "center"; ctx.font = `italic 800 ${9.5 * u}px system-ui, sans-serif`; ctx.fillStyle = on ? BR_GOLD : "rgba(232,182,76,.7)";
     ctx.fillText(`★ ${h.sig}`, hx - sk / 2, y + ch - 13 * u);
   });
-  ctx.textAlign = "center"; ctx.font = `700 ${11 * u}px system-ui, sans-serif`; ctx.fillStyle = "rgba(255,247,218,.75)";
-  ctx.fillText(B.touchUI ? "Tap a fighter to start" : "← → to choose · Enter to fight", W / 2, top + ch + 22 * u);
+  // pilihan arena: ketuk sisi kiri/kanan tombol buat ganti
+  const S = BR_STAGES[B.stage], bw = 230 * u, bh = 28 * u, bx = W / 2 - bw - 8 * u, by = top + ch + 9 * u;
+  B.stBtn = { x: bx, y: by, w: bw, h: bh, arrows: true };
+  brPanel(ctx, bx, by, bw, bh, 10 * u, "rgba(16,10,28,.9)", null); ctx.lineWidth = 1.5 * u; brPanel(ctx, bx, by, bw, bh, 10 * u, null, BR_GOLD);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = BR_GOLD; ctx.font = `900 ${12 * u}px system-ui, sans-serif`;
+  ctx.fillText("◀", bx + 18 * u, by + bh / 2); ctx.fillText("▶", bx + bw - 18 * u, by + bh / 2);
+  ctx.font = `800 ${9 * u}px system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.fillText("STAGE", bx + 64 * u, by + bh / 2);
+  ctx.font = `italic 900 ${13 * u}px system-ui, sans-serif`; ctx.fillStyle = "#FFF7DA"; ctx.fillText(S.name.toUpperCase(), bx + bw / 2 + 22 * u, by + bh / 2);
+  ctx.textAlign = "left"; ctx.font = `700 ${11 * u}px system-ui, sans-serif`; ctx.fillStyle = "rgba(255,247,218,.75)";
+  ctx.fillText(B.touchUI ? "Tap a fighter to start" : "← → fighter · ↑ ↓ stage · Enter", W / 2 + 8 * u, by + bh / 2);
 }

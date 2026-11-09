@@ -21,19 +21,19 @@ function load(seed) {
   const src = fs.readFileSync(path.join(__dirname, "..", "ui", "38i-brawl.js"), "utf8");
   vm.runInContext(stubs + src + `
     globalThis.api = {
-      start(daily, lvl) {
+      start(daily, lvl, stage) {
         FC = { daily, rnd: Math.random, score: 0, caught: 0, over: 0, drop: null };
-        brawlInit(); brPick(Math.floor(Math.random() * 4)); FC.br.diff = BR_DIFF[lvl == null ? 2 : lvl];
+        brawlInit(); if (stage != null) FC.br.stage = stage; brPick(Math.floor(Math.random() * 4)); FC.br.diff = BR_DIFF[lvl == null ? 2 : lvl];
         const me = FC.br.f[0]; me.ai = { t: 0, mx: 0, up: false, dn: false, hold: 0, tg: null }; me.cpu = BR_AIP.bolt; FC.br.auto = true;
         return FC;
       },
       tick(dt) { T += dt * 1000; brTick(dt); },
-      BR_MAIN, BR_MV, brNew, brHit, get FC() { return FC; }, set FC(v) { FC = v; },
+      BR_MAIN, BR_PLATS, BR_STAGES, BR_MV, brNew, brHit, get FC() { return FC; }, set FC(v) { FC = v; },
     };`, ctx);
   return ctx.api;
 }
-function match(seed, lvl) {
-  const api = load(seed), FC = api.start(false, lvl);
+function match(seed, lvl, stage) {
+  const api = load(seed), FC = api.start(false, lvl, stage);
   let t = 0, stuck = 0;
   while (!FC.over && t < 200) {
     api.tick(1 / 60); t += 1 / 60;
@@ -48,7 +48,7 @@ function match(seed, lvl) {
 
 test("ronde selalu selesai dan ada KO-nya", () => {
   const R = [];
-  for (let s = 1; s <= 12; s++) R.push(match(s * 977, 2));
+  for (let s = 1; s <= 12; s++) R.push(match(s * 977, 2, s % 2));
   for (const r of R) { assert.ok(r.over, "ronde selesai"); assert.ok(r.kos >= 1, "ada yang jatuh"); assert.equal(r.stuck, 0, "nggak ada yang masuk ke dalam pulau"); assert.ok(r.place >= 0 && r.place <= 3); }
   const avg = R.reduce((s, r) => s + r.kos, 0) / R.length, len = R.reduce((s, r) => s + r.t, 0) / R.length;
   if (process.env.BRAWL_LOG) console.log({ avgKO: avg, avgLen: len, R });
@@ -62,4 +62,19 @@ test("pukulan berat yang dicas mental lebih jauh dari tonjokan biasa", () => {
   api.brHit(a, b1, api.BR_MV.jab, 0, 1); api.brHit(a, b2, api.BR_MV.side, 0.7, 1);
   assert.ok(Math.hypot(b2.vx, b2.vy) > Math.hypot(b1.vx, b1.vy) * 2);
   assert.ok(b2.dmg > b1.dmg);
+});
+
+test("Moonharbor: perahu atas geser dan yang berdiri di atasnya ikut kebawa", () => {
+  const api = load(11), FC = api.start(false, 2, 1);
+  assert.equal(FC.br.stage, 1);
+  const boat = api.BR_PLATS.find(p => p.mv);
+  assert.ok(boat, "ada perahu geser");
+  const f = FC.br.f[1]; f.cpu = null; f.ai = null; f.me = true; FC.br.f[0].me = false;
+  Object.assign(f, { x: (boat.x0 + boat.x1) / 2, y: boat.y, vx: 0, vy: 0, ground: boat });
+  const x0 = boat.x0, fx0 = f.x;
+  FC.br.phase = "count"; FC.br.ct = 99;
+  for (let i = 0; i < 60; i++) api.tick(1 / 60);
+  assert.ok(Math.abs(boat.x0 - x0) > 40, "perahunya geser");
+  assert.ok(Math.abs((f.x - fx0) - (boat.x0 - x0)) < 1, "jagoan ikut geser");
+  assert.equal(f.ground, boat, "masih berdiri di perahu");
 });
