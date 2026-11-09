@@ -25,6 +25,14 @@ const KT_ODDS = [
   { turbo: 4, bee: 4, ball: 1, shield: 1 },
 ];
 let KR = null;   // renderer + adegan yang dipakai ulang antar ronde
+// tingkat kesulitan ikut peringkat Kart cup (Rookie..Legend): kecepatan CPU (m/s) dan rajin pakai item.
+// Tantangan harian selalu pakai tingkat Silver biar sama buat semua.
+const KT_DIFF = [{ v: -2.0, aim: -0.3 }, { v: -1.0, aim: -0.15 }, { v: 0, aim: 0 }, { v: 0.5, aim: 0.1 }, { v: 1.0, aim: 0.2 }, { v: 1.4, aim: 0.3 }];
+const KT_TUT = 3;   // petunjuk drift muncul sampai pemain berhasil turbo dari drift sebanyak ini
+// hantu: balapan terbaik lu (dan rekor tantangan hari ini) disimpan per 0,1 detik di localStorage
+const KT_GHOST_KEY = "mk-kart-ghost", KT_GHOST_DT = 0.1;
+function ktGhostLoad() { try { return JSON.parse(localStorage.getItem(KT_GHOST_KEY)) || {}; } catch (e) { return {}; } }
+function ktGhostSave(G) { try { localStorage.setItem(KT_GHOST_KEY, JSON.stringify(G)); } catch (e) { /* tanpa storage: hantu nggak disimpan */ } }
 
 // ---------- lintasan: kurva tertutup, dicuplik jadi KT_N titik (posisi, arah, normal, tinggi)
 function ktTrack() {
@@ -184,7 +192,8 @@ function kartInit() {
   KR.boxes.forEach(b => { b.dead = 0; b.m.visible = true; });
   KR.coins.forEach(c => { c.dead = false; c.m.visible = true; });
   KR.parts.forEach(p => { p.s.visible = false; p.life = 0; });
-  const who = [{ name: "You", col: "#FFD15C", me: true, v: 30, lane: 0, wob: 0.6, brake: 0.6, aim: 0 }].concat(KT_CPU.map(c => ({ ...c })));
+  const W0 = wallet(), lvl = FC.daily ? 2 : Dapur.tier("kart", W0.best.kart).ix, D = KT_DIFF[lvl];
+  const who = [{ name: "You", col: "#FFD15C", me: true, v: 30, lane: 0, wob: 0.6, brake: 0.6, aim: 0 }].concat(KT_CPU.map(c => ({ ...c, v: c.v + D.v, aim: Math.max(0, c.aim + D.aim) })));
   // grid: pemain di posisi ke-4 dari 5, biar ada yang dikejar dari awal
   const slots = [2, 0, 1, 3, 4];
   KR.karts = who.map((w, n) => {
@@ -194,7 +203,8 @@ function kartInit() {
   });
   // intro kamera keliling cuma di balapan pertama sesi ini; main lagi langsung hitung mundur
   const intro = KR.raced ? 0.25 : 1.4; KR.raced = true;
-  FC.kt = { t: 0, cd: 3 + intro, intro, beep: 4, camH: KR.karts[0].h, punch: 0, slow: 0, ft: 1 / 60, qT: 0, upT: 0, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(wallet().best.kart) };
+  FC.kt = { t: 0, cd: 3 + intro, intro, beep: 4, camH: KR.karts[0].h, punch: 0, slow: 0, ft: 1 / 60, qT: 0, upT: 0, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(W0.best.kart), lvl, tut: !FC.daily && ((W0.stat || {}).kartDrift || 0) < KT_TUT, tutDone: 0, rec: [], recT: 0 };
+  ktGhostInit();
   FC.place = null;
   KR.marks.forEach(m => { m.visible = false; }); KR.mi = 0;
   if (!KR.warm) { KR.r.compile(KR.sc, KR.cam); KR.warm = true; }
@@ -341,7 +351,7 @@ function ktDrive(k, dt, s, hold) {
         else k.sT = 0;
       } else if (!hold || k.v < 12) {
         const lv = ktLv(k.dT);
-        if (lv) { k.boost = Math.max(k.boost, [0, 0.8, 1.3, 1.9][lv]); FC.kt.mt = (FC.kt.mt || 0) + 1; Sfx.play("turbo"); FC.kt.shake = 0.15 + lv * 0.05; ktMsg(["", "Mini turbo!", "Super turbo!", "Ultra turbo!"][lv], 0.9); }
+        if (lv) { k.boost = Math.max(k.boost, [0, 0.8, 1.3, 1.9][lv]); FC.kt.mt = (FC.kt.mt || 0) + 1; if (FC.kt.tut) FC.kt.tutDone += 1; Sfx.play("turbo"); FC.kt.shake = 0.15 + lv * 0.05; ktMsg(["", "Mini turbo!", "Super turbo!", "Ultra turbo!"][lv], 0.9); }
         k.drift = 0; k.dT = 0; k.sT = 0;
       }
     }
@@ -397,13 +407,50 @@ function ktLap(k) {
   }
   if (k.me && k.lap > 0) { Sfx.play("lap"); ktMsg(k.lap === KT_LAPS - 1 ? "FINAL LAP!" : `Lap ${k.lap + 1}`, 1.6); }
 }
+// ---------- hantu
+function ktGhostInit() {
+  const K = FC.kt, G = ktGhostLoad(), d = today();
+  const g = FC.daily ? (G.daily && G.daily.d === d ? G.daily : null) : G.best;
+  if (KR.ghost) { KR.sc.remove(KR.ghost.g); KR.ghost = null; }
+  if (!g || !g.f || g.f.length < 8) return;
+  const mm = ktKartMesh("#ffffff"), gm = new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.32, depthWrite: false });
+  mm.g.traverse(o => { if (o.isMesh) o.material = gm; });
+  mm.flame.visible = false; mm.bub.visible = false; mm.g.children.filter(o => o.material === KR.shadowM).forEach(o => { o.visible = false; });
+  mm.g.children.forEach(o => { if (o.isMesh && o.geometry.type === "PlaneGeometry") o.visible = false; });
+  KR.sc.add(mm.g);
+  KR.ghost = { g: mm.g, f: g.f, t: g.t };
+  K.ghostT = g.t;
+}
+function ktGhostStep() {
+  const K = FC.kt, me = KR.karts[0], gh = KR.ghost;
+  // rekam pemain tiap 0,1 detik (x, y, z, arah), dibulatkan biar kecil di storage
+  if (K.cd <= 0 && !me.fin && K.t >= K.recT) { K.rec.push(+me.x.toFixed(1), +me.y.toFixed(2), +me.z.toFixed(1), +me.h.toFixed(2)); K.recT += KT_GHOST_DT; }
+  if (!gh) return;
+  const n = gh.f.length / 4, u = Math.max(0, K.cd > 0 ? 0 : K.t / KT_GHOST_DT), i = Math.min(n - 2, Math.floor(u)), a = Math.min(1, u - i), F = gh.f;
+  const at = j => F[i * 4 + j] + (F[(i + 1) * 4 + j] - F[i * 4 + j]) * a;
+  gh.g.visible = u < n - 1;
+  gh.g.position.set(at(0), at(1), at(2)); gh.g.rotation.y = F[i * 4 + 3] + ktWrap(F[(i + 1) * 4 + 3] - F[i * 4 + 3]) * a;
+}
+function ktGhostKeep() {
+  const K = FC.kt, me = KR.karts[0], G = ktGhostLoad(), d = today(), rec = { t: +me.fin.toFixed(2), f: K.rec };
+  let msg = null;
+  if (K.ghostT) msg = me.fin < K.ghostT ? `Ghost beaten by ${(K.ghostT - me.fin).toFixed(1)}s!` : `Ghost was ${(me.fin - K.ghostT).toFixed(1)}s faster`;
+  if (FC.daily) { if (!(G.daily && G.daily.d === d && G.daily.t <= rec.t)) G.daily = { d, ...rec }; }
+  else if (!(G.best && G.best.t <= rec.t)) G.best = rec;
+  ktGhostSave(G);
+  return msg;
+}
 function ktFinish() {
   const K = FC.kt, me = KR.karts[0];
+  if (K.mt) Dapur.track(wallet(), "kartDrift", K.mt);
+  K.ghostMsg = ktGhostKeep();
   const place = KR.karts.filter(k => k.fin && k.fin < me.fin).length;
   K.end = K.t; K.place = place; FC.place = place; me.drift = 0; K.slow = 0.45;
   mgAdd(KT_PTS[place]); Sfx.play(place === 0 ? "rekor" : "kombo", 5); navigator.vibrate && navigator.vibrate([40, 40, 80]);
   ktMsg(place === 0 ? "You win!" : `${KT_ORD[place]} place`, 3);
+  if (K.ghostMsg) ktMsg2(K.ghostMsg);
 }
+function ktMsg2(t) { FC.kt.msg2 = t; }
 
 // ---------- otak CPU: ikut jalur dengan goyangan sesuai watak, ngerem di tikungan, karet gelang ke pemain
 function ktCpu(k, dt) {
@@ -518,6 +565,7 @@ function ktSim(dt) {
     if (!K.end && K.t > 240) { const pl = ktRank(me); K.end = K.t; K.place = pl; FC.place = pl; mgAdd(KT_PTS[pl]); ktMsg("Time!", 2); }
     ktMarks();
   }
+  ktGhostStep();
 }
 // jejak ban di roda belakang waktu drift atau muter
 function ktMarks() {
@@ -617,6 +665,7 @@ function ktHud(dt) {
   // skor + koin
   ktPill(ctx, 16 * dpr, top + 88 * dpr, 92 * dpr, 26 * dpr, "rgba(20,14,30,.6)");
   txt(`★ ${FC.score}`, 62 * dpr, top + 101 * dpr, 14, "#FFE36B", "center", 0.01);
+  txt(`${FC.daily ? "Daily" : Dapur.TIERS[K.lvl]} cup${KR.ghost ? " · 👻" : ""}`, 18 * dpr, top + 128 * dpr, 11, "#FFFFFF", "left", 3);
   // slot item (kanan atas, di bawah tombol)
   const ix = W - 56 * dpr, iy = top + 40 * dpr, ir = 34 * dpr;
   if (!K.end) {
@@ -651,8 +700,26 @@ function ktHud(dt) {
     if (n >= 1 && n <= 3) txt(String(n), W / 2, H * 0.36, 96 * p, ["", "#5BD07A", "#FFE36B", "#FF7A85"][n], "center", 10);
     if (K.hint) { ktPill(ctx, W / 2 - 160 * dpr, H * 0.52 - 40 * dpr, 320 * dpr, 92 * dpr, "rgba(20,14,30,.65)"); txt("Drag left/right to steer", W / 2, H * 0.52 - 18 * dpr, 16, "#fff", "center", 0.01); txt("Hold a sharp turn to drift, let go to boost", W / 2, H * 0.52 + 6 * dpr, 13, "#FFE36B", "center", 0.01); txt("Tap to use an item · hold on 2 for a rocket start", W / 2, H * 0.52 + 28 * dpr, 12, "#CDB8FF", "center", 0.01); }
   } else if (K.t < 0.8 && !K.end) txt("GO!", W / 2, H * 0.36, 96 * (1 + K.t * 0.4), "#5BD07A", "center", 10);
+  if (K.end && K.msg2) txt(K.msg2, W / 2, H * 0.3 + 40 * dpr, 16, K.msg2.startsWith("Ghost beaten") ? "#7FF3A0" : "#CDB8FF", "center", 4);
   if (K.msgT > 0) { K.msgT -= dt; ctx.globalAlpha = Math.min(1, K.msgT * 3); txt(K.msg, W / 2, H * (K.end ? 0.3 : 0.25), K.end ? 46 : 30, "#FFFFFF", "center", 7); ctx.globalAlpha = 1; }
   if (K.wrong > 1) txt("↺ WRONG WAY", W / 2, H * 0.42, 28, "#FF7A85", "center", 6);
+  // petunjuk drift (balapan awal): tikungan tajam di depan → "tahan", lagi drift → "terus", muatan cukup → "lepas!"
+  if (K.tut && K.cd <= 0 && !K.end && K.tutDone < KT_TUT && K.msgT <= 0 && me.spin <= 0) {
+    let line = null, sub = null, col = "#FFFFFF";
+    if (me.drift) {
+      const lv = ktLv(me.dT);
+      if (lv) { line = "LET GO!"; sub = "Lift your thumb for a turbo"; col = ["", "#5FC8FF", "#FF9A2E", "#C45CFF"][lv]; }
+      else { line = "Keep holding…"; sub = "Wait for blue sparks"; }
+    } else if (me.v > 16) {
+      const j = (me.idx + Math.round(26 / T.seg)) % KT_N, dh = ktWrap(T.h[j] - T.h[me.idx]);
+      if (Math.abs(dh) > 0.75) { line = dh < 0 ? "Hold & drag right →" : "← Hold & drag left"; sub = "Steer hard into the turn to drift"; col = "#FFE36B"; }
+    }
+    if (line) {
+      const p = me.drift && ktLv(me.dT) ? 1 + 0.08 * Math.sin(K.t * 18) : 1, y = H * 0.66;
+      ktPill(ctx, W / 2 - 150 * dpr, y - 30 * dpr, 300 * dpr, 64 * dpr, "rgba(20,14,30,.6)");
+      txt(line, W / 2, y - 8 * dpr, 24 * p, col, "center", 5); txt(sub, W / 2, y + 18 * dpr, 12, "#FFFFFF", "center", 3);
+    }
+  }
   // urutan akhir
   if (K.end) {
     const order = [...karts].sort((a, b) => ktProg(b) - ktProg(a)), y0 = H * 0.5, a = Math.min(1, (K.t - K.end) / 0.5);
