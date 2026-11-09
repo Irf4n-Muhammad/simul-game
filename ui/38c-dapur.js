@@ -55,9 +55,11 @@ const MG_GAMES = {
   ingat: { name: "Memory match", icon: "🃏", color: "#8A5BD6", timed: true, how: "Flip two cards. A pair is +2, pairs in a row score more. Clear a board for +5, or +10 with no mistakes. Boards get bigger, and two misses in a row shuffle two cards." },
   kuis: { name: "Quiz rush", icon: "🧠", color: "#2F8FD8", timed: false, how: "Race Kiko, Bolt and Mimi through 10 quick questions. Right is +2, the fastest right answer +1, winning +3." },
   kart: { name: "Kart cup", icon: "🏎️", color: "#D8432F", timed: false, how: "Three laps against Kiko, Bolt, Mimi and Pip. Drag to steer, hold a sharp turn to drift and let go for a boost. Tap to use items from the ? boxes. Coins +1, hits +2, and your finish adds up to +12." },
+  brawl: { name: "Bonk brawl", icon: "🥊", color: "#7A4FD8", timed: false, how: "Knock Kiko, Bolt and Mimi off the floating island. Hits raise their %, and the higher it is the farther they fly. Grab hammers and pies from the sky. Three lives each. A KO is +3, and 1st place adds +8." },
   lari: { name: "Town run", icon: "🏃", color: "#E0663A", timed: false, how: "Tap to jump over the obstacles, tap again in the air for a double jump. Stars +3." },
 };
 const MG_ORDER = Object.keys(MG_GAMES);
+const MG_LAND = { kart: true, brawl: true };   // game yang dimainkan melintang
 let ARC = null;   // layar Games (hub); adegan 3D dijeda selama ini ada (ui/29)
 function showKitchen() {
   if (ARC) return;
@@ -135,9 +137,9 @@ function mgStart(k = "potong", daily = false) {
   el.innerHTML = `<canvas id="mgBg"></canvas><div class="fcx-glow" id="mgGlow"></div><div class="fcx-sc" id="mgSc"><canvas id="mgFire"></canvas><b id="mgScore">0</b><i id="mgPlus"></i><em id="mgHot"></em></div><div class="fcx-top"><span id="mgTime"${g.timed ? "" : " hidden"}>${MG_LEN}</span><button class="x snd" id="mgSnd" aria-label="Sound">${Sfx.off ? "🔇" : "🔊"}</button><button class="x" id="mgX" aria-label="Stop">✕</button></div><canvas id="mgCv"></canvas><div class="fcx-card" id="mgCard"></div>`;
   document.body.appendChild(el);
   const cv = $("mgCv"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
-  // Kart cup main landscape: HP dikunci miring kalau bisa, kalau nggak layarnya diputar (ui/38h ktOrient)
-  if (k === "kart") ktLock();
-  const size = () => { if (k === "kart") ktOrient(el); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
+  // game melintang (Kart cup, Bonk brawl): HP dikunci miring kalau bisa, kalau nggak layarnya diputar (ui/38h ktOrient)
+  if (MG_LAND[k]) ktLock();
+  const size = () => { if (MG_LAND[k]) ktOrient(el); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
   size();
   FC = { k, daily, el, cv, ctx, dpr, items: [], bits: [], pops: [], score: 0, caught: 0, bx: cv.width / 2, t0: 0, last: 0, spawn: 0, run: false, shake: 0, size };
   // layar diputar 90°: sumbu x game = ke bawah di layar, sumbu y game = ke kiri
@@ -167,6 +169,13 @@ function mgStart(k = "potong", daily = false) {
     const up = e => { if (FC.kt) kartUp(e.pointerId); };
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
     FC.key = e => kartKey(e, true); FC.keyUp = e => kartKey(e, false);
+    window.addEventListener("keydown", FC.key); window.addEventListener("keyup", FC.keyUp);
+  } else if (k === "brawl") {
+    // Bonk brawl: layar melintang, stik di jempol kiri + tombol di kanan; keyboard panah/WASD + J/K/L
+    cv.addEventListener("pointerdown", e => { e.preventDefault(); cv.setPointerCapture && cv.setPointerCapture(e.pointerId); if (FC.run && FC.br) brawlDown(e); });
+    cv.addEventListener("pointermove", e => { if (FC.br) brawlMove(e); });
+    cv.addEventListener("pointerup", brawlUp); cv.addEventListener("pointercancel", brawlUp);
+    FC.key = e => brawlKey(e, true); FC.keyUp = e => brawlKey(e, false);
     window.addEventListener("keydown", FC.key); window.addEventListener("keyup", FC.keyUp);
   } else if (!g.timed) {
     // Stack, Knife throw, Town run: satu tap = satu aksi
@@ -225,7 +234,7 @@ function mgRun() {
   Object.assign(FC, { items: [], bits: [], pops: [], score: 0, caught: 0, t0: now(), last: now(), spawn: 0.4, run: true, trail: null, combo: 0, chain: 0, note: null, over: 0, skin: Dapur.skinOf(wallet(), FC.k), cont: false,
     // tantangan harian: level dari benih hari ini, jadi semua orang dapet susunan yang sama (efek visual tetap acak)
     rnd: FC.daily ? Dapur.rng(today()) : Math.random });
-  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit, kart: kartInit }[FC.k];
+  const init = { stack: stackInit, pisau: knifeInit, hop: hopInit, ingat: memInit, lari: runInit, kuis: quizInit, kart: kartInit, brawl: brawlInit }[FC.k];
   FC.got = []; FC.drop = dropPlan();
   if (init) init();
   if (ARC) ARC.played.add(FC.k);
@@ -238,7 +247,7 @@ function mgFrame() {
   FC.last = t;
   FC.ctx.clearRect(0, 0, FC.cv.width, FC.cv.height);
   FC.ctx.textAlign = "center"; FC.ctx.textBaseline = "middle";
-  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep, kuis: quizStep, kart: kartStep }[FC.k];
+  const step = { buah: catchStep, potong: slashStep, stack: stackStep, pisau: knifeStep, hop: hopStep, ingat: memStep, lari: runStep, kuis: quizStep, kart: kartStep, brawl: brawlStep }[FC.k];
   worldDraw(dt);
   step(dt, el);
   mgJuice(dt);
@@ -777,7 +786,7 @@ function mgDone() {
 // kartu akhir; dipanggil lagi waktu balik dari panel skin
 function mgShowEnd() {
   const W = wallet(), k = FC.k, { r, fresh, dly, hist, who } = FC.res;
-  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped`, kuis: `${["1st", "2nd", "3rd", "4th"][FC.place] || ""} place · ${FC.caught}/${QZ_N} right`, kart: `${KT_ORD[FC.place] || ""} place · ${FC.caught} coins${FC.kt && FC.kt.hits ? ` · ${FC.kt.hits} hits` : ""}` }[k];
+  const what = { buah: `${FC.caught} caught`, potong: `${FC.caught} sliced`, stack: `${FC.caught} high`, pisau: `${FC.caught} knives`, hop: `${FC.caught} clouds`, ingat: `${FC.caught} pairs`, lari: `${FC.caught} jumped`, kuis: `${["1st", "2nd", "3rd", "4th"][FC.place] || ""} place · ${FC.caught}/${QZ_N} right`, kart: `${KT_ORD[FC.place] || ""} place · ${FC.caught} coins${FC.kt && FC.kt.hits ? ` · ${FC.kt.hits} hits` : ""}`, brawl: `${BR_ORD[FC.place] || ""} place · ${FC.caught} KO${FC.caught === 1 ? "" : "s"}` }[k];
   const T = Dapur.tier(k, W.best[k]), gap = W.best[k] - FC.score;
   const head = r.best && FC.score ? ["New record!", "pp-gold"] : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? ["So close!", "pp-red"] : MG_GAMES[k].timed ? ["Time's up!", ""] : ["Game over", ""];
   const sub = r.best && FC.score ? `${what}` : gap > 0 && gap <= Math.max(2, W.best[k] * 0.15) ? `${gap} short of your record (${W.best[k]})` : `${what} · record ${W.best[k] || 0}`;
@@ -902,7 +911,8 @@ function mgEnd(quit) {
   FC.run = false;
   if (FC.key) window.removeEventListener("keydown", FC.key);
   if (FC.keyUp) window.removeEventListener("keyup", FC.keyUp);
-  if (FC.k === "kart") { kartStop(); ktUnlock(); }
+  if (FC.k === "kart") kartStop();
+  if (MG_LAND[FC.k]) ktUnlock();
   window.removeEventListener("resize", FC.size);
   FC.el.remove(); FC = null;
   dapurChip(); arcDraw();

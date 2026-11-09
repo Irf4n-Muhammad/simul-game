@@ -59,6 +59,13 @@ const Sfx = (() => {
     kotak: () => arp(660, [0, 5, 9, 12], 0.04, { type: "square", vol: 0.07, dur: 0.08 }),
     dinding: () => { tone(90, 0.12, { type: "square", to: 50, vol: 0.22 }); hiss(0.08, { f: 600, vol: 0.18 }); },
     lap: () => arp(784, [0, 4, 7, 12], 0.08, { type: "triangle", vol: 0.15, dur: 0.16 }),
+    // Bonk brawl (v84)
+    bonk: n => { const k = Math.min(1, (n || 5) / 22); tone(230 - k * 130, 0.1 + k * 0.12, { type: "square", to: 55, vol: 0.16 + k * 0.12 }); hiss(0.07 + k * 0.12, { f: 1900 - k * 1000, vol: 0.22 + k * 0.22 }); },
+    wus: () => hiss(0.12, { f: 700, to: 2600, q: 0.9, vol: 0.12 }),
+    hop: () => tone(330, 0.11, { type: "triangle", to: 640, vol: 0.12 }),
+    ko: () => { hiss(0.8, { f: 1400, to: 70, kind: "lowpass", vol: 0.6 }); tone(70, 0.6, { type: "sine", to: 35, vol: 0.45 }); tone(900, 0.5, { type: "sawtooth", to: 120, vol: 0.08 }); },
+    splat: () => { hiss(0.18, { f: 500, to: 180, kind: "lowpass", vol: 0.4 }); tone(170, 0.1, { to: 90, vol: 0.2 }); },
+    ambil: () => arp(660, [0, 7, 12], 0.05, { type: "triangle", vol: 0.14, dur: 0.1 }),
   };
   // suara mesin kart: satu nada gergaji lewat filter yang terus nyala, nadanya ikut kecepatan. motor(null) = mati
   let mo = null;
