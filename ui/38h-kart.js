@@ -24,6 +24,21 @@ const KT_ODDS = [
   { turbo: 4, bee: 3, ball: 2, shield: 1 },
   { turbo: 4, bee: 4, ball: 1, shield: 1 },
 ];
+// kart pemain (v84): kebuka seiring peringkat Kart cup. v = kecepatan puncak, ac = tarikan, tn = belok, grip = setir nempel (kecil = licin),
+// dc = cepat ngisi percikan drift, wt = berat (tahan senggol, dinding, dan item), off = kecepatan di rumput/pasir
+const KT_KARTS = [
+  { id: "classic", name: "Classic", icon: "🏎️", tier: 0, v: 30, ac: 1, tn: 1, grip: 1, dc: 1, wt: 1, off: 0.55, desc: "All-rounder. Good at everything.", st: [3, 3, 3, 3] },
+  { id: "swirl", name: "Swirl", icon: "🌀", tier: 1, v: 29.6, ac: 1.12, tn: 1.07, grip: 1.05, dc: 1.3, wt: 0.9, off: 0.55, desc: "Drift sparks charge fast. Light and nimble.", st: [2, 4, 5, 2] },
+  { id: "dart", name: "Dart", icon: "⚡", tier: 2, v: 31.1, ac: 0.92, tn: 0.92, grip: 0.62, dc: 0.95, wt: 0.9, off: 0.5, desc: "Top speed king, but slippery in turns.", st: [5, 2, 3, 2] },
+  { id: "boulder", name: "Boulder", icon: "🪨", tier: 3, v: 30.3, ac: 0.78, tn: 0.95, grip: 1.1, dc: 0.95, wt: 1.6, off: 0.68, desc: "Heavy. Shrugs off bumps, walls and grass.", st: [3, 3, 2, 5] },
+];
+const KT_STAT = ["Speed", "Handling", "Drift", "Weight"];
+// pilihan terakhir (sirkuit + kart) disimpan di HP; tantangan harian sirkuitnya ikut tanggal
+const KT_PICK_KEY = "mk-kart-pick";
+function ktPick() { let P = {}; try { P = JSON.parse(localStorage.getItem(KT_PICK_KEY)) || {}; } catch (e) { /* tanpa storage */ } return { c: KT_COURSES.some(c => c.id === P.c) ? P.c : KT_COURSES[0].id, k: KT_KARTS.some(k => k.id === P.k) ? P.k : "classic", seen: +P.seen || 0 }; }
+function ktPickSave(P) { try { localStorage.setItem(KT_PICK_KEY, JSON.stringify(P)); } catch (e) { /* abaikan */ } }
+const ktKartOpen = (kt, best) => Dapur.tier("kart", best || 0).ix >= kt.tier;
+function ktDailyCourse(d) { let h = 0; for (const ch of String(d)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return KT_COURSES[h % KT_COURSES.length].id; }
 let KR = null;   // renderer + adegan yang dipakai ulang antar ronde
 // tingkat kesulitan ikut peringkat Kart cup (Rookie..Legend): kecepatan CPU (m/s) dan rajin pakai item.
 // Tantangan harian selalu pakai tingkat Silver biar sama buat semua.
@@ -34,10 +49,21 @@ const KT_GHOST_KEY = "mk-kart-ghost", KT_GHOST_DT = 0.1;
 function ktGhostLoad() { try { return JSON.parse(localStorage.getItem(KT_GHOST_KEY)) || {}; } catch (e) { return {}; } }
 function ktGhostSave(G) { try { localStorage.setItem(KT_GHOST_KEY, JSON.stringify(G)); } catch (e) { /* tanpa storage: hantu nggak disimpan */ } }
 
+// dua sirkuit (v84, diskusi 9 Nov "kerjain semua"): titik kontrol [x, z, tinggi], skala, suasana, letak bantalan/kotak/koin
+const KT_COURSES = [
+  { id: "meadow", name: "Meadow ring", icon: "🌳", S: 1.25, P: [[0, 0, 0], [80, 0, 0], [122, 18, 0], [132, 60, 1], [106, 92, 3.5], [62, 82, 6], [32, 102, 7], [12, 140, 4.5], [-28, 152, 1.5], [-56, 122, 0], [-44, 82, 0], [-72, 50, 0], [-62, 14, 0]],
+    sky: ["#3D7FD9", "#8EC5F0", "#F6E3C4"], fog: ["#DDE6EA", 70, 340], hemi: [0xdff1ff, 0x5a7a3a, 0.95], sun: [0xfff1d6, 0.85, 60, 120, 40], bg: "#8EC5F0",
+    ground: "#6AA947", verge: ["#6DB04A", "40,90,30", "160,210,110"], wall: "#2F6FD0", curb: "#E0453A", banner: "#6C3EE6", hills: "#7E8FB5",
+    pads: [[0.3, -2.5], [0.63, 2.5], [0.88, 0]], boxes: [0.18, 0.5, 0.76], coins: [[0.08, 0, 0], [0.26, -4, 0.5], [0.4, 3, -0.6], [0.58, -3, 0], [0.7, 4, -0.8], [0.93, 0, 0.6]] },
+  // pantai sore: pasir, laut di selatan, pohon kelapa, payung pantai, matahari terbenam; ada tikungan tusuk konde sebelum garis finish
+  { id: "bay", name: "Sunset bay", icon: "🌅", S: 1.12, P: [[0, 0, 0], [95, 0, 0], [135, 20, 0], [140, 58, 1], [112, 78, 3], [110, 110, 5], [132, 140, 6], [110, 172, 4], [60, 168, 2], [30, 138, 1], [-10, 150, 0], [-52, 130, 0], [-60, 92, 0], [-42, 62, 0], [-64, 30, 0], [-48, 4, 0]],
+    sky: ["#3A3F8F", "#E77A5C", "#FFD08A"], fog: ["#F2B48A", 80, 360], hemi: [0xffd9b8, 0x8a6a4a, 0.9], sun: [0xffb070, 1.0, 40, 50, -120], bg: "#F2A07A",
+    ground: "#E3C68E", verge: ["#E8CF98", "170,130,80", "255,245,215"], wall: "#F07A2E", curb: "#2F8FD0", banner: "#E0453A", hills: "#8A6A9E", sea: -48, cpu: -0.6,
+    pads: [[0.24, 2.5], [0.56, -2.5], [0.95, 0]], boxes: [0.14, 0.45, 0.7], coins: [[0.06, 0, 0], [0.2, 4, -0.6], [0.34, -3, 0.5], [0.52, 3, 0], [0.64, -4, 0.7], [0.9, 0, -0.6]] },
+];
 // ---------- lintasan: kurva tertutup, dicuplik jadi KT_N titik (posisi, arah, normal, tinggi)
-function ktTrack() {
-  const P = [[0, 0, 0], [80, 0, 0], [122, 18, 0], [132, 60, 1], [106, 92, 3.5], [62, 82, 6], [32, 102, 7], [12, 140, 4.5], [-28, 152, 1.5], [-56, 122, 0], [-44, 82, 0], [-72, 50, 0], [-62, 14, 0]];
-  const S = 1.25, curve = new THREE.CatmullRomCurve3(P.map(([x, z, y]) => new THREE.Vector3(x * S, y, z * S)), true, "centripetal");
+function ktTrack(C) {
+  const P = C.P, S = C.S, curve = new THREE.CatmullRomCurve3(P.map(([x, z, y]) => new THREE.Vector3(x * S, y, z * S)), true, "centripetal");
   const pts = curve.getSpacedPoints(KT_N), T = { len: curve.getLength(), x: new Float32Array(KT_N), y: new Float32Array(KT_N), z: new Float32Array(KT_N), tx: new Float32Array(KT_N), tz: new Float32Array(KT_N), nx: new Float32Array(KT_N), nz: new Float32Array(KT_N), h: new Float32Array(KT_N) };
   T.seg = T.len / KT_N;
   for (let i = 0; i < KT_N; i++) { T.x[i] = pts[i].x; T.y[i] = pts[i].y; T.z[i] = pts[i].z; }
@@ -76,72 +102,16 @@ function ktRibbon(T, a, b, ya, yb, mat, rep, side, absB) {
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   return new THREE.Mesh(g, mat);
 }
+// renderer, kamera, lampu, dan barang yang dipakai semua sirkuit (partikel, jejak ban, bayangan); sirkuitnya dibikin pas dipilih
 function ktBuild() {
   const dpr = Math.min(1.5, window.devicePixelRatio || 1), cv = document.createElement("canvas");
   const r = new THREE.WebGLRenderer({ canvas: cv, antialias: (window.devicePixelRatio || 1) < 2, powerPreference: "high-performance" });
   r.setPixelRatio(dpr); r.outputEncoding = THREE.sRGBEncoding;
-  const sc = new THREE.Scene(), T = ktTrack();
-  const sky = ktTex((g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#3D7FD9"); gr.addColorStop(0.55, "#8EC5F0"); gr.addColorStop(1, "#F6E3C4"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 4, 256);
-  sc.background = sky; sc.fog = new THREE.Fog(new THREE.Color("#DDE6EA").convertSRGBToLinear(), 70, 340);
-  sc.add(new THREE.HemisphereLight(0xdff1ff, 0x5a7a3a, 0.95));
+  const sc = new THREE.Scene();
+  const hemi = new THREE.HemisphereLight(0xdff1ff, 0x5a7a3a, 0.95); sc.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff1d6, 0.85); sun.position.set(60, 120, 40); sc.add(sun);
-  const cam = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
-  // tanah dan lintasan
-  const grassT = ktTex((g, w, h) => { g.fillStyle = "#6DB04A"; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? "40,90,30" : "160,210,110"},${Math.random() * 0.35})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } }, 128, 128, true);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), ktMat("#6AA947")); ground.rotation.x = -Math.PI / 2; ground.position.y = -1.2; sc.add(ground);
-  const road = ktTex((g, w, h) => {
-    g.fillStyle = "#4A4752"; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? "0,0,0" : "255,255,255"},${Math.random() * 0.08})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-    g.fillStyle = "#F4F1EA"; g.fillRect(4, 0, 5, h); g.fillRect(w - 9, 0, 5, h);
-    g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(w / 2 - 2, 0, 4, h * 0.45);
-  }, 128, 256, true);
-  const curb = ktTex((g, w, h) => { g.fillStyle = "#F4F1EA"; g.fillRect(0, 0, w, h); g.fillStyle = "#E0453A"; g.fillRect(0, 0, w, h / 2); }, 8, 32, true);
-  const wallT = ktTex((g, w, h) => { g.fillStyle = "#F4F1EA"; g.fillRect(0, 0, w, h); g.fillStyle = "#2F6FD0"; g.fillRect(0, 0, w, h / 2); g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(0, h - 4, w, 4); }, 8, 32, true);
-  sc.add(ktRibbon(T, -KT_HW, KT_HW, 0.02, 0.02, ktMat("#ffffff", { map: road }), 12, 1));
-  const grassM = ktMat("#ffffff", { map: grassT });
-  for (const s of [1, -1]) {
-    sc.add(ktRibbon(T, KT_HW, KT_HW + 1.3, 0.05, 0.05, ktMat("#ffffff", { map: curb }), 3, s));
-    sc.add(ktRibbon(T, KT_HW + 1.3, KT_WALL, 0.0, 0.0, grassM, 10, s));
-    sc.add(ktRibbon(T, KT_WALL, KT_WALL + 26, 0.0, -1.2, grassM, 10, s, true));
-    // dinding: pita tegak (jarak sama, tinggi beda), belang biru-putih sepanjang lintasan
-    sc.add(ktRibbon(T, KT_WALL, KT_WALL, 0, 1.1, ktMat("#ffffff", { map: wallT, side: THREE.DoubleSide }), 2.5, s));
-  }
-  // garis start + gapura
-  const chk = ktTex((g, w, h) => { const n = 8; for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? "#111" : "#fff"; g.fillRect(i * w / n, j * h / 2, w / n, h / 2); } }, 128, 32);
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(KT_HW * 2, 2), ktMat("#ffffff", { map: chk })); line.rotation.x = -Math.PI / 2; line.rotation.z = T.h[0]; line.position.set(T.x[0], T.y[0] + 0.04, T.z[0]); sc.add(line);
-  const arch = new THREE.Group(); arch.position.set(T.x[0], T.y[0], T.z[0]); arch.rotation.y = T.h[0]; sc.add(arch);
-  const pil = ktMat("#2B2235");
-  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.8, 7, 0.8), pil); p.position.set(s * (KT_HW + 1.5), 3.5, 0); arch.add(p); }
-  const ban = ktTex((g, w, h) => { g.fillStyle = "#6C3EE6"; g.fillRect(0, 0, w, h); g.fillStyle = "#FFE36B"; g.font = "900 64px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("KART CUP", w / 2, h / 2 + 4); }, 512, 96);
-  const bn = new THREE.Mesh(new THREE.BoxGeometry(KT_HW * 2 + 4, 1.6, 0.5), [pil, pil, pil, pil, ktMat("#ffffff", { map: ban }), ktMat("#ffffff", { map: ban })]); bn.position.y = 7; arch.add(bn);
-  // pohon (instanced) di luar dinding, gunung jauh
-  const far = (x, z, m) => { for (let i = 0; i < KT_N; i += 6) { const dx = x - T.x[i], dz = z - T.z[i]; if (dx * dx + dz * dz < m * m) return false; } return true; };
-  const trees = []; let guard = 0;
-  while (trees.length < 170 && guard++ < 4000) { const x = -160 + Math.random() * 360, z = -90 + Math.random() * 330; if (far(x, z, KT_WALL + 5)) trees.push([x, z, 0.8 + Math.random() * 0.8]); }
-  const tr = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 6), ktMat("#7A5236"), trees.length);
-  const lf = new THREE.InstancedMesh(new THREE.ConeGeometry(2.2, 5, 7), ktMat("#3E8A3A"), trees.length);
-  const o = new THREE.Object3D();
-  trees.forEach(([x, z, s], i) => { o.position.set(x, -0.2, z); o.scale.setScalar(s); o.updateMatrix(); tr.setMatrixAt(i, o.matrix); o.position.y = -0.2 + 3.4 * s; o.updateMatrix(); lf.setMatrixAt(i, o.matrix); });
-  sc.add(tr, lf);
-  const mtM = ktMat("#7E8FB5");
-  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2, R = 330 + (i % 3) * 30, m = new THREE.Mesh(new THREE.ConeGeometry(60 + (i % 4) * 18, 70 + (i % 5) * 22, 6), mtM); m.position.set(30 + Math.cos(a) * R, 20, 90 + Math.sin(a) * R); sc.add(m); }
-  // bantalan turbo (panah kuning di jalan)
-  const padT = ktTex((g, w, h) => { g.fillStyle = "#FFB52E"; g.fillRect(0, 0, w, h); g.fillStyle = "#FFF3B0"; for (let k = 0; k < 2; k++) { const y = 8 + k * h / 2; g.beginPath(); g.moveTo(w * 0.15, y + 34); g.lineTo(w / 2, y); g.lineTo(w * 0.85, y + 34); g.lineTo(w * 0.85, y + 50); g.lineTo(w / 2, y + 16); g.lineTo(w * 0.15, y + 50); g.fill(); } }, 64, 128);
-  const pads = [[0.3, -2.5], [0.63, 2.5], [0.88, 0]].map(([f, lat]) => {
-    const i = Math.floor(f * KT_N), p = ktAt(T, i, lat), m = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 5), ktMat("#ffffff", { map: padT, emissive: "#664400" }));
-    m.rotation.x = -Math.PI / 2; m.rotation.z = T.h[i] + Math.PI; m.position.set(p.x, p.y + 0.05, p.z); sc.add(m);
-    return { i, lat };
-  });
-  // kotak item (kubus "?" berputar) dan koin
-  const qT = ktTex((g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, "#FF6BCB"); gr.addColorStop(0.5, "#7FD8F0"); gr.addColorStop(1, "#FFE36B"); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = "#fff"; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = "#fff"; g.font = "900 44px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("?", w / 2, h / 2 + 2); }, 64, 64);
-  const boxG = new THREE.BoxGeometry(1.3, 1.3, 1.3), boxM = ktMat("#ffffff", { map: qT, transparent: true, opacity: 0.88, emissive: "#333333" });
-  const boxes = [];
-  for (const f of [0.18, 0.5, 0.76]) for (const lat of [-4.5, -1.5, 1.5, 4.5]) { const i = Math.floor(f * KT_N), p = ktAt(T, i, lat), m = new THREE.Mesh(boxG, boxM); m.position.set(p.x, p.y + 1.1, p.z); sc.add(m); boxes.push({ m, x: p.x, y: p.y, z: p.z, dead: 0 }); }
-  const coinG = new THREE.CylinderGeometry(0.55, 0.55, 0.14, 16), coinM = ktMat("#F2C230", { emissive: "#6A4A00" });
-  const coins = [];
-  for (const [f, lat0, dl] of [[0.08, 0, 0], [0.26, -4, 0.5], [0.4, 3, -0.6], [0.58, -3, 0], [0.7, 4, -0.8], [0.93, 0, 0.6]]) for (let k = 0; k < 5; k++) {
-    const i = Math.floor(f * KT_N) + k * 7, p = ktAt(T, i % KT_N, lat0 + dl * k), m = new THREE.Mesh(coinG, coinM); m.rotation.z = Math.PI / 2; m.position.set(p.x, p.y + 0.9, p.z); sc.add(m); coins.push({ m, x: p.x, y: p.y, z: p.z, dead: false });
-  }
+  sc.fog = new THREE.Fog(0xffffff, 70, 340);
+  const cam = new THREE.PerspectiveCamera(70, 1, 0.3, 700);
   // partikel (percikan drift, debu, api turbo): sprite dipakai ulang
   const dot = ktTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.4, "rgba(255,255,255,.7)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 32, 32);
   const PM = {}; for (const [k, c] of [["b", "#5FC8FF"], ["o", "#FF9A2E"], ["p", "#C45CFF"], ["d", "#C9B79A"], ["f", "#FFC14A"], ["w", "#FFFFFF"]]) { PM[k] = new THREE.SpriteMaterial({ map: dot, color: new THREE.Color(c), transparent: true, opacity: k === "w" ? 0.6 : k === "d" ? 0.7 : 0.85, depthWrite: false, blending: k === "d" ? THREE.NormalBlending : THREE.AdditiveBlending }); }
@@ -151,26 +121,153 @@ function ktBuild() {
   const markM = new THREE.MeshBasicMaterial({ color: 0x1a1620, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
   const markG = new THREE.PlaneGeometry(0.32, 0.9); markG.rotateX(-Math.PI / 2);
   const marks = []; for (let i = 0; i < 260; i++) { const m = new THREE.Mesh(markG, markM); m.visible = false; sc.add(m); marks.push(m); }
-  KR = { r, cv, sc, cam, T, pads, marks, mi: 0, pr: dpr, prMax: dpr, boxes, coins, parts, PM, shadowM: new THREE.MeshBasicMaterial({ map: shadowT, transparent: true, depthWrite: false }), karts: [], projG: new THREE.Group() };
+  KR = { r, cv, sc, cam, hemi, sun, dot, courses: {}, cur: null, marks, mi: 0, pr: dpr, prMax: dpr, parts, PM, shadowM: new THREE.MeshBasicMaterial({ map: shadowT, transparent: true, depthWrite: false }), karts: [], projG: new THREE.Group() };
   sc.add(KR.projG);
+  ktCourseUse(KT_COURSES[0].id);
   return KR;
 }
+// pasang sirkuit: dibikin sekali per sesi, lalu tinggal ditukar (grup adegan, langit, kabut, lampu)
+function ktCourseUse(id) {
+  const C = KT_COURSES.find(c => c.id === id) || KT_COURSES[0];
+  if (KR.cur && KR.cur.id === C.id) return KR.cur;
+  if (KR.cur) KR.sc.remove(KR.cur.grp);
+  const R = KR.courses[C.id] || (KR.courses[C.id] = ktCourse(C));
+  KR.sc.add(R.grp); KR.cur = R;
+  KR.sc.background = R.sky; KR.sc.fog.color.set(C.fog[0]).convertSRGBToLinear(); KR.sc.fog.near = C.fog[1]; KR.sc.fog.far = C.fog[2];
+  KR.hemi.color.setHex(C.hemi[0]); KR.hemi.groundColor.setHex(C.hemi[1]); KR.hemi.intensity = C.hemi[2];
+  KR.sun.color.setHex(C.sun[0]); KR.sun.intensity = C.sun[1]; KR.sun.position.set(C.sun[2], C.sun[3], C.sun[4]);
+  Object.assign(KR, { T: R.T, pads: R.pads, boxes: R.boxes, coins: R.coins, mm: null });
+  return R;
+}
+function ktCourse(C) {
+  const T = ktTrack(C), grp = new THREE.Group(), add = o => { grp.add(o); return o; };
+  const sky = ktTex((g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, C.sky[0]); gr.addColorStop(0.55, C.sky[1]); gr.addColorStop(1, C.sky[2]); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 4, 256);
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < KT_N; i++) { x0 = Math.min(x0, T.x[i]); x1 = Math.max(x1, T.x[i]); z0 = Math.min(z0, T.z[i]); z1 = Math.max(z1, T.z[i]); }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  // tanah dan lintasan
+  const [vc, d1, d2] = C.verge;
+  const vergeT = ktTex((g, w, h) => { g.fillStyle = vc; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? d1 : d2},${Math.random() * 0.35})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } }, 128, 128, true);
+  const ground = add(new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), ktMat(C.ground))); ground.rotation.x = -Math.PI / 2; ground.position.set(cx, -1.2, cz);
+  const road = ktTex((g, w, h) => {
+    g.fillStyle = "#4A4752"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? "0,0,0" : "255,255,255"},${Math.random() * 0.08})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.fillStyle = "#F4F1EA"; g.fillRect(4, 0, 5, h); g.fillRect(w - 9, 0, 5, h);
+    g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(w / 2 - 2, 0, 4, h * 0.45);
+  }, 128, 256, true);
+  const curb = ktTex((g, w, h) => { g.fillStyle = "#F4F1EA"; g.fillRect(0, 0, w, h); g.fillStyle = C.curb; g.fillRect(0, 0, w, h / 2); }, 8, 32, true);
+  const wallT = ktTex((g, w, h) => { g.fillStyle = "#F4F1EA"; g.fillRect(0, 0, w, h); g.fillStyle = C.wall; g.fillRect(0, 0, w, h / 2); g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(0, h - 4, w, 4); }, 8, 32, true);
+  add(ktRibbon(T, -KT_HW, KT_HW, 0.02, 0.02, ktMat("#ffffff", { map: road }), 12, 1));
+  const vergeM = ktMat("#ffffff", { map: vergeT });
+  for (const s of [1, -1]) {
+    add(ktRibbon(T, KT_HW, KT_HW + 1.3, 0.05, 0.05, ktMat("#ffffff", { map: curb }), 3, s));
+    add(ktRibbon(T, KT_HW + 1.3, KT_WALL, 0.0, 0.0, vergeM, 10, s));
+    add(ktRibbon(T, KT_WALL, KT_WALL + 26, 0.0, -1.2, vergeM, 10, s, true));
+    // dinding: pita tegak (jarak sama, tinggi beda), belang warna sirkuit
+    add(ktRibbon(T, KT_WALL, KT_WALL, 0, 1.1, ktMat("#ffffff", { map: wallT, side: THREE.DoubleSide }), 2.5, s));
+  }
+  // garis start + gapura
+  const chk = ktTex((g, w, h) => { const n = 8; for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? "#111" : "#fff"; g.fillRect(i * w / n, j * h / 2, w / n, h / 2); } }, 128, 32);
+  const line = add(new THREE.Mesh(new THREE.PlaneGeometry(KT_HW * 2, 2), ktMat("#ffffff", { map: chk }))); line.rotation.x = -Math.PI / 2; line.rotation.z = T.h[0]; line.position.set(T.x[0], T.y[0] + 0.04, T.z[0]);
+  const arch = add(new THREE.Group()); arch.position.set(T.x[0], T.y[0], T.z[0]); arch.rotation.y = T.h[0];
+  const pil = ktMat("#2B2235");
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.8, 7, 0.8), pil); p.position.set(s * (KT_HW + 1.5), 3.5, 0); arch.add(p); }
+  const ban = ktTex((g, w, h) => { g.fillStyle = C.banner; g.fillRect(0, 0, w, h); g.fillStyle = "#FFE36B"; g.font = "900 64px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("KART CUP", w / 2, h / 2 + 4); }, 512, 96);
+  const bn = new THREE.Mesh(new THREE.BoxGeometry(KT_HW * 2 + 4, 1.6, 0.5), [pil, pil, pil, pil, ktMat("#ffffff", { map: ban }), ktMat("#ffffff", { map: ban })]); bn.position.y = 7; arch.add(bn);
+  // hiasan di luar dinding (pohon / kelapa + payung pantai), bukit jauh
+  const far = (x, z, m) => { for (let i = 0; i < KT_N; i += 6) { const dx = x - T.x[i], dz = z - T.z[i]; if (dx * dx + dz * dz < m * m) return false; } return true; };
+  const spots = (n, m, ok) => { const out = []; let guard = 0; while (out.length < n && guard++ < 5000) { const x = x0 - 75 + Math.random() * (x1 - x0 + 150), z = z0 - 75 + Math.random() * (z1 - z0 + 150); if ((!ok || ok(x, z)) && far(x, z, m)) out.push([x, z, 0.8 + Math.random() * 0.8]); } return out; };
+  const o = new THREE.Object3D();
+  if (C.sea == null) {
+    const trees = spots(170, KT_WALL + 5);
+    const tr = add(new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 6), ktMat("#7A5236"), trees.length));
+    const lf = add(new THREE.InstancedMesh(new THREE.ConeGeometry(2.2, 5, 7), ktMat("#3E8A3A"), trees.length));
+    trees.forEach(([x, z, s], i) => { o.position.set(x, -0.2, z); o.scale.setScalar(s); o.updateMatrix(); tr.setMatrixAt(i, o.matrix); o.position.y = -0.2 + 3.4 * s; o.updateMatrix(); lf.setMatrixAt(i, o.matrix); });
+  } else ktBeach(C, T, add, spots, o, cx);
+  const mtM = ktMat(C.hills);
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * Math.PI * 2, R = 330 + (i % 3) * 30, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R;
+    if (C.sea != null && z < C.sea) continue;   // laut: nggak ada gunung, cuma pulau kecil (ktBeach)
+    const m = add(new THREE.Mesh(new THREE.ConeGeometry(60 + (i % 4) * 18, (70 + (i % 5) * 22) * (C.sea != null ? 0.6 : 1), C.sea != null ? 12 : 6), mtM)); m.position.set(x, C.sea != null ? 10 : 20, z);
+  }
+  // bantalan turbo (panah kuning di jalan)
+  const padT = ktTex((g, w, h) => { g.fillStyle = "#FFB52E"; g.fillRect(0, 0, w, h); g.fillStyle = "#FFF3B0"; for (let k = 0; k < 2; k++) { const y = 8 + k * h / 2; g.beginPath(); g.moveTo(w * 0.15, y + 34); g.lineTo(w / 2, y); g.lineTo(w * 0.85, y + 34); g.lineTo(w * 0.85, y + 50); g.lineTo(w / 2, y + 16); g.lineTo(w * 0.15, y + 50); g.fill(); } }, 64, 128);
+  const padM = ktMat("#ffffff", { map: padT, emissive: "#664400" });
+  const pads = C.pads.map(([f, lat]) => {
+    const i = Math.floor(f * KT_N), p = ktAt(T, i, lat), m = add(new THREE.Mesh(new THREE.PlaneGeometry(3.6, 5), padM));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = T.h[i] + Math.PI; m.position.set(p.x, p.y + 0.05, p.z);
+    return { i, lat };
+  });
+  // kotak item (kubus "?" berputar) dan koin
+  const qT = ktTex((g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, "#FF6BCB"); gr.addColorStop(0.5, "#7FD8F0"); gr.addColorStop(1, "#FFE36B"); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = "#fff"; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = "#fff"; g.font = "900 44px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("?", w / 2, h / 2 + 2); }, 64, 64);
+  const boxG = new THREE.BoxGeometry(1.3, 1.3, 1.3), boxM = ktMat("#ffffff", { map: qT, transparent: true, opacity: 0.88, emissive: "#333333" });
+  const boxes = [];
+  for (const f of C.boxes) for (const lat of [-4.5, -1.5, 1.5, 4.5]) { const i = Math.floor(f * KT_N), p = ktAt(T, i, lat), m = add(new THREE.Mesh(boxG, boxM)); m.position.set(p.x, p.y + 1.1, p.z); boxes.push({ m, x: p.x, y: p.y, z: p.z, dead: 0 }); }
+  const coinG = new THREE.CylinderGeometry(0.55, 0.55, 0.14, 16), coinM = ktMat("#F2C230", { emissive: "#6A4A00" });
+  const coins = [];
+  for (const [f, lat0, dl] of C.coins) for (let k = 0; k < 5; k++) {
+    const i = Math.floor(f * KT_N) + k * 7, p = ktAt(T, i % KT_N, lat0 + dl * k), m = add(new THREE.Mesh(coinG, coinM)); m.rotation.z = Math.PI / 2; m.position.set(p.x, p.y + 0.9, p.z); coins.push({ m, x: p.x, y: p.y, z: p.z, dead: false });
+  }
+  return { id: C.id, C, grp, T, sky, pads, boxes, coins, water: grp.userData.water || null };
+}
+// Sunset bay: laut (riak geser pelan), matahari terbenam, pulau, kelapa, payung pantai warna-warni
+function ktBeach(C, T, add, spots, o, cx) {
+  const waveT = ktTex((g, w, h) => { g.fillStyle = "#2F8DB5"; g.fillRect(0, 0, w, h); for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(255,${200 + Math.random() * 55 | 0},${150 + Math.random() * 80 | 0},${0.15 + Math.random() * 0.35})`; g.fillRect(Math.random() * w, Math.random() * h, 6 + Math.random() * 18, 2); } }, 128, 128, true);
+  waveT.repeat.set(60, 30);
+  const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(1600, 800), ktMat("#ffffff", { map: waveT, emissive: "#3a2030" })));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(cx, -0.95, C.sea - 400);
+  sea.parent.userData.water = waveT;
+  // buih di bibir pantai
+  const foam = add(new THREE.Mesh(new THREE.PlaneGeometry(1600, 2.5), new THREE.MeshBasicMaterial({ color: 0xfff4e0, transparent: true, opacity: 0.7, depthWrite: false })));
+  foam.rotation.x = -Math.PI / 2; foam.position.set(cx, -0.9, C.sea);
+  // matahari: piringan bercahaya di cakrawala selatan, nggak kena kabut
+  const sunT = ktTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(255,250,220,1)"); gr.addColorStop(0.28, "rgba(255,214,120,1)"); gr.addColorStop(0.32, "rgba(255,170,90,.55)"); gr.addColorStop(1, "rgba(255,120,80,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 128, 128);
+  const sun = add(new THREE.Sprite(new THREE.SpriteMaterial({ map: sunT, transparent: true, depthWrite: false, fog: false })));
+  sun.scale.set(150, 150, 1); sun.position.set(cx + 60, 22, C.sea - 560);
+  const isl = ktMat("#6E5A86");
+  for (const [dx, dz, r, h] of [[-160, -240, 34, 22], [-110, -260, 20, 12], [190, -300, 46, 30], [60, -330, 26, 14]]) { const m = add(new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), isl)); m.position.set(cx + dx, h / 2 - 2, C.sea + dz); m.scale.y = 1; }
+  // kelapa: batang miring + mahkota daun + buah
+  const palms = spots(120, KT_WALL + 5, (x, z) => z > C.sea + 6);
+  const trunk = add(new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.38, 7, 6), ktMat("#9A6B42"), palms.length));
+  const crown = add(new THREE.InstancedMesh(new THREE.ConeGeometry(3.4, 1.5, 7), ktMat("#3F9A47"), palms.length));
+  const nuts = add(new THREE.InstancedMesh(SPH(0.55, 8, 6), ktMat("#6A4524"), palms.length));
+  const e = new THREE.Euler();
+  palms.forEach(([x, z, s], i) => {
+    const lean = 0.12 + Math.random() * 0.2, dir = Math.random() * Math.PI * 2, hx = Math.sin(dir) * lean, hz = Math.cos(dir) * lean;
+    e.set(hz, 0, -hx); o.rotation.copy(e); o.scale.setScalar(s); o.position.set(x + hx * 3.5 * s, -0.2 + 3.5 * s, z + hz * 3.5 * s); o.updateMatrix(); trunk.setMatrixAt(i, o.matrix);
+    o.rotation.set(0, dir, 0); o.position.set(x + hx * 7 * s, -0.2 + 7 * s, z + hz * 7 * s); o.updateMatrix(); crown.setMatrixAt(i, o.matrix);
+    o.position.y -= 0.6 * s; o.updateMatrix(); nuts.setMatrixAt(i, o.matrix);
+  });
+  o.rotation.set(0, 0, 0);
+  // payung pantai di pasir antara dinding dan laut
+  const ub = [], cols = ["#E8506A", "#FFD15C", "#4A7BE0", "#3FA34D", "#F07A2E", "#FFFFFF"].map(c => new THREE.Color(c).convertSRGBToLinear());
+  for (let x = cx - 260; x < cx + 260; x += 9 + Math.random() * 10) { const z = C.sea + 4 + Math.random() * 10; let ok = true; for (let i = 0; i < KT_N; i += 6) if ((x - T.x[i]) ** 2 + (z - T.z[i]) ** 2 < (KT_WALL + 3) ** 2) { ok = false; break; } if (ok) ub.push([x, z]); }
+  const top = add(new THREE.InstancedMesh(new THREE.ConeGeometry(1.9, 0.9, 8), ktMat("#ffffff"), ub.length));
+  const pole = add(new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 5), ktMat("#F4F1EA"), ub.length));
+  ub.forEach(([x, z], i) => { o.scale.setScalar(1); o.position.set(x, 2.4, z); o.updateMatrix(); top.setMatrixAt(i, o.matrix); top.setColorAt(i, cols[i % cols.length]); o.position.y = 1.1; o.updateMatrix(); pole.setMatrixAt(i, o.matrix); });
+  if (top.instanceColor) top.instanceColor.needsUpdate = true;
+}
 // kart: sasis bulat, 4 roda, sayap belakang, pengemudi pakai helm warna dia
-function ktKartMesh(col) {
-  const g = new THREE.Group(), b = new THREE.Group(); g.add(b);
+function ktKartMesh(col, type = "classic") {
+  const g = new THREE.Group(), b = new THREE.Group(), bd = new THREE.Group(); g.add(b); b.add(bd);
   const c = ktMat(col), dark = ktMat("#2B2235"), tire = ktMat("#1E1A22"), wht = ktMat("#F4F1EA");
-  const m = (geo, mat, x, y, z, p = b) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); p.add(o); return o; };
+  const m = (geo, mat, x, y, z, p = bd) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); p.add(o); return o; };
+  const wr = type === "boulder" ? 1.18 : type === "dart" ? 0.92 : 1;
   m(RB(1.7, 0.42, 2.5, 0.16), c, 0, 0.5, 0);
   m(RB(1.2, 0.32, 0.9, 0.12), c, 0, 0.48, 1.35);
   m(RB(1.75, 0.16, 0.5, 0.06), dark, 0, 0.42, 1.75);
   m(RB(1.0, 0.5, 0.7, 0.12), dark, 0, 0.85, -0.55);
-  m(RB(1.8, 0.12, 0.45, 0.05), c, 0, 1.2, -1.25);
-  for (const s of [-0.6, 0.6]) m(new THREE.BoxGeometry(0.1, 0.45, 0.1), dark, s, 0.95, -1.2);
+  m(RB(type === "dart" ? 2.3 : 1.8, 0.12, type === "dart" ? 0.6 : 0.45, 0.05), c, 0, type === "dart" ? 1.35 : 1.2, -1.25);
+  for (const s of [-0.6, 0.6]) m(new THREE.BoxGeometry(0.1, type === "dart" ? 0.65 : 0.45, 0.1), dark, s, type === "dart" ? 1.02 : 0.95, -1.2);
+  // tiap jenis punya ciri: Dart moncong runcing, Boulder bemper tebal, Swirl sirip samping
+  if (type === "dart") { const n = m(new THREE.ConeGeometry(0.42, 1.1, 4), c, 0, 0.5, 2.25); n.rotation.x = Math.PI / 2; n.rotation.y = Math.PI / 4; n.scale.set(1.4, 1, 0.5); m(RB(0.18, 0.5, 2.2, 0.06), wht, 0, 0.74, 0.2); }
+  if (type === "boulder") { m(RB(2.1, 0.36, 0.36, 0.12), dark, 0, 0.55, 2.0); for (const s of [-0.75, 0.75]) m(new THREE.BoxGeometry(0.18, 0.5, 0.18), dark, s, 0.75, 1.95); m(RB(1.5, 0.3, 1.2, 0.1), c, 0, 0.85, 0.6); }
+  if (type === "swirl") for (const s of [-1, 1]) { const f = m(RB(0.12, 0.55, 1.2, 0.05), wht, s * 0.92, 0.85, -0.35); f.rotation.z = s * -0.35; }
   const wheels = [];
-  for (const [x, z, r] of [[0.92, 0.85, 0.36], [-0.92, 0.85, 0.36], [0.92, -0.85, 0.42], [-0.92, -0.85, 0.42]]) { const w = m(new THREE.CylinderGeometry(r, r, 0.38, 14), tire, x, r, z); w.rotation.z = Math.PI / 2; wheels.push(w); m(new THREE.CylinderGeometry(r * 0.45, r * 0.45, 0.4, 10), wht, x, r, z).rotation.z = Math.PI / 2; }
+  for (const [x, z, r] of [[0.92, 0.85, 0.36], [-0.92, 0.85, 0.36], [0.92, -0.85, 0.42], [-0.92, -0.85, 0.42]]) { const rr = r * wr, xx = x * (type === "boulder" ? 1.06 : 1); const w = m(new THREE.CylinderGeometry(rr, rr, 0.38, 14), tire, xx, rr, z); w.rotation.z = Math.PI / 2; wheels.push(w); m(new THREE.CylinderGeometry(rr * 0.45, rr * 0.45, 0.4, 10), wht, xx, rr, z).rotation.z = Math.PI / 2; }
   const helm = m(SPH(0.46, 16, 12), c, 0, 1.45, -0.1); helm.scale.set(1, 0.95, 1.05);
   m(RB(0.62, 0.22, 0.2, 0.08), ktMat("#1B1530"), 0, 1.47, 0.32);
   m(new THREE.BoxGeometry(0.12, 0.1, 0.9), wht, 0, 1.88, -0.1);
+  if (type === "dart") bd.scale.set(0.96, 0.9, 1.08); else if (type === "boulder") bd.scale.set(1.1, 1.06, 1.02); else if (type === "swirl") bd.scale.set(0.97, 1, 0.93);
   // api turbo di knalpot
   const flame = new THREE.Group(); flame.position.set(0, 0.55, -1.35); b.add(flame);
   const fm = new THREE.MeshBasicMaterial({ color: 0xffa53a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -184,7 +281,11 @@ function ktKartMesh(col) {
 // ---------- mulai ronde
 function kartInit() {
   if (!KR) ktBuild();
+  const P = ktPick(), W0 = wallet(), cid = FC.daily ? ktDailyCourse(today()) : P.c;
+  const KT = KT_KARTS.find(k => k.id === P.k && ktKartOpen(k, W0.best.kart)) || KT_KARTS[0];
+  ktCourseUse(cid);
   const { T } = KR, el = FC.el, cv = KR.cv;
+  el.style.background = KR.cur.C.bg;
   cv.id = "ktGl"; cv.style.zIndex = "0";
   if (cv.parentNode !== el) el.insertBefore(cv, $("mgBg").nextSibling);
   KR.karts.forEach(k => KR.sc.remove(k.g));
@@ -192,22 +293,23 @@ function kartInit() {
   KR.boxes.forEach(b => { b.dead = 0; b.m.visible = true; });
   KR.coins.forEach(c => { c.dead = false; c.m.visible = true; });
   KR.parts.forEach(p => { p.s.visible = false; p.life = 0; });
-  const W0 = wallet(), lvl = FC.daily ? 2 : Dapur.tier("kart", W0.best.kart).ix, D = KT_DIFF[lvl];
-  const who = [{ name: "You", col: "#FFD15C", me: true, v: 30, lane: 0, wob: 0.6, brake: 0.6, aim: 0 }].concat(KT_CPU.map(c => ({ ...c, v: c.v + D.v, aim: Math.max(0, c.aim + D.aim) })));
+  const lvl = FC.daily ? 2 : Dapur.tier("kart", W0.best.kart).ix, D = KT_DIFF[lvl];
+  const who = [{ name: "You", col: "#FFD15C", me: true, v: KT.v, lane: 0, wob: 0.6, brake: 0.6, aim: 0, type: KT.id, ac: KT.ac, tn: KT.tn, grip: KT.grip, dc: KT.dc, wt: KT.wt, off: KT.off }].concat(KT_CPU.map(c => ({ ...c, v: c.v + D.v + (KR.cur.C.cpu || 0), aim: Math.max(0, c.aim + D.aim) })));
   // grid: pemain di posisi ke-4 dari 5, biar ada yang dikejar dari awal
   const slots = [2, 0, 1, 3, 4];
   KR.karts = who.map((w, n) => {
-    const s = slots[n], i = (KT_N - 8 - s * 6) % KT_N, lat = (s % 2 ? 1 : -1) * 3, p = ktAt(T, i, lat), mm = ktKartMesh(w.col);
+    const s = slots[n], i = (KT_N - 8 - s * 6) % KT_N, lat = (s % 2 ? 1 : -1) * 3, p = ktAt(T, i, lat), mm = ktKartMesh(w.col, w.type);
     KR.sc.add(mm.g);
-    return Object.assign(w, mm, { x: p.x, y: p.y, z: p.z, h: T.h[i], v: 0, base: w.v, idx: i, lap: -1, half: true, fin: 0, s: 0, drift: 0, dT: 0, sT: 0, boost: 0, spin: 0, shield: 0, item: null, roll: 0, coins: 0, hop: 0, wallT: 0, ph: FC.rnd() * 6, laneNow: w.lane || 0, itemT: 1 + FC.rnd() * 3, stall: 0, sm: 0, sUse: 0, by: 0, bv: 0, pitch: 0, vPrev: 0, mark: null });
+    return Object.assign(w, mm, { x: p.x, y: p.y, z: p.z, h: T.h[i], vh: T.h[i], v: 0, base: w.v, idx: i, lap: -1, half: true, fin: 0, s: 0, drift: 0, dT: 0, sT: 0, boost: 0, spin: 0, shield: 0, item: null, roll: 0, coins: 0, hop: 0, wallT: 0, ph: FC.rnd() * 6, laneNow: w.lane || 0, itemT: 1 + FC.rnd() * 3, stall: 0, sm: 0, sUse: 0, by: 0, bv: 0, pitch: 0, vPrev: 0, mark: null });
   });
   // intro kamera keliling cuma di balapan pertama sesi ini; main lagi langsung hitung mundur
-  const intro = KR.raced ? 0.25 : 1.4; KR.raced = true;
-  FC.kt = { t: 0, cd: 3 + intro, intro, beep: 4, camH: KR.karts[0].h, punch: 0, slow: 0, ft: 1 / 60, qT: 0, upT: 0, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(W0.best.kart), lvl, tut: !FC.daily && ((W0.stat || {}).kartDrift || 0) < KT_TUT, tutDone: 0, rec: [], recT: 0 };
+  // (sirkuit baru = intro lagi, biar kelihatan tempatnya)
+  const intro = KR.raced === cid ? 0.25 : 1.4; KR.raced = cid;
+  FC.kt = { t: 0, cd: 3 + intro, intro, beep: 4, camH: KR.karts[0].h, punch: 0, slow: 0, ft: 1 / 60, qT: 0, upT: 0, ptr: null, s: 0, hold: false, x0: 0, moved: 0, keyL: false, keyR: false, msg: null, msgT: 0, rocket: null, end: 0, hits: 0, place: null, shake: 0, camP: null, wrong: 0, hint: !(W0.best.kart), lvl, tut: !FC.daily && ((W0.stat || {}).kartDrift || 0) < KT_TUT, tutDone: 0, rec: [], recT: 0, course: cid, kart: KT.id, flash: 0, flashC: null };
   ktGhostInit();
   FC.place = null;
   KR.marks.forEach(m => { m.visible = false; }); KR.mi = 0;
-  if (!KR.warm) { KR.r.compile(KR.sc, KR.cam); KR.warm = true; }
+  if (!KR.cur.warm) { KR.r.compile(KR.sc, KR.cam); KR.cur.warm = true; }
   Sfx.motor(null);
 }
 // disiapin waktu layar Games kebuka, biar start pertama nggak patah-patah (bikin adegan + kompilasi shader)
@@ -290,6 +392,7 @@ function ktUse(k) {
     ktShoot(k, "bee", k.x + fx * 2.6, k.z + fz * 2.6, fx * 40, fz * 40, tgt);
   }
   if (k.me && it !== "turbo" && it !== "shield") Sfx.play("lempar");
+  if (k.me) { ktBuzz(it === "turbo" ? 22 : 12); if (it === "turbo") ktFlash("#FFB52E", 0.5); }
 }
 function ktShoot(owner, type, x, z, vx, vz, tgt) {
   const { T } = KR, i = ktNear(T, x, z, owner.idx, 12), g = new THREE.Group();
@@ -302,11 +405,11 @@ function ktShoot(owner, type, x, z, vx, vz, tgt) {
 function ktHit(k, by) {
   if (k.fin) return;
   if (k.shield > 0) { k.shield = 0; if (k.me) Sfx.play("pas", 6); ktBurst(k, "w", 14); return; }
-  k.spin = 1.15; k.drift = 0; k.dT = 0; k.boost = 0;
+  k.spin = 1.15 / Math.pow(Math.max(1, k.wt || 1), 0.6); k.drift = 0; k.dT = 0; k.boost = 0;
   ktBurst(k, "w", 10);
   k.bv += 2;
-  if (by && by.me && !k.me) { mgAdd(2); FC.kt.hits += 1; ktMsg(`Hit ${k.name}! +2`); FC.kt.slow = 0.12; navigator.vibrate && navigator.vibrate(20); }
-  if (k.me) { FC.kt.slow = 0.15; Sfx.play("spin"); navigator.vibrate && navigator.vibrate([40, 30, 60]); FC.kt.shake = 0.4; }
+  if (by && by.me && !k.me) { mgAdd(2); FC.kt.hits += 1; ktMsg(`Hit ${k.name}! +2`); FC.kt.slow = 0.12; ktBuzz(20); }
+  if (k.me) { FC.kt.slow = 0.15; Sfx.play("spin"); ktBuzz([40, 30, 60]); FC.kt.shake = 0.4; }
 }
 function ktProjStep(dt) {
   const { T } = KR, P = KR.proj || [];
@@ -347,6 +450,15 @@ function ktPart(col, x, y, z, vx, vy, vz, life, sz) {
   p.s.material = KR.PM[col]; p.s.visible = true; p.s.position.set(x, y, z); p.s.scale.setScalar(sz);
   Object.assign(p, { vx, vy, vz, t: 0, life, sz });
 }
+// getar HP (v84): pendek-pendek biar kerasa "nendang" tanpa ganggu; getaran kecil yang rapat dilewati
+let KT_BZ = 0;
+function ktBuzz(p) {
+  const t = now(), big = Array.isArray(p) || p >= 20;
+  if (!big && t - KT_BZ < 70) return;
+  KT_BZ = t; try { navigator.vibrate && navigator.vibrate(p); } catch (e) { /* nggak didukung */ }
+}
+// kilat warna di pinggir layar (mini turbo, naik level percikan)
+function ktFlash(col, a) { const K = FC.kt; if (reduce) return; K.flash = Math.max(K.flash, a); K.flashC = col; }
 function ktMsg(t, dur = 1.4) { FC.kt.msg = t; FC.kt.msgT = dur; }
 
 // ---------- fisika satu kart
@@ -359,20 +471,21 @@ function ktDrive(k, dt, s, hold) {
   else {
     const lat = ktLat(T, k.idx, k.x, k.z), off = Math.abs(lat) > KT_HW + 1.3;
     let vmax = k.base * (1 + 0.01 * Math.min(10, k.coins)) * (k.vk || 1);
-    if (off) vmax *= 0.55;
+    if (off) vmax *= k.off || 0.55;
     if (k.boost > 0) { vmax *= off ? 1.6 : 1.42; k.boost -= dt; }
     if (FC.kt.end && k.me) vmax *= 0.6;
-    if (k.v < vmax) k.v += Math.min(vmax - k.v, (10 + (vmax - k.v) * 0.7) * (k.boost > 0 ? 3 : 1) * dt);
+    if (k.v < vmax) k.v += Math.min(vmax - k.v, (10 + (vmax - k.v) * 0.7) * (k.boost > 0 ? 3 : 1) * (k.ac || 1) * dt);
     else k.v += (vmax - k.v) * Math.min(1, (off ? 3 : 1.4) * dt);
     const sf = Math.min(1, k.v / 10) * (1 - 0.2 * Math.min(1, k.v / 40));
     // drift: tahan belok tajam sebentar → mulai; lepas → turbo sesuai muatan
     if (k.me) {
       if (!k.drift) {
-        if (hold && Math.abs(s) > 0.55 && k.v > 16) { k.sT += dt; if (k.sT > 0.18) { k.drift = Math.sign(s); k.dT = 0; k.hop = 0.18; Sfx.play("tangkap"); } }
+        if (hold && Math.abs(s) > 0.55 && k.v > 16) { k.sT += dt; if (k.sT > 0.18) { k.drift = Math.sign(s); k.dT = 0; k.hop = 0.18; Sfx.play("tangkap"); ktBuzz(10); } }
         else k.sT = 0;
       } else if (!hold || k.v < 12) {
         const lv = ktLv(k.dT);
-        if (lv) { k.boost = Math.max(k.boost, [0, 0.8, 1.3, 1.9][lv]); FC.kt.mt = (FC.kt.mt || 0) + 1; if (FC.kt.tut) FC.kt.tutDone += 1; Sfx.play("turbo"); FC.kt.shake = 0.15 + lv * 0.05; ktMsg(["", "Mini turbo!", "Super turbo!", "Ultra turbo!"][lv], 0.9); }
+        if (lv) { k.boost = Math.max(k.boost, [0, 0.8, 1.3, 1.9][lv]); FC.kt.mt = (FC.kt.mt || 0) + 1; if (FC.kt.tut) FC.kt.tutDone += 1; Sfx.play("turbo"); FC.kt.shake = 0.15 + lv * 0.05;
+          ktBuzz([14, 30, 18 + lv * 12]); ktFlash(["", "#5FC8FF", "#FF9A2E", "#C45CFF"][lv], 0.55 + lv * 0.15); FC.kt.punch = Math.max(FC.kt.punch, 0.7 + lv * 0.25); ktMsg(["", "Mini turbo!", "Super turbo!", "Ultra turbo!"][lv], 0.9); }
         k.drift = 0; k.dT = 0; k.sT = 0;
       }
     }
@@ -380,12 +493,14 @@ function ktDrive(k, dt, s, hold) {
     if (k.drift) {
       const tight = s * k.drift, lv0 = ktLv(k.dT);
       rate = k.drift * (1.2 + 0.7 * tight) * sf;
-      k.dT += dt * (0.75 + 0.6 * Math.max(0, tight));
-      const lv = ktLv(k.dT); if (lv > lv0) { Sfx.play("pas", lv * 3); k.bv += 1.2; if (!reduce) for (let j = 0; j < 12; j++) ktPart(["d", "b", "o", "p"][lv], k.x, k.y + 0.4, k.z, (Math.random() - 0.5) * 9, 2 + Math.random() * 4, (Math.random() - 0.5) * 9, 0.4, 0.55); }
+      k.dT += dt * (0.75 + 0.6 * Math.max(0, tight)) * (k.dc || 1);
+      const lv = ktLv(k.dT); if (lv > lv0) { Sfx.play("pas", lv * 3); k.bv += 1.2; if (k.me) { ktBuzz(8 + lv * 6); ktFlash(["", "#5FC8FF", "#FF9A2E", "#C45CFF"][lv], 0.3); } if (!reduce) for (let j = 0; j < 12; j++) ktPart(["d", "b", "o", "p"][lv], k.x, k.y + 0.4, k.z, (Math.random() - 0.5) * 9, 2 + Math.random() * 4, (Math.random() - 0.5) * 9, 0.4, 0.55); }
     } else rate = 1.95 * s * sf;
-    k.h -= rate * dt; k.sUse = s;
+    k.h -= rate * (k.tn || 1) * dt; k.sUse = s;
   }
-  const fx = Math.sin(k.h), fz = Math.cos(k.h);
+  // kart licin (Dart): arah jalan nyusul arah moncong dengan telat, jadi kerasa ngepot di tikungan
+  if (k.grip < 1 && k.spin <= 0) k.vh += ktWrap(k.h - k.vh) * Math.min(1, dt * (3 + 12 * k.grip)); else k.vh = k.h;
+  const fx = Math.sin(k.vh), fz = Math.cos(k.vh);
   k.x += fx * k.v * dt; k.z += fz * k.v * dt;
   const prev = k.idx; k.idx = ktNear(T, k.x, k.z, k.idx);
   // dinding: dorong balik, kecepatan turun, arah dibelokin ke jalur
@@ -396,8 +511,8 @@ function ktDrive(k, dt, s, hold) {
     const dh = ktWrap(T.h[k.idx] - k.h), imp = Math.min(1, Math.abs(Math.sin(dh)) * 1.7);
     k.h += dh * (0.18 + 0.3 * imp);
     if (k.wallT <= 0 && imp > 0.15) {
-      k.v *= 1 - 0.34 * imp; k.wallT = 0.35; k.bv -= 2.2 * imp;
-      if (k.me) { if (imp > 0.3) Sfx.play("dinding"); FC.kt.shake = 0.08 + 0.18 * imp; if (imp > 0.45) navigator.vibrate && navigator.vibrate(25); }
+      k.v *= 1 - 0.34 * imp / Math.pow(k.wt || 1, 0.8); k.wallT = 0.35; k.vh = k.h; k.bv -= 2.2 * imp;
+      if (k.me) { if (imp > 0.3) Sfx.play("dinding"); FC.kt.shake = 0.08 + 0.18 * imp; if (imp > 0.45) ktBuzz(25); }
     } else k.v *= 1 - 0.35 * dt;
     if (k.me && k.v > 8 && !reduce && Math.random() < 0.6) ktPart("o", k.x + T.nx[k.idx] * Math.sign(lat) * 0.9, k.y + 0.4, k.z + T.nz[k.idx] * Math.sign(lat) * 0.9, (Math.random() - 0.5) * 4, 1 + Math.random() * 3, (Math.random() - 0.5) * 4, 0.3, 0.35);
   }
@@ -413,6 +528,7 @@ function ktDrive(k, dt, s, hold) {
   k.y = ty + (k.hop > 0 ? Math.sin((k.hop / 0.18) * Math.PI) * 0.35 : 0);
   // per: badan mantul pelan, digoyang curb dan rumput
   const al = Math.abs(lat);
+  if (k.me && al > KT_HW && k.v > 8 && (FC.kt.rumT = (FC.kt.rumT || 0) - dt) <= 0) { FC.kt.rumT = al > KT_HW + 1.3 ? 0.14 : 0.09; ktBuzz(al > KT_HW + 1.3 ? 9 : 5); }
   if (al > KT_HW && k.v > 6) k.bv += (Math.random() - 0.5) * (al > KT_HW + 1.3 ? 9 : 14) * dt * Math.min(1, k.v / 20);
   k.bv += (-k.by * 110 - k.bv * 10) * dt; k.by += k.bv * dt;
   const acc = (k.v - k.vPrev) / Math.max(dt, 1e-3); k.vPrev = k.v;
@@ -426,15 +542,17 @@ function ktLap(k) {
     if (k.me) ktFinish();
     return;
   }
-  if (k.me && k.lap > 0) { Sfx.play("lap"); ktMsg(k.lap === KT_LAPS - 1 ? "FINAL LAP!" : `Lap ${k.lap + 1}`, 1.6); }
+  if (k.me && k.lap > 0) { Sfx.play("lap"); ktBuzz(k.lap === KT_LAPS - 1 ? [30, 40, 30, 40, 50] : [25, 40, 25]); ktMsg(k.lap === KT_LAPS - 1 ? "FINAL LAP!" : `Lap ${k.lap + 1}`, 1.6); }
 }
 // ---------- hantu
+// hantu per sirkuit (Meadow ring tetap di "best" biar rekaman lama kepakai)
+const ktGhostSlot = () => FC.kt.course === "meadow" ? "best" : "best_" + FC.kt.course;
 function ktGhostInit() {
   const K = FC.kt, G = ktGhostLoad(), d = today();
-  const g = FC.daily ? (G.daily && G.daily.d === d ? G.daily : null) : G.best;
+  const g = FC.daily ? (G.daily && G.daily.d === d ? G.daily : null) : G[ktGhostSlot()];
   if (KR.ghost) { KR.sc.remove(KR.ghost.g); KR.ghost = null; }
   if (!g || !g.f || g.f.length < 8) return;
-  const mm = ktKartMesh("#ffffff"), gm = new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.32, depthWrite: false });
+  const mm = ktKartMesh("#ffffff", g.k), gm = new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.32, depthWrite: false });
   mm.g.traverse(o => { if (o.isMesh) o.material = gm; });
   mm.flame.visible = false; mm.bub.visible = false; mm.g.children.filter(o => o.material === KR.shadowM).forEach(o => { o.visible = false; });
   mm.g.children.forEach(o => { if (o.isMesh && o.geometry.type === "PlaneGeometry") o.visible = false; });
@@ -453,11 +571,11 @@ function ktGhostStep() {
   gh.g.position.set(at(0), at(1), at(2)); gh.g.rotation.y = F[i * 4 + 3] + ktWrap(F[(i + 1) * 4 + 3] - F[i * 4 + 3]) * a;
 }
 function ktGhostKeep() {
-  const K = FC.kt, me = KR.karts[0], G = ktGhostLoad(), d = today(), rec = { t: +me.fin.toFixed(2), f: K.rec };
+  const K = FC.kt, me = KR.karts[0], G = ktGhostLoad(), d = today(), rec = { t: +me.fin.toFixed(2), k: K.kart, f: K.rec };
   let msg = null;
   if (K.ghostT) msg = me.fin < K.ghostT ? `Ghost beaten by ${(K.ghostT - me.fin).toFixed(1)}s!` : `Ghost was ${(me.fin - K.ghostT).toFixed(1)}s faster`;
   if (FC.daily) { if (!(G.daily && G.daily.d === d && G.daily.t <= rec.t)) G.daily = { d, ...rec }; }
-  else if (!(G.best && G.best.t <= rec.t)) G.best = rec;
+  else { const sl = ktGhostSlot(); if (!(G[sl] && G[sl].t <= rec.t)) G[sl] = rec; }
   ktGhostSave(G);
   return msg;
 }
@@ -467,7 +585,7 @@ function ktFinish() {
   K.ghostMsg = ktGhostKeep();
   const place = KR.karts.filter(k => k.fin && k.fin < me.fin).length;
   K.end = K.t; K.place = place; FC.place = place; me.drift = 0; K.slow = 0.45;
-  mgAdd(KT_PTS[place]); Sfx.play(place === 0 ? "rekor" : "kombo", 5); navigator.vibrate && navigator.vibrate([40, 40, 80]);
+  mgAdd(KT_PTS[place]); Sfx.play(place === 0 ? "rekor" : "kombo", 5); ktBuzz([40, 40, 80]);
   ktMsg(place === 0 ? "You win!" : `${KT_ORD[place]} place`, 3);
   if (K.ghostMsg) ktMsg2(K.ghostMsg);
 }
@@ -526,11 +644,11 @@ function ktSim(dt) {
   // hitung mundur 3-2-1-GO; tahan jari waktu "2" sampai GO = start roket, kecepetan = mesin mogok sebentar
   if (K.cd > 0) {
     K.cd -= dt; const n = Math.ceil(K.cd);
-    if (n < K.beep && n >= 1) { K.beep = n; Sfx.play("beep", 0); }
+    if (n < K.beep && n >= 1) { K.beep = n; Sfx.play("beep", 0); ktBuzz(12); }
     if (K.cd <= 0) {
-      Sfx.play("beep", 1); K.camH = me.h;
+      Sfx.play("beep", 1); K.camH = me.h; ktBuzz(40);
       const held = K.hold || K.keyHold;
-      if (held && K.rocket != null) { if (K.rocket <= 2) { me.boost = 1.1; ktMsg("Rocket start!", 1); Sfx.play("turbo"); } else { me.stall = 0.7; ktMsg("Too early!", 1); } }
+      if (held && K.rocket != null) { if (K.rocket <= 2) { me.boost = 1.1; ktMsg("Rocket start!", 1); Sfx.play("turbo"); ktBuzz([20, 20, 50]); ktFlash("#FFB52E", 0.6); } else { me.stall = 0.7; ktMsg("Too early!", 1); } }
       karts.forEach((k, n2) => { if (!k.me && FC.rnd() < 0.5) k.boost = 0.4 + 0.15 * n2; });
       K.t = 0;
     }
@@ -548,10 +666,11 @@ function ktSim(dt) {
     for (let a = 0; a < karts.length; a++) for (let b = a + 1; b < karts.length; b++) {
       const A = karts[a], B = karts[b], dx = B.x - A.x, dz = B.z - A.z, d2 = dx * dx + dz * dz;
       if (d2 < 4.4 && d2 > 1e-4) {
-        const d = Math.sqrt(d2), o = (2.1 - d) / 2, nx = dx / d, nz = dz / d; A.x -= nx * o; A.z -= nz * o; B.x += nx * o; B.z += nz * o;
-        // senggolan: yang lebih kencang ngedorong, dua-duanya mantul dikit
-        const dv = (A.v - B.v) * 0.15; A.v -= dv; B.v += dv; A.bv += 0.8; B.bv += 0.8;
-        if ((A.me || B.me) && !K.bumpT) { Sfx.play("dinding"); K.bumpT = 0.3; K.shake = Math.max(K.shake, 0.12); navigator.vibrate && navigator.vibrate(15); }
+        // senggolan: yang lebih kencang ngedorong, dua-duanya mantul dikit; kart berat (Boulder) lebih susah digeser
+        const ma = A.wt || 1, mb = B.wt || 1, fa = 2 * mb / (ma + mb), fb = 2 * ma / (ma + mb);
+        const d = Math.sqrt(d2), o = (2.1 - d) / 2, nx = dx / d, nz = dz / d; A.x -= nx * o * fa; A.z -= nz * o * fa; B.x += nx * o * fb; B.z += nz * o * fb;
+        const dv = (A.v - B.v) * 0.15; A.v -= dv * fa; B.v += dv * fb; A.bv += 0.8 * fa; B.bv += 0.8 * fb;
+        if ((A.me || B.me) && !K.bumpT) { Sfx.play("dinding"); K.bumpT = 0.3; K.shake = Math.max(K.shake, 0.12); ktBuzz(15); }
       }
     }
     K.bumpT = Math.max(0, (K.bumpT || 0) - dt) || 0;
@@ -560,7 +679,7 @@ function ktSim(dt) {
       if (bx.dead > 0) { bx.dead -= dt; if (bx.dead <= 0) bx.m.visible = true; continue; }
       for (const k of karts) if ((k.x - bx.x) ** 2 + (k.z - bx.z) ** 2 < 3.2) {
         bx.dead = 2.5; bx.m.visible = false;
-        if (!k.item && k.roll <= 0) { k.item = ktRoll(k); k.roll = k.me ? 0.9 : 0.5; if (k.me) Sfx.play("kotak"); }
+        if (!k.item && k.roll <= 0) { k.item = ktRoll(k); k.roll = k.me ? 0.9 : 0.5; if (k.me) { Sfx.play("kotak"); ktBuzz(15); } }
         for (let j = 0; j < 8; j++) ktPart("w", bx.x, bx.y + 1, bx.z, (Math.random() - 0.5) * 8, Math.random() * 6, (Math.random() - 0.5) * 8, 0.5, 0.5);
         break;
       }
@@ -569,13 +688,13 @@ function ktSim(dt) {
       if (c.dead) continue;
       for (const k of karts) if ((k.x - c.x) ** 2 + (k.z - c.z) ** 2 < 3.0 && Math.abs(k.y - c.y) < 2) {
         c.dead = true; c.m.visible = false; k.coins += 1;
-        if (k.me) { mgAdd(1); FC.caught += 1; Sfx.play("koin"); const D = FC.drop; if (D && !D.done && FC.caught >= D.at) { D.done = true; mgPick(D.kind); } }
+        if (k.me) { mgAdd(1); FC.caught += 1; Sfx.play("koin"); ktBuzz(6); const D = FC.drop; if (D && !D.done && FC.caught >= D.at) { D.done = true; mgPick(D.kind); } }
         break;
       }
     }
     for (const k of karts) for (const p of KR.pads) {
       const di = Math.abs(((k.idx - p.i + KT_N + KT_N / 2) % KT_N) - KT_N / 2);
-      if (di < 3 && Math.abs(ktLat(T, k.idx, k.x, k.z) - p.lat) < 2.4 && k.spin <= 0) { if (k.boost < 0.6 && k.me) Sfx.play("turbo"); k.boost = Math.max(k.boost, 0.9); }
+      if (di < 3 && Math.abs(ktLat(T, k.idx, k.x, k.z) - p.lat) < 2.4 && k.spin <= 0) { if (k.boost < 0.6 && k.me) { Sfx.play("turbo"); ktBuzz(22); ktFlash("#FFB52E", 0.45); } k.boost = Math.max(k.boost, 0.9); }
     }
     for (const k of karts) if (k.roll > 0) k.roll -= dt;
     ktProjStep(dt);
@@ -591,7 +710,7 @@ function ktSim(dt) {
 // jejak ban di roda belakang waktu drift atau muter
 function ktMarks() {
   for (const k of KR.karts) {
-    if (!((k.drift || k.spin > 0) && k.v > 6 && k.hop <= 0)) { k.mark = null; continue; }
+    if (!((k.drift || k.spin > 0 || Math.abs(ktWrap(k.h - k.vh)) > 0.1) && k.v > 6 && k.hop <= 0)) { k.mark = null; continue; }
     if (k.mark && (k.x - k.mark[0]) ** 2 + (k.z - k.mark[1]) ** 2 < 0.5) continue;
     k.mark = [k.x, k.z];
     const yaw = k.h + k.b.rotation.y, bx = Math.sin(yaw), bz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -627,6 +746,7 @@ function ktDraw(dt, W, H) {
   }
   for (const bx of KR.boxes) { bx.m.rotation.y += dt * 1.6; bx.m.rotation.x = Math.sin(K.t * 1.3) * 0.3; bx.m.position.y = bx.y + 1.1 + Math.sin(K.t * 2.5 + bx.x) * 0.15; }
   for (const c of KR.coins) c.m.rotation.y += dt * 4;
+  if (KR.cur.water) { KR.cur.water.offset.x += dt * 0.012; KR.cur.water.offset.y = Math.sin(K.t * 0.5) * 0.02; }
   // kamera: arah kamera ngikut arah kart dengan sedikit telat (kerasa pas belok), intro muter dari depan grid,
   // habis finish muter pelan di sekitar pemain
   K.camH += ktWrap(me.h - K.camH) * Math.min(1, dt * (me.drift ? 3.5 : 5));
@@ -669,7 +789,7 @@ function ktHud(dt) {
   // label nama CPU di atas kart yang dekat
   const v = new THREE.Vector3();
   for (const k of karts) {
-    if (k.me) continue;
+    if (k.me || K.cd > 3) continue;
     const d = Math.hypot(k.x - me.x, k.z - me.z); if (d > 55) continue;
     v.set(k.x, k.y + 2.6, k.z).project(cam); if (v.z > 1 || v.z < -1) continue;
     const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H, a = Math.max(0, Math.min(1, (55 - d) / 15));
@@ -686,7 +806,7 @@ function ktHud(dt) {
   // skor + koin
   ktPill(ctx, 16 * dpr, top + 88 * dpr, 92 * dpr, 26 * dpr, "rgba(20,14,30,.6)");
   txt(`★ ${FC.score}`, 62 * dpr, top + 101 * dpr, 14, "#FFE36B", "center", 0.01);
-  txt(`${FC.daily ? "Daily" : Dapur.TIERS[K.lvl]} cup${KR.ghost ? " · 👻" : ""}`, 18 * dpr, top + 128 * dpr, 11, "#FFFFFF", "left", 3);
+  txt(`${FC.daily ? "Daily" : Dapur.TIERS[K.lvl]} cup · ${KR.cur.C.name}${KR.ghost ? " · 👻" : ""}`, 18 * dpr, top + 128 * dpr, 11, "#FFFFFF", "left", 3);
   // slot item (kanan atas, di bawah tombol)
   const ix = W - 56 * dpr, iy = top + 40 * dpr, ir = 34 * dpr;
   if (!K.end) {
@@ -704,10 +824,17 @@ function ktHud(dt) {
   // speedometer kecil (kanan bawah)
   txt(`${Math.round(me.v * 3.6)}`, W - 22 * dpr, H - 46 * dpr, 30, me.boost > 0 ? "#FFB52E" : "#FFFFFF", "right", 5);
   txt("km/h", W - 22 * dpr, H - 22 * dpr, 12, "#FFFFFF", "right", 3);
-  // garis kecepatan waktu turbo
+  // kilat warna di pinggir layar (mini turbo)
+  if (K.flash > 0) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.55);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, K.flashC); ctx.globalAlpha = Math.min(1, K.flash); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+    K.flash = Math.max(0, K.flash - dt * 2.4);
+  }
+  // garis kecepatan waktu turbo (warna ikut kilat terakhir)
   if (me.boost > 0 && !reduce) {
-    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 2 * dpr;
+    ctx.strokeStyle = K.flash > 0.05 ? K.flashC : "rgba(255,255,255,.5)"; ctx.globalAlpha = K.flash > 0.05 ? 0.7 : 1; ctx.lineWidth = 2 * dpr;
     for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, r0 = Math.min(W, H) * (0.35 + Math.random() * 0.2), r1 = r0 + 60 * dpr; ctx.beginPath(); ctx.moveTo(W / 2 + Math.cos(a) * r0, H * 0.55 + Math.sin(a) * r0); ctx.lineTo(W / 2 + Math.cos(a) * r1, H * 0.55 + Math.sin(a) * r1); ctx.stroke(); }
+    ctx.globalAlpha = 1;
   }
   // jempol: tanda arah belok
   if (K.ptr != null && !K.end) {
@@ -716,6 +843,11 @@ function ktHud(dt) {
     ctx.beginPath(); ctx.arc(W / 2 + K.s * R, y, 16 * dpr, 0, 7); ctx.fillStyle = me.drift ? ["#fff", "#5FC8FF", "#FF9A2E", "#C45CFF"][ktLv(me.dT)] : "#FFF8EC"; ctx.fill(); ctx.lineWidth = 3 * dpr; ctx.strokeStyle = OUTL; ctx.stroke();
   }
   // hitung mundur, pesan, salah arah
+  // nama sirkuit + kart waktu kamera intro muter
+  if (K.cd > 3 && K.intro > 0.5) {
+    const a = Math.min(1, (K.cd - 3) / 0.3), C = KR.cur.C, KT = KT_KARTS.find(k => k.id === K.kart);
+    ctx.globalAlpha = a; txt(`${C.icon} ${C.name}`, W / 2, H * 0.22, 34, "#FFFFFF", "center", 7); txt(`${KT.icon} ${KT.name} · ${KT_LAPS} laps`, W / 2, H * 0.22 + 36 * dpr, 15, "#FFE36B", "center", 4); ctx.globalAlpha = 1;
+  }
   if (K.cd > 0) {
     const n = Math.ceil(K.cd), p = 1 + (1 - (K.cd % 1)) * 0.3;
     if (n >= 1 && n <= 3) txt(String(n), W / 2, H * 0.36, 96 * p, ["", "#5BD07A", "#FFE36B", "#FF7A85"][n], "center", 10);
@@ -748,5 +880,37 @@ function ktHud(dt) {
   }
   ctx.restore();
 }
+// ---------- garasi (v84): pilih sirkuit + kart sebelum balapan. Muncul tiap buka Kart cup dan dari tombol Garage di kartu akhir.
+// Tantangan harian: sirkuitnya ikut tanggal (sama buat semua), kartnya bebas.
+function ktGarage(daily) {
+  const P = ktPick(), best = wallet().best.kart || 0, ix = Dapur.tier("kart", best).ix;
+  if ((P.seen || 0) < ix) { P.seen = ix; ktPickSave(P); }
+  const dc = daily ? ktDailyCourse(today()) : P.c, g = MG_GAMES.kart;
+  const kt = KT_KARTS.find(k => k.id === P.k && ktKartOpen(k, best)) || KT_KARTS[0];
+  return `<div class="pp-head${daily ? " pp-gold" : ""}">${daily ? "Today's challenge" : "Garage"}</div>
+    <div class="kt-gar"><small class="kt-lbl">${daily ? "Today's track" : "Track"}</small>
+    <div class="kt-opts">${KT_COURSES.map(c => `<button class="kt-opt${c.id === dc ? " on" : ""}" data-c="${c.id}"${daily && c.id !== dc ? " disabled" : ""}><i>${c.icon}</i><b>${c.name}</b></button>`).join("")}</div>
+    <small class="kt-lbl">Kart</small>
+    <div class="kt-opts kt-k">${KT_KARTS.map(k => { const open = ktKartOpen(k, best); return `<button class="kt-opt${k.id === kt.id ? " on" : ""}${open ? "" : " lock"}" data-k="${k.id}"><i>${open ? k.icon : "🔒"}</i><b>${k.name}</b></button>`; }).join("")}</div>
+    <div class="kt-info" id="ktInfo">${ktInfo(kt, best)}</div></div>
+    ${best ? "" : `<small>${g.how}</small>`}<button class="choice yes pp-big" id="mgPlay">▶ Race</button>`;
+}
+function ktInfo(k, best) {
+  if (!ktKartOpen(k, best)) { const T = Dapur.tier("kart", best); return `<b>${k.icon} ${k.name}</b><em>${k.desc}</em><span class="kt-need">🔒 Reach ${Dapur.TIERS[k.tier]} in Kart cup to unlock${T.ix + 1 === k.tier ? ` (${T.need} more points)` : ""}</span>`; }
+  return `<b>${k.icon} ${k.name}</b><em>${k.desc}</em><span class="kt-st">${KT_STAT.map((n, i) => `<span>${n}<u>${"<i></i>".repeat(k.st[i])}${"<i class=o></i>".repeat(5 - k.st[i])}</u></span>`).join("")}</span>`;
+}
+function ktGarageWire() {
+  const card = $("mgCard"), best = wallet().best.kart || 0;
+  card.querySelectorAll("[data-c]").forEach(b => { b.onclick = () => { if (b.disabled) return; const P = ktPick(); P.c = b.dataset.c; ktPickSave(P); card.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b)); Sfx.play("ui"); }; });
+  card.querySelectorAll("[data-k]").forEach(b => { b.onclick = () => {
+    const k = KT_KARTS.find(x => x.id === b.dataset.k); $("ktInfo").innerHTML = ktInfo(k, best);
+    if (!ktKartOpen(k, best)) { b.classList.remove("nope"); void b.offsetWidth; b.classList.add("nope"); return; }
+    const P = ktPick(); P.k = k.id; ktPickSave(P); card.querySelectorAll("[data-k]").forEach(x => x.classList.toggle("on", x === b));
+  }; });
+  $("mgPlay").onclick = mgRun;
+}
+// kart yang baru kebuka dan belum dilihat di garasi (buat chip "New kart" + tombol Garage nyala di kartu akhir)
+function ktNewKart(W) { const P = ktPick(), best = W.best.kart || 0; return KT_KARTS.filter(k => k.tier > (P.seen || 0) && ktKartOpen(k, best)).pop() || null; }
+function ktGarageShow() { mgCard(ktGarage(FC.daily)); ktGarageWire(); }
 // dunia kanvas belakang: kosong, adegan 3D yang jadi dunianya
 Object.assign(WORLDS, { kart: () => {} });
