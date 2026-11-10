@@ -356,6 +356,7 @@ function townChips() {
 }
 
 function resize() {
+  if (PB_MODE) pbOrient();
   const w = app.clientWidth, h = app.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h); if (KONSER) KONSER.resize(w, h); if (LIAR) LIAR.resize(w, h);
   // face the creature straight on; fit about 5 units of width at the creature
@@ -363,6 +364,7 @@ function resize() {
   const half = 2.75, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
   camera.position.set(CAM_LOOK.x, CAM_LOOK.y + dist * 0.12, CAM_LOOK.z + dist);
   camera.lookAt(CAM_LOOK); camera.updateProjectionMatrix();
+  if (PB_MODE) pbCamera(w, h);   // Tata Rumah: mode dekor melintang (ui/27b-tata-rumah.js)
 }
 addEventListener("resize", resize); resize();
 
@@ -425,7 +427,7 @@ function frame(t) {
   renderer.shadowMap.autoUpdate = false;
   if (!calm || t - homeShT > 120) { renderer.shadowMap.needsUpdate = true; homeShT = t; }
   const napping = t < napUntil, gone = cur && (cur.fase === "meninggal" || cur.fase === "merantau");
-  K.root.visible = !gone;
+  K.root.visible = !gone && !PB_MODE;
   const lights = napping ? 0.3 : 1; hemi.intensity += (LIT.hemi * lights - hemi.intensity) * 0.1; sun.intensity += (LIT.sunI * lights - sun.intensity) * 0.1;
   if (Math.floor(ts / 30) !== Math.floor((ts - hdt) / 30)) applyLight();
   const lampOn = napping ? Math.max(LIT.lamp, 0.4) : LIT.lamp;
@@ -495,7 +497,7 @@ function frame(t) {
   const dirty = cur ? Math.max(0, (60 - cur.needs.kebersihan) / 60) : 0;
   K.dirtMat.opacity = dirty; K.dirt.forEach(d => d.visible = dirty > 0.02);
   K.root.getWorldPosition(head); head.y += 3.0 * K.root.scale.y;
-  flies.forEach((f, i) => { f.visible = !gone && !!cur && cur.needs.kebersihan < 35; const a = ts * (2.5 + i * 0.7) + i * 2; f.position.set(Math.cos(a) * (1.4 + i * 0.15), head.y + Math.sin(a * 1.7) * 0.3, Math.sin(a) * 1.1 + 0.4); });
+  flies.forEach((f, i) => { f.visible = !gone && !PB_MODE && !!cur && cur.needs.kebersihan < 35; const a = ts * (2.5 + i * 0.7) + i * 2; f.position.set(Math.cos(a) * (1.4 + i * 0.15), head.y + Math.sin(a * 1.7) * 0.3, Math.sin(a) * 1.1 + 0.4); });
   const top = screenOf(new THREE.Vector3(0, head.y + 0.4, 0));
   if (bubble) { bubble.style.left = top.x + "px"; bubble.style.top = top.y + "px"; if (t > bubbleUntil) { bubble.remove(); bubble = null; } }
   // engine dilemma waiting? show the "!" above the head
