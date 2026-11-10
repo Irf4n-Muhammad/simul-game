@@ -1,14 +1,14 @@
 // ================================================================ input
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let down = null;
-// v73: di luar (globe atau kota) semua sentuhan ke tampilan yang lagi aktif; dua jari = cubit zoom
-const outView = () => (LIAR && LIAR.on) ? LIAR : (KONSER && KONSER.on) ? KONSER : (GLOBE && GLOBE.on) ? GLOBE : (CONT && CONT.on) ? CONT : (TOWN && TOWN.on) ? TOWN : null;
+// v73: di luar (globe atau kota) semua sentuhan ke tampilan yang lagi aktif; dua jari = cubit zoom. Tata Rumah: mode bangun juga (ui/27b-tata-rumah.js)
+const outView = () => (BUILD.on) ? BUILD : (LIAR && LIAR.on) ? LIAR : (KONSER && KONSER.on) ? KONSER : (GLOBE && GLOBE.on) ? GLOBE : (CONT && CONT.on) ? CONT : (TOWN && TOWN.on) ? TOWN : null;
 canvas.addEventListener("pointerdown", e => { const ov = outView(); if (ov) { canvas.setPointerCapture(e.pointerId); return ov.down(e); } down = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
 canvas.addEventListener("pointermove", e => {
   const ov = outView(); if (ov) return ov.move(e);
   const r = canvas.getBoundingClientRect();
   lookX = ((e.clientX - r.left) / r.width - 0.5) * 2; lookY = ((e.clientY - r.top) / r.height - 0.5) * 2;
-  if (down && roomIx === 1 && canCare() && hitCreature(e)) {
+  if (down && ROOMS[roomIx] && ROOMS[roomIx].act === "mandi" && canCare() && hitCreature(e)) {
     rubbing += Math.abs(e.movementX) + Math.abs(e.movementY);
     if (rubbing > 400) { rubbing = 0; const ci = careItemFor("mandi"); if (ci) { if (!ci.done && ci.open) careAct(ci, null); } else if (cur.needs.kebersihan < 95 && game.act(selected, "mandi")) { save(); refresh(); burst(["○"], 6, "#8DA9BD", 22); say("Bubbles!"); } }
   }

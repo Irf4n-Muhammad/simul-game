@@ -3,7 +3,7 @@ let roomIx = 0;
 function setRoom(i, instant) {
   roomIx = (i + ROOMS.length) % ROOMS.length;
   const go = () => {
-    ROOMS.forEach((r, k) => r.g.visible = k === roomIx);
+    dnShow(); resize();   // denah (ui/03c-denah.js): ruangan ini ke titik nol, kamera ikut lebarnya
     const r = ROOMS[roomIx];
     paintBg();
     $("roomName").textContent = r.name;
@@ -17,7 +17,7 @@ function setRoom(i, instant) {
 }
 function canCare() { return cur && cur.fase !== "meninggal" && cur.fase !== "merantau" && !game.pending; }
 // ---- care, twice a day: morning (breakfast, bath) and evening (dinner, bedtime). Missed morning care can still be done late that day.
-const CARE_ROOM = { makan_p: 0, mandi: 1, makan_m: 0, tidur: 2 };
+// ruangan tiap rawat ikut denah: careRoomOf(item) di ui/03c-denah.js
 // slot brand buat pilihan makan (iklan sebagai barang, tingkat 2): brand cuma ganti nama dan dapet tag Partner. Efek makanannya tetap dari game.js
 const FOOD_WORD = { power: "eggs on toast", comfort: "pancakes", fruit: "fruit and yogurt", light: "soup", family: "family dinner", treat: "pizza" };
 for (const [k, lbl] of Object.entries({ power: "Eggs on toast", comfort: "Pancakes", fruit: "Fruit and yogurt", light: "Light soup", family: "Family dinner", treat: "Pizza night" })) Brands.reg("food:" + k, lbl, "food", k);
@@ -53,7 +53,7 @@ function careUi() {
   if (fresh) strip.querySelectorAll("[data-care]").forEach(b => b.onclick = () => {
     const i = careView().items.find(x => x.id === b.dataset.care);
     if (!i.open && !i.done) return say(`${i.label} is after noon.`);
-    if (roomIx !== CARE_ROOM[i.id]) setRoom(CARE_ROOM[i.id]);
+    if (roomIx !== careRoomOf(i.id)) setRoom(careRoomOf(i.id));
     if (!i.done) setTimeout(() => careDo(i), 220);
   });
   if (typeof careRings === "function") careRings();
@@ -190,12 +190,12 @@ function playCare(act, item, opt) {
     napUntil = now() + 4000; say({ story: "One more page...", cuddle: "Love you...", early: "Nigh-night..." }[opt] || "Nigh-night...", 1500);
     setTimeout(() => { say("I feel great!"); play("jump", 700); }, 4100);
   } else {
-    const ball = ROOMS[3].g.userData.ball, t0 = now();
+    const RB0 = ROOMS[roomIx].g.userData.ball ? ROOMS[roomIx] : ROOMS.find(r => r.g.userData.ball), ball = RB0.g.userData.ball, t0 = now();
     (function toss() {
       const p = Math.min(1, (now() - t0) / 900);
-      const h0 = ROOMS[3].g.userData.ballHome; ball.position.set(h0.x * (1 - p), h0.y + Math.sin(p * Math.PI) * 3.6, h0.z + (1.4 - h0.z) * p);
+      const h0 = RB0.g.userData.ballHome; ball.position.set(h0.x * (1 - p), h0.y + Math.sin(p * Math.PI) * 3.6, h0.z + (1.4 - h0.z) * p);
       if (p < 1) requestAnimationFrame(toss);
-      else { play("jump", 800); setTimeout(() => ball.position.copy(ROOMS[3].g.userData.ballHome), 500); say("Again! Again!"); burst(["★"], 5, "#D4A853"); }
+      else { play("jump", 800); setTimeout(() => ball.position.copy(RB0.g.userData.ballHome), 500); say("Again! Again!"); burst(["★"], 5, "#D4A853"); }
     })();
   }
 }

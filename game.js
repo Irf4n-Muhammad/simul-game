@@ -9,6 +9,7 @@
   const W = (typeof module !== "undefined") ? require("./wants.js") : globalThis.Wants;  // keinginan: dicek sesudah tiap tindakan pemain
   const O = (typeof module !== "undefined") ? require("./obrolan.js") : globalThis.Obrolan;  // v48: pertanyaan harian makhluk (Ngobrol)
   const P = (typeof module !== "undefined") ? require("./perabot.js") : globalThis.Perabot;  // Tata Rumah: perabot dan suasana ruangan
+  const DN = (typeof module !== "undefined") ? require("./denah.js") : globalThis.Denah;  // Tata Rumah tahap 2: denah bebas
   const NEED_MAP = { makan: "lapar", mandi: "kebersihan", tidur: "energi" };
 
   // ---------------------------------------------------------------- rawat pagi dan malam
@@ -373,6 +374,10 @@
       if (E.HOOKS.act) {  // dadu, lamaran kerja, belanja (status.js)
         const r = E.HOOKS.act(this.home, cid, kind, day);
         if (r !== undefined) return r;
+      }
+      if (kind.startsWith("denah:") && DN) {
+        const c = this.home.get(cid);
+        return !!c && c.alive(day) && !("keluar" in c.info) && DN.act(this.home, c, kind, day);
       }
       if (kind.startsWith("perabot:") && P) {
         const c = this.home.get(cid);

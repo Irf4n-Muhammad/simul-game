@@ -361,7 +361,7 @@ function resize() {
   renderer.setSize(w, h, false); camera.aspect = w / h; if (TOWN) TOWN.resize(w, h); if (GLOBE) GLOBE.resize(w, h); if (CONT) CONT.resize(w, h); if (KONSER) KONSER.resize(w, h); if (LIAR) LIAR.resize(w, h);
   // face the creature straight on; fit about 5 units of width at the creature
   camera.fov = 44;
-  const half = 2.75, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
+  const half = ROOM_HALF, dist = half / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(0.75, camera.aspect));
   camera.position.set(CAM_LOOK.x, CAM_LOOK.y + dist * 0.12, CAM_LOOK.z + dist);
   camera.lookAt(CAM_LOOK); camera.updateProjectionMatrix();
   if (PB_MODE) pbCamera(w, h);   // Tata Rumah: mode dekor melintang (ui/27b-tata-rumah.js)

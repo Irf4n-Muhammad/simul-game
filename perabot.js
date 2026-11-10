@@ -75,6 +75,16 @@
   for (const [r, id, name] of [["makan", "art_kitchen", "Tomato print"], ["tidur", "art_bedroom", "Hills print"], ["peluk", "art_playroom", "House drawing"]]) it(id, name, "hias", "dinding", null, 0, { def: true, home: r });
   for (const [r, id, name] of [["makan", "rug_kitchen", "Linen rug"], ["mandi", "rug_bathroom", "Bath mat"], ["tidur", "rug_bedroom", "Rust rug"], ["peluk", "rug_playroom", "Sun rug"]]) it(id, name, "hias", "lantai", null, 0, { def: true, home: r });
   for (const [r, id, name] of [["makan", "plant_kitchen", "Leafy plant"], ["mandi", "plant_bathroom", "Bathroom plant"], ["tidur", "plush_bedroom", "Plush bear"], ["peluk", "beanbag_playroom", "Beanbag"]]) it(id, name, "hias", "sudut", null, 0, { def: true, home: r });
+  // ---- bawaan tahap 2 (denah.js): dulu ditempel langsung di ruangan, sekarang barang yang bisa digeser. Tanpa slot.
+  it("kitchen_counter", "Kitchen counter", "fungsi", null, "makan", 0, { def: true, note: "Cupboards, a cutting board and the soup pot." });
+  it("fridge", "Retro fridge", "fungsi", null, "makan", 0, { def: true, note: "Hums a little at night." });
+  it("nightstand", "Nightstand lamp", "hias", null, null, 0, { def: true, note: "A small table with a warm lamp." });
+  it("rubber_duck", "Rubber duck", "hias", null, null, 0, { def: true, note: "Squeaks." });
+  it("shelf_jars", "Kitchen shelf", "hias", null, null, 0, { def: true, note: "Jars and a pot up high." });
+  it("shelf_bath", "Bathroom shelf", "hias", null, null, 0, { def: true, note: "Jars and a little plant." });
+  it("shelf_books", "Book shelf", "hias", null, null, 0, { def: true, note: "Books and a plant up high." });
+  it("towel_rail", "Towel rail", "hias", null, null, 0, { def: true, note: "One fluffy towel." });
+  it("garland", "Flag garland", "hias", null, null, 0, { def: true, note: "Little paper flags." });
   it("art_sun", "Sunrise print", "hias", "dinding", null, 60, { hias: 1, tags: ["seni"], note: "A warm orange sun." });
   it("art_mountain", "Mountain canvas", "hias", "dinding", null, 110, { hias: 2, tags: ["seni", "alam"], note: "Blue peaks and a tiny lake." });
   it("art_abstract", "Bold abstract", "hias", "dinding", null, 160, { hias: 2, tags: ["seni"], note: "Big shapes, loud colours." });
@@ -117,7 +127,10 @@
     return out;
   }
   const storage = home => Object.assign({}, (peek(home) || fresh()).gudang);
-  const touched = home => { const P = peek(home); return !!P && (P.beli > 0 || Object.keys(P.pasang).length > 0); };
+  const touched = home => { const P = peek(home); return !!(home && home.world && home.world.denah) || (!!P && (P.beli > 0 || Object.keys(P.pasang).length > 0)); };
+  // tahap 2: rumah yang sudah punya denah (denah.js) nggak pakai slot lagi
+  const hasPlan = home => !!(home && home.world && home.world.denah);
+  const Denah = () => (typeof module !== "undefined") ? require("./denah.js") : globalThis.Denah;
   const canBuy = (c, day) => !!(c && c.st && typeof c.age === "function" && c.age(day) >= 180);
 
   // ---------------------------------------------------------------- aksi (dari Game._act0)
@@ -137,6 +150,7 @@
       Money.move(c, Math.floor(x.price / 2), "perabot", day);
       return true;
     }
+    if ((verb === "pasang" || verb === "simpan") && hasPlan(home)) return false;
     if (verb === "pasang") {
       const r = a, s = b, x = item(id);
       if (!ROOMS[r] || !SLOTS[s] || !fits(x, r, s)) return false;
@@ -201,6 +215,7 @@
   function onCare(home, c, x, care, day) {
     const r = ROOM_OF[care];
     if (!r || !touched(home)) return null;
+    if (hasPlan(home)) return Denah().onCare(home, c, x, care, day);
     const when = care === "makan_p" ? "pagi" : care === "makan_m" ? "malam" : null;
     const D = c.info.perabot || (c.info.perabot = { d: null, r: [], lihat: [] });
     if (D.d !== day) { D.d = day; D.r = []; }
