@@ -8,6 +8,7 @@
   const CFG = (typeof module !== "undefined") ? require("./econ-config.js") : globalThis.EconConfig;
   const W = (typeof module !== "undefined") ? require("./wants.js") : globalThis.Wants;  // keinginan: dicek sesudah tiap tindakan pemain
   const O = (typeof module !== "undefined") ? require("./obrolan.js") : globalThis.Obrolan;  // v48: pertanyaan harian makhluk (Ngobrol)
+  const P = (typeof module !== "undefined") ? require("./perabot.js") : globalThis.Perabot;  // Tata Rumah: perabot dan suasana ruangan
   const NEED_MAP = { makan: "lapar", mandi: "kebersihan", tidur: "energi" };
 
   // ---------------------------------------------------------------- rawat pagi dan malam
@@ -304,7 +305,7 @@
       const c = this.home.get(cid);
       if (!c || !c.alive(day) || !GROWN.has(E.phase_of(Math.max(0, day - c.born)))) return null;
       const kindOf = kind.startsWith("rencana:") && kind.length > 8 ? "plan" : kind.startsWith("apply:") || kind.startsWith("lamar:") ? "job"
-        : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
+        : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || kind.startsWith("perabot:beli:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
         : kind.startsWith("biz:suggest:") ? "open" : /^biz:(price|focus|hire|fire|close|wait|post|pick|raise|train|borrow|repay|invest|supplier|promo|product|grow|contract|bake|plan|open|dayold|card|rnd|niche|seat|music|mode|extra)\b/.test(kind) ? "biz" : /^kerja:(shift|ot|style|rest|card)\b/.test(kind) ? "work" : /^pet:(adopt|food|walk|vet|card)\b/.test(kind) ? "pet" : null;
       if (!kindOf) return null;
       const N0 = c.info.nolak && c.info.nolak.d === day ? c.info.nolak : null;
@@ -373,6 +374,10 @@
         const r = E.HOOKS.act(this.home, cid, kind, day);
         if (r !== undefined) return r;
       }
+      if (kind.startsWith("perabot:") && P) {
+        const c = this.home.get(cid);
+        return !!c && c.alive(day) && !("keluar" in c.info) && P.act(this.home, c, kind, day);
+      }
       if (kind.startsWith("net:")) {
         // kejadian dunia berlaku buat satu rumah, bukan satu makhluk: dicatat walau makhluk yang dipakai sudah tidak ada
         const ref = kind.slice(4), P = (this.state.net || {})[ref];
@@ -399,6 +404,9 @@
         else if (opt === "cuddle") { c.bond = Math.min(100, c.bond + 0.6 * (1 - c.bond / 100)); x.need("mood", 5); }
         else if (opt === "story" && c.st) { const k = grown ? "charm" : "logic"; c.st.skills[k] = Math.min(100, c.st.skills[k] + 0.3); }
         this.careNote = MENU[item] ? (opt === "basic" ? null : this._taste(c, x, opt)) : item === "mandi" ? this._bath(c, x, day) : null;
+        // Tata Rumah: perabot di ruangan rawat (rumah yang belum pernah disentuh: nggak ada efek sama sekali)
+        const pn = P ? P.onCare(this.home, c, x, item, day) : null;
+        if (pn) this.careNote = this.careNote ? this.careNote + " " + pn : pn;
         return true;
       }
       if (NEED_MAP[kind]) {
@@ -502,6 +510,7 @@
       if (kind === "peluk") {
         c.bond = Math.min(100, c.bond + 0.5 * (1 - c.bond / 100));
         c.needs.mood = Math.min(100, c.needs.mood + 5);
+        if (P && P.touched(this.home)) this.careNote = P.onCare(this.home, c, new E.Ctx(c, day, E.seed_rng("rawat"), this.home, true), "peluk", day);
         return true;
       }
       return false;

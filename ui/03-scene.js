@@ -135,12 +135,21 @@ function shell(g, wall, floor, edge, trim) {
   mesh(RB(0.06, 0.22, DEPTH, 0.02), M(trim), R0 + 0.03, 0.11, DEPTH_C, g);
 }
 // walls and floor picked in the closet, in every room; without a pick each room goes back to its own paper
+// Tata Rumah: cat pilihan per ruangan (ui/03b-perabot.js, roomPaint) menang atas closet
 function applyHome() {
   const C = globalThis.Cosmetics, H = C && state ? C.homeLook(state) : {}, w = H.dinding && C.item(H.dinding), f = H.lantai && C.item(H.lantai);
   for (const r of ROOMS) {
     const S = r.g.userData.shell; if (!S) continue;
-    for (const mm of S.walls) { if (w) mm.color.setHex(w.look.color).convertSRGBToLinear(); else mm.color.setHex(mm.userData.color0); }
-    const fm = S.floor; fm.map = f ? null : fm.userData.map0; if (f) fm.color.setHex(f.look.color).convertSRGBToLinear(); else fm.color.setHex(fm.userData.color0); fm.needsUpdate = true;
+    const P = typeof roomPaint === "function" ? roomPaint(r.act) : { w: null, f: null };
+    for (const mm of S.walls) {
+      if (P.w) { mm.map = pbPaintTex("w", r.act, P.w, mm); mm.color.setHex(mm.userData.color0); }
+      else { mm.map = mm.userData.map0; if (w) mm.color.setHex(w.look.color).convertSRGBToLinear(); else mm.color.setHex(mm.userData.color0); }
+      mm.needsUpdate = true;
+    }
+    const fm = S.floor;
+    if (P.f) { fm.map = pbPaintTex("f", r.act, P.f, fm); fm.color.setHex(fm.userData.color0); }
+    else { fm.map = f ? null : fm.userData.map0; if (f) fm.color.setHex(f.look.color).convertSRGBToLinear(); else fm.color.setHex(fm.userData.color0); }
+    fm.needsUpdate = true;
   }
 }
 const SKY = {
@@ -245,50 +254,23 @@ room("Kitchen", "Feed", "makan", ["#EFE4D2", "#D9C9B0"], g => {
   for (const dx of [-0.88, 0, 0.88]) { mesh(RB(0.8, 1.0, 0.04, 0.02), M(0x9bb093), dx, 0.58, 0.51, c); mesh(RB(0.22, 0.03, 0.03, 0.01), M(brass, { metalness: 0.7, roughness: 0.35 }), dx, 0.98, 0.55, c); }
   mesh(CYL(0.32, 0.28, 0.32, 28), M(0xc8674f, { roughness: 0.5 }), 0.7, 1.46, 0.05, c); mesh(CYL(0.34, 0.34, 0.04, 28), M(0xb25a44), 0.7, 1.64, 0.05, c);
   mesh(RB(0.55, 0.04, 0.38, 0.02), M(0xd8b48c), -0.6, 1.32, 0.1, c);
-  // open shelf with jars
-  mesh(RB(2.3, 0.06, 0.32, 0.02), M(0xc9a27a), -1.9, 2.45, R0 + 0.17, g);
-  [[0xe9dfcf, 0.3], [0xc8674f, 0.24], [0x9dae95, 0.34], [cream, 0.26]].forEach(([col, hh], i) => mesh(CYL(0.12, 0.12, hh, 18), M(col, { roughness: 0.4 }), -2.8 + i * 0.5, 2.48 + hh / 2, R0 + 0.17, g));
   // retro fridge on the left wall
   mesh(RB(1.0, 2.4, 0.95, 0.18), M(0xefe6d6, { roughness: 0.45 }), R0 + 0.55, 1.2, 0.35, g);
   mesh(RB(0.06, 0.5, 0.06, 0.02), M(brass, { metalness: 0.7, roughness: 0.35 }), R0 + 1.07, 1.75, 0.0, g);
-  // small table with fruit
-  const t = new THREE.Group(); t.position.set(1.7, 0, -1.9); g.add(t);
-  mesh(CYL(0.6, 0.6, 0.06, 36), M(0xc9a27a, { roughness: 0.6 }), 0, 1.05, 0, t); mesh(CYL(0.05, 0.07, 1.0, 12), M(ink), 0, 0.52, 0, t); mesh(CYL(0.3, 0.32, 0.04, 24), M(ink), 0, 0.02, 0, t);
-  mesh(CYL(0.28, 0.18, 0.14, 24), M(cream), 0, 1.15, 0, t);
-  [[0xd9893f, -0.08, 0], [0xc0504d, 0.1, 0.06], [0xa3b36a, 0, -0.1]].forEach(([col, x, z]) => mesh(SPH(0.11, 16, 12), M(col, { roughness: 0.5 }), x, 1.27, z, t));
-  plant(g, 2.2, R0 + 0.5, 1.1);
   // pendant lamp
   mesh(CYL(0.012, 0.012, 1.4, 6), M(ink), 0.2, 4.1, -0.6, g);
   mesh(new THREE.ConeGeometry(0.38, 0.32, 32, 1, true), M(ink, { side: THREE.DoubleSide, metalness: 0.3, roughness: 0.5 }), 0.2, 3.3, -0.6, g);
   mesh(SPH(0.1, 12, 10), glowM(), 0.2, 3.18, -0.6, g); lampLight(g, 0.2, 3.0, -0.6, 1.2);
-  wallArt(g, R0 + 0.04, -1.6, 2.9, 0.7, 0.9, true, (c) => { c.fillStyle = "#C8674F"; c.beginPath(); c.arc(64, 72, 30, 0, 7); c.fill(); c.fillStyle = "#7D9470"; c.fillRect(60, 22, 8, 22); });
-  const rug = mesh(RB(1.8, 0.02, 1.2, 0.01), M(0xd8c3a5, { roughness: 1 }), 0.1, 0.01, 0.8, g); rug.castShadow = false;
   highShelf(g, 1.5, 4.3, [[0xe9dfcf, "jar"], [0x9dae95, "jar"], [0xc8674f, "pot"]]);
   wallArt(g, -2.2, R0 + 0.04, 4.6, 0.8, 1.0, false, (c) => { c.fillStyle = "#9DAE95"; c.fillRect(20, 20, 88, 88); c.fillStyle = "#EEE4D4"; c.beginPath(); c.arc(64, 64, 26, 0, 7); c.fill(); });
 });
 room("Bathroom", "Wash", "mandi", ["#E3E8EA", "#C5CFD3"], g => {
   shell(g, wallTex(0xf0ebe3, 0x9fb2bc, "tile"), floorTex("terrazzo", 0xe6e0d6, 0x9a8f84), 0x8f8a84, cream);
-  // clawfoot tub along the left wall
-  const tb = new THREE.Group(); tb.position.set(-2.2, 0, R0 + 0.75); tb.rotation.y = Math.PI / 2; g.add(tb);
-  mesh(RB(1.2, 0.85, 2.3, 0.4), M(0xf7f3ec, { roughness: 0.35 }), 0, 0.68, 0, tb);
-  mesh(RB(1.0, 0.06, 2.05, 0.03), M(0xa9c4cf, { roughness: 0.1, transparent: true, opacity: 0.85 }), 0, 1.0, 0, tb);
-  for (const [x, z] of [[-0.42, 0.9], [0.42, 0.9], [-0.42, -0.9], [0.42, -0.9]]) mesh(SPH(0.09, 12, 10), M(brass, { metalness: 0.8, roughness: 0.3 }), x, 0.12, z, tb);
-  for (let i = 0; i < 7; i++) mesh(SPH(0.14 + (i % 3) * 0.05, 16, 12), M(0xffffff, { roughness: 0.3 }), -0.2 + (i % 3) * 0.2, 1.08, -0.6 + i * 0.2, tb);
-  mesh(CYL(0.03, 0.03, 0.7, 10), M(brass, { metalness: 0.8, roughness: 0.3 }), 0, 1.35, -1.08, tb);
-  // pedestal sink with round mirror on the back wall
-  const sk = new THREE.Group(); sk.position.set(1.6, 0, R0 + 0.4); g.add(sk);
-  mesh(CYL(0.14, 0.2, 1.2, 20), M(0xf7f3ec, { roughness: 0.35 }), 0, 0.6, 0, sk); mesh(RB(0.9, 0.22, 0.6, 0.1), M(0xf7f3ec, { roughness: 0.35 }), 0, 1.25, 0.05, sk);
-  mesh(CYL(0.025, 0.025, 0.25, 10), M(brass, { metalness: 0.8, roughness: 0.3 }), 0, 1.45, -0.18, sk);
-  const mir = new THREE.Group(); mir.position.set(1.6, 2.5, R0 + 0.04); g.add(mir);
-  mesh(new THREE.TorusGeometry(0.5, 0.04, 12, 48), M(brass, { metalness: 0.8, roughness: 0.3 }), 0, 0, 0, mir);
-  mesh(new THREE.CircleGeometry(0.48, 40), M(0xdfe7ea, { roughness: 0.05, metalness: 0.9 }), 0, 0, 0.0, mir);
   // towel and plant
   mesh(CYL(0.02, 0.02, 0.9, 8), M(brass, { metalness: 0.8, roughness: 0.3 }), -0.3, 2.2, R0 + 0.1, g).rotation.z = Math.PI / 2;
   mesh(RB(0.65, 0.95, 0.06, 0.03), M(0xd6b8a3, { roughness: 1 }), -0.3, 1.75, R0 + 0.14, g);
-  plant(g, 2.35, -1.6, 0.95, 0xe6e0d6, 0x6f8a68);
   // candle
   mesh(CYL(0.08, 0.08, 0.2, 16), M(cream), -1.2, 1.45, R0 + 0.75, g); mesh(SPH(0.035, 8, 6), F(0xffd08a), -1.2, 1.6, R0 + 0.75, g); lampLight(g, -1.2, 1.9, R0 + 1.0, 0.6);
-  const mat = mesh(RB(1.1, 0.02, 0.7, 0.01), M(0xb7c5c0, { roughness: 1 }), -0.2, 0.01, 0.9, g); mat.castShadow = false;
   // duck
   const dk = new THREE.Group(); dk.position.set(1.7, 0, 1.6); dk.rotation.y = -0.6; g.add(dk);
   mesh(SPH(0.22, 20, 14), M(0xe8c35a, { roughness: 0.4 }), 0, 0.17, 0, dk).scale.set(1.1, 0.75, 1.3);
@@ -299,60 +281,23 @@ room("Bathroom", "Wash", "mandi", ["#E3E8EA", "#C5CFD3"], g => {
 room("Bedroom", "Sleep", "tidur", ["#DCD6DE", "#B9B0BF"], g => {
   shell(g, wallTex(0x8e97a8, 0x6d7790, "plain"), floorTex("planks", 0xb48a64, 0x9c7552), 0x7a5a41, 0xe9e2d6);
   win(g, -1.7, R0 + 0.06, 2.9, 1.3, 1.3, false, 0xcbb8a0);
-  // bed against the back wall
-  const b = new THREE.Group(); b.position.set(1.55, 0, R0 + 1.25); g.add(b);
-  mesh(RB(2.2, 0.45, 2.4, 0.06), M(wood), 0, 0.3, 0, b);
-  mesh(RB(2.1, 0.35, 2.3, 0.15), M(0xf2ede4), 0, 0.68, 0, b);
-  mesh(RB(2.22, 0.22, 1.5, 0.12), M(0xe2d5c0, { roughness: 1 }), 0, 0.88, 0.42, b);
-  mesh(RB(2.24, 0.06, 0.55, 0.03), M(0xb86f52, { roughness: 1 }), 0, 1.0, 0.9, b);
-  for (const sx of [-0.5, 0.5]) mesh(RB(0.85, 0.24, 0.45, 0.12), M(0xf7f2ea), sx, 0.98, -0.85, b);
-  mesh(RB(2.35, 1.5, 0.12, 0.06), M(wood), 0, 0.95, -1.18, b);
   // nightstand + lamp
   const n = new THREE.Group(); n.position.set(-0.15, 0, R0 + 0.45); g.add(n);
   mesh(RB(0.7, 0.75, 0.6, 0.04), M(wood), 0, 0.375, 0, n); mesh(RB(0.55, 0.02, 0.02, 0.01), M(shade(wood, 0.7)), 0, 0.5, 0.31, n);
   mesh(CYL(0.1, 0.14, 0.35, 16), M(0xc8674f, { roughness: 0.5 }), 0, 0.93, 0, n);
   const shadeMesh = mesh(CYL(0.16, 0.26, 0.3, 24, 1), M(0xf3e6cf, { emissive: 0xffc98a, emissiveIntensity: 0.35, side: THREE.DoubleSide, roughness: 1 }), 0, 1.25, 0, n);
   g.userData.shade = shadeMesh; lampLight(g, -0.15, 1.5, R0 + 0.6, 1.5);
-  // bookshelf on the left wall
-  const sh = new THREE.Group(); sh.position.set(R0 + 0.3, 0, -1.4); sh.rotation.y = Math.PI / 2; g.add(sh);
-  for (const sx of [-1, 1]) mesh(RB(0.06, 1.9, 0.45, 0.02), M(wood), sx * 0.6, 0.95, 0, sh);
-  for (const y of [0.03, 0.65, 1.25, 1.87]) mesh(RB(1.26, 0.06, 0.45, 0.02), M(wood), 0, y, 0, sh);
-  const bk = [0xb86f52, 0x8fa287, 0xd9b36c, 0x6d7790, 0xe2d5c0, 0x9c7f9a];
-  for (let row = 0; row < 2; row++) for (let i = 0; i < 7; i++) { const hh = 0.38 + ((i * 3 + row) % 4) * 0.05; mesh(RB(0.12, hh, 0.34, 0.01), M(bk[(i + row * 2) % 6]), -0.48 + i * 0.15, 0.06 + row * 0.62 + hh / 2, 0, sh); }
-  mesh(SPH(0.14, 16, 12), M(0x9dae95), 0.2, 1.42, 0, sh);
-  // rug and plush
-  const rug = mesh(CYL(1.25, 1.25, 0.02, 48), M(0xb86f52, { roughness: 1 }), 0.1, 0.01, 0.6, g); rug.scale.z = 0.75; rug.castShadow = false;
-  const pl = new THREE.Group(); pl.position.set(1.9, 0, 1.4); pl.rotation.y = -0.7; g.add(pl);
-  mesh(SPH(0.26, 20, 14), M(0xc9a27a, { roughness: 1 }), 0, 0.26, 0, pl).scale.set(1, 0.95, 0.85); mesh(SPH(0.2, 20, 14), M(0xc9a27a, { roughness: 1 }), 0, 0.62, 0, pl);
-  for (const sx of [-1, 1]) { mesh(SPH(0.08, 12, 8), M(0xc9a27a, { roughness: 1 }), sx * 0.13, 0.79, 0, pl); mesh(SPH(0.022, 8, 6), M(ink), sx * 0.07, 0.65, 0.18, pl); }
   highShelf(g, 1.5, 4.4, [[0xd9b36c, "books"], [0x9dae95, "plant"], [cream, "jar"]]);
-  wallArt(g, 1.55, R0 + 0.04, 2.75, 1.1, 0.75, false, (c) => { c.fillStyle = "#6D7790"; c.fillRect(0, 70, 128, 58); c.fillStyle = "#D9B36C"; c.beginPath(); c.arc(84, 50, 16, 0, 7); c.fill(); c.fillStyle = "#8FA287"; c.beginPath(); c.moveTo(0, 90); c.lineTo(40, 55); c.lineTo(80, 90); c.fill(); });
 });
 room("Playroom", "Play", "peluk", ["#EDE5D8", "#D6C8B4"], g => {
   shell(g, wallTex(0xe9dfcf, 0xd2b48a, "panel"), floorTex("planks", 0xd2b48f, 0xc3a27b), 0x8c6a4f, cream);
-  const rug = mesh(CYL(1.6, 1.6, 0.02, 56), M(0xd9b36c, { roughness: 1 }), 0, 0.01, 0.2, g); rug.castShadow = false;
-  mesh(CYL(1.2, 1.2, 0.022, 56), M(0xe3c487, { roughness: 1 }), 0, 0.012, 0.2, g).castShadow = false;
-  // low toy shelf on the back wall
-  const sh = new THREE.Group(); sh.position.set(-1.6, 0, R0 + 0.35); g.add(sh);
-  mesh(RB(2.2, 0.06, 0.55, 0.02), M(cream), 0, 0.03, 0, sh); mesh(RB(2.2, 0.06, 0.55, 0.02), M(cream), 0, 0.75, 0, sh); mesh(RB(2.2, 0.06, 0.55, 0.02), M(cream), 0, 1.45, 0, sh);
-  for (const sx of [-1.07, 0, 1.07]) mesh(RB(0.06, 1.48, 0.55, 0.02), M(cream), sx, 0.74, 0, sh);
-  const toyC = [0xb86f52, 0x8fa287, 0x7e9cb3, 0xd9b36c];
-  for (let i = 0; i < 3; i++) mesh(RB(0.28, 0.28, 0.28, 0.04), M(toyC[i]), -0.8 + i * 0.3, 0.2, 0, sh);
-  mesh(SPH(0.22, 20, 14), M(0xb86f52), 0.55, 0.28, 0, sh); mesh(new THREE.ConeGeometry(0.17, 0.45, 18), M(0x7e9cb3), -0.55, 1.0, 0, sh);
-  mesh(RB(0.4, 0.3, 0.3, 0.06), M(0xe2d5c0), 0.5, 0.93, 0, sh);
-  for (let i = 0; i < 4; i++) mesh(RB(0.1, 0.42, 0.3, 0.01), M(toyC[(i + 1) % 4]), -0.75 + i * 0.12, 1.69, 0, sh);
-  // play tent in the corner
-  const tn = new THREE.Group(); tn.position.set(R0 + 0.95, 0, R0 + 2.4); tn.rotation.y = 0.6; g.add(tn);
-  mesh(new THREE.ConeGeometry(0.85, 2.1, 5, 1, true), M(0xf1e7d6, { side: THREE.DoubleSide, roughness: 1 }), 0, 1.05, 0, tn);
-  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; const s = mesh(CYL(0.02, 0.02, 2.5, 6), M(wood), Math.cos(a) * 0.5, 1.15, Math.sin(a) * 0.5, tn); s.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4); }
-  // beanbag and ball
-  const bb = mesh(SPH(0.75, 32, 24), M(0x8c8b5e, { roughness: 1 }), 1.7, 0.42, -1.9, g); bb.scale.set(1.1, 0.62, 1);
+  // ball (the beanbag and the other pieces are furniture slots now: ui/03b-perabot.js)
   const ball = mesh(SPH(0.32), M(0x7e9cb3, { roughness: 0.55 }), 1.5, 0.32, 1.3, g);
   mesh(new THREE.TorusGeometry(0.322, 0.035, 8, 40), M(0xf3ede4), 0, 0, 0, ball);
   g.userData.ball = ball; g.userData.ballHome = ball.position.clone();
   // garland
+  const toyC = [0xb86f52, 0x8fa287, 0x7e9cb3, 0xd9b36c];
   for (let i = 0; i < 7; i++) { const f = mesh(new THREE.ConeGeometry(0.16, 0.34, 3), M(toyC[i % 4], { roughness: 1 }), -3.1 + i * 0.75, 3.7 - Math.sin(i / 6 * Math.PI) * 0.35, R0 + 0.1, g); f.rotation.x = Math.PI; f.scale.z = 0.25; }
-  wallArt(g, 1.4, R0 + 0.04, 2.6, 0.9, 0.9, false, (c) => { c.fillStyle = "#D9B36C"; c.beginPath(); c.arc(40, 40, 16, 0, 7); c.fill(); c.fillStyle = "#8FA287"; c.fillRect(0, 96, 128, 32); c.fillStyle = "#B86F52"; c.fillRect(54, 62, 30, 34); c.beginPath(); c.moveTo(48, 62); c.lineTo(69, 44); c.lineTo(90, 62); c.fill(); });
   mesh(SPH(0.09, 12, 10), glowM(), R0 + 0.15, 3.2, 1.2, g); lampLight(g, R0 + 0.4, 3.0, 1.2, 1.0);
   wallArt(g, -0.4, R0 + 0.04, 4.7, 1.0, 0.75, false, (c) => { c.fillStyle = "#7E9CB3"; c.beginPath(); c.arc(64, 70, 30, Math.PI, 0); c.fill(); c.fillStyle = "#B86F52"; c.beginPath(); c.arc(64, 70, 18, Math.PI, 0); c.fill(); }, 0xc9a27a);
 });

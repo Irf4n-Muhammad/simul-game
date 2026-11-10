@@ -25,7 +25,7 @@ function showBazaar(tab = "new", back = null) {
   const el = document.createElement("div"); el.className = "bz2"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Bazaar");
   el.innerHTML = `<header class="bz2-top"><button class="bz2-back" aria-label="Back">‹</button><span class="bz2-mark">BAZAAR</span><span class="bz2-right"><button class="bz2-find" aria-label="Search"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><span class="bz2-coins" id="bzWallet"></span></span></header>
     <div class="bz2-sbar" hidden>${srchBox("Search Bazaar", "", "bz2-srch")}<button class="bz2-cancel">CANCEL</button></div>
-    <nav class="bz2-tabs">${[["new", "New"], ["limited", "Limited"], ["used", "Pre-owned"], ["mine", "My things"]].map(([k, l]) => `<button data-tab="${k}">${l}<i hidden></i></button>`).join("")}</nav>
+    <nav class="bz2-tabs">${[["new", "New"], ["home", "Home"], ["limited", "Limited"], ["used", "Pre-owned"], ["mine", "My things"]].map(([k, l]) => `<button data-tab="${k}">${l}<i hidden></i></button>`).join("")}</nav>
     <div class="bz2-body" id="bzBody"></div>`;
   (PH ? PH.screen : $("app")).appendChild(el);
   bz = { el, c: game.home.get(cur.id), tab, back, view: null, cat: "all" };
@@ -54,9 +54,10 @@ function bzShow(tab, view = null) {
   bz.el.classList.toggle("detail", !!view);
   const body = $("bzBody");
   if (!view && bz.q) { body.innerHTML = bzSearch(bz.q); body.scrollTop = 0; bzBind(body); shotFill(body); return; }
-  body.innerHTML = view ? bzItem(view) : tab === "limited" ? bzLimited() : tab === "used" ? bzUsed() : tab === "mine" ? bzMine() : bzNew();
+  body.innerHTML = view ? bzItem(view) : tab === "home" ? bzHome() : tab === "limited" ? bzLimited() : tab === "used" ? bzUsed() : tab === "mine" ? bzMine() : bzNew();
   body.scrollTop = 0;
   bzBind(body); shotFill(body);
+  if (tab === "home" && !view) bzHomeBind(body);
 }
 function bzBind(body) {
   body.querySelectorAll("[data-item]").forEach(b => b.onclick = () => bzShow(bz.tab, b.dataset.item));
