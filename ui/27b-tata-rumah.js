@@ -75,7 +75,7 @@ function bdOverlay() {
   };
   const fill = (x, z, w, d, col, op) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w * CELL - 0.08, d * CELL - 0.08), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set((x + w / 2) * CELL, 0.03, (z + d / 2) * CELL); m.renderOrder = 4; BD_G.add(m); };
   const errs = bdErrs(), badR = new Set(errs.filter(e => e.r != null).map(e => e.r)), badI = new Set(errs.filter(e => e.i != null).map(e => e.i));
-  BD.plan.R.forEach(([, x, z, w, d], i) => { if (badR.has(i)) fill(x, z, w, d, 0xd9472e, 0.22); });
+  BD.plan.R.forEach(([, x, z, w, d], i) => { if (badR.has(i)) { fill(x, z, w, d, 0xd9472e, 0.3); rect(x, z, w, d, 0xd9472e, LOW_H + 0.04, 0.12, 0.1); } });
   BD.plan.I.forEach((it, k) => { if (!badI.has(k)) return; const m = Denah.meta(it[0]); if (!m) return; const [w, d] = Denah.dims(m, it[3]); fill(it[1], it[2], w, d, 0xd9472e, 0.45); });
   const R = BD.sel && BD.sel.k === "room" ? BD.sel.i : (BD.tool === "items" || BD.tool === "paint") ? bdRoom() : -1;
   if (R >= 0 && BD.plan.R[R]) { const [, x, z, w, d] = BD.plan.R[R]; rect(x, z, w, d, 0xd4a853, LOW_H + 0.06, 0, 0.16); }
