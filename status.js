@@ -624,11 +624,19 @@
     else if (r.foreclose) {
       const it = ITEM[F.house], value = it ? costOf(it, x.day) : 0, res = BK.foreclose(x.home, payer, value, x.day);
       F.house = "rented"; F.lot = null; F.build = null;
+      moveFurniture(x);
       x.drama = "besar";
       x.say(`The bank takes back the family's ${it ? it.label.toLowerCase() : "home"} after months of missed payments. It sells for ${res.sale.toLocaleString("en")} coins and the family moves into a rented room.`);
       x.remember(`Lost the family home to the bank.`);
       if (payer === x.c) x.need("mood", -15);
     }
+  }
+  // Tata Rumah tahap 3: rumah yang denahnya sudah disimpan pindah ke denah bawaan rumah baru, perabotnya ikut (denah.js move).
+  // Rumah tanpa denah nggak berubah apa-apa.
+  function moveFurniture(x) {
+    const DN = (typeof module !== "undefined") ? require("./denah.js") : globalThis.Denah;
+    const r = DN && DN.move(x.home);
+    if (r && (r.placed || r.stored)) x.say(`The furniture comes along: ${r.placed} piece${r.placed === 1 ? "" : "s"} set out in the new rooms` + (r.stored ? `, ${r.stored} still in boxes in storage.` : "."));
   }
   // Pembangunan selesai: keluarga pindah ke rumah baru
   function finishBuild(x) {
@@ -639,6 +647,7 @@
     F.house = b.id; F.lot = { lot: b.lot, model: b.model, paint: b.paint, since: b.done, paid: b.paid ?? ITEM[b.id].price }; F.build = null;
     const it = ITEM[b.id];
     achieve(x, "house_" + b.id, `Moved the family into a new ${it.label} in ${it.hood}.`);
+    moveFurniture(x);
   }
 
   function career(x) {

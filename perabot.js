@@ -24,6 +24,9 @@
     makan: { name: "Kitchen" }, mandi: { name: "Bathroom" }, tidur: { name: "Bedroom" }, peluk: { name: "Playroom" },
   };
   const ROOM_IDS = Object.keys(ROOMS);
+  // tahap 3: ruangan yang cuma ada di denah (nggak punya slot tahap 1)
+  const ROOM_NAME = { makan: "Kitchen", mandi: "Bathroom", tidur: "Bedroom", peluk: "Playroom", tamu: "Living room", kerja: "Study", taman: "Garden" };
+  const ROOM_ORDER = Object.keys(ROOM_NAME);
   const SLOTS = {
     utama: { name: "Main piece", hias: false, empty: false },
     samping: { name: "Side piece", hias: false, empty: false },
@@ -85,6 +88,29 @@
   it("shelf_books", "Book shelf", "hias", null, null, 0, { def: true, note: "Books and a plant up high." });
   it("towel_rail", "Towel rail", "hias", null, null, 0, { def: true, note: "One fluffy towel." });
   it("garland", "Flag garland", "hias", null, null, 0, { def: true, note: "Little paper flags." });
+  // ---- tahap 3: ruangan baru (denah.js). Rawatnya ikut "main" (peluk): ruang tamu, ruang kerja, dan taman sama-sama tempat nongkrong.
+  it("sofa", "Sofa", "fungsi", "utama", "tamu", 0, { def: true, note: "Three cushions, one of them flat." });
+  it("tv_stand", "TV stand", "dua", "samping", "tamu", 0, { def: true, note: "An old TV and a stack of films." });
+  it("corner_sofa", "Corner sofa", "fungsi", "utama", "tamu", 620, { hias: 1, tags: ["keluarga", "nyaman"], fx: { bond: 0.35, mood: 2 }, note: "Room for the whole family. Hanging out: bond and mood." });
+  it("velvet_sofa", "Velvet sofa", "fungsi", "utama", "tamu", 1400, { hias: 2, tags: ["mewah", "nyaman"], fx: { bond: 0.3, mood: 4 }, note: "Deep green velvet. Hanging out: mood and bond up." });
+  it("record_player", "Record player", "dua", "samping", "tamu", 380, { hias: 1, tags: ["seni"], fx: { mood: 3 }, note: "Old records, warm crackle. Hanging out: mood up." });
+  it("board_games", "Games cabinet", "dua", "samping", "tamu", 240, { hias: 1, tags: ["keluarga", "main"], fx: { bond: 0.2, skill: { k: "logic", n: 0.1 } }, note: "Cards, dice, a chess set. Bond and a little Logic." });
+  it("work_desk", "Writing desk", "fungsi", "utama", "kerja", 0, { def: true, note: "A desk, a chair, a cup of pens." });
+  it("paper_shelf", "Paper shelf", "dua", "samping", "kerja", 0, { def: true, note: "Folders nobody opens." });
+  it("standing_desk", "Standing desk", "fungsi", "utama", "kerja", 650, { hias: 1, tags: ["rapi"], fx: { skill: { k: "logic", n: 0.25 } }, note: "Up, down, up again. Quiet time: learns Logic." });
+  it("drafting_table", "Drafting table", "fungsi", "utama", "kerja", 780, { hias: 2, tags: ["seni"], fx: { skill: { k: "creativity", n: 0.25 } }, note: "A tilted table and good light. Quiet time: learns Creativity." });
+  it("library_wall", "Library wall", "dua", "samping", "kerja", 820, { hias: 2, tags: ["buku", "mewah"], fx: { skill: { k: "logic", n: 0.15 }, mood: 2 }, note: "Floor to ceiling. A little Logic and mood." });
+  it("whiteboard", "Whiteboard", "dua", "samping", "kerja", 220, { hias: 0, tags: ["rapi"], fx: { skill: { k: "logic", n: 0.12 } }, note: "Plans, lists, arrows. A little Logic." });
+  it("garden_bench", "Garden bench", "fungsi", "utama", "taman", 0, { def: true, note: "Wooden slats, a bit mossy." });
+  it("planter_box", "Planter box", "dua", "samping", "taman", 0, { def: true, note: "Whatever grows, grows." });
+  it("swing_seat", "Garden swing", "fungsi", "utama", "taman", 560, { hias: 2, tags: ["keluarga", "main"], fx: { mood: 4, bond: 0.2 }, note: "Big enough for two. Outside time: mood and bond." });
+  it("hammock", "Hammock", "fungsi", "utama", "taman", 420, { hias: 1, tags: ["nyaman", "alam"], fx: { mood: 4 }, note: "Sway, nap, repeat. Outside time: mood up." });
+  it("veg_patch", "Vegetable patch", "dua", "samping", "taman", 300, { hias: 1, tags: ["alam"], fx: { kes: 0.2 }, note: "Beans and tomatoes. Outside time: a little health." });
+  it("fountain", "Stone fountain", "dua", "samping", "taman", 1200, { hias: 3, tags: ["mewah", "alam"], fx: { mood: 3 }, note: "Water over stone. Outside time: mood up." });
+  // ---- edisi terbatas: cuma bisa dibeli di minggu jatahnya (lihat limited()), satu per keluarga per edisi; nilainya naik sesudahnya
+  it("moon_lamp", "Moon lamp", "hias", "sudut", null, 280, { hias: 3, tags: ["lampu", "seni"], lim: true, note: "A glowing moon, numbered on the base." });
+  it("gilded_mirror", "Gilded mirror", "hias", "dinding", null, 360, { hias: 3, tags: ["mewah"], lim: true, note: "Gold leaf frame. Only a few were made." });
+  it("koi_rug", "Koi rug", "hias", "lantai", null, 320, { hias: 3, tags: ["alam", "seni"], lim: true, note: "Hand-knotted koi in a blue pond." });
   it("art_sun", "Sunrise print", "hias", "dinding", null, 60, { hias: 1, tags: ["seni"], note: "A warm orange sun." });
   it("art_mountain", "Mountain canvas", "hias", "dinding", null, 110, { hias: 2, tags: ["seni", "alam"], note: "Blue peaks and a tiny lake." });
   it("art_abstract", "Bold abstract", "hias", "dinding", null, 160, { hias: 2, tags: ["seni"], note: "Big shapes, loud colours." });
@@ -133,21 +159,104 @@
   const Denah = () => (typeof module !== "undefined") ? require("./denah.js") : globalThis.Denah;
   const canBuy = (c, day) => !!(c && c.st && typeof c.age === "function" && c.age(day) >= 180);
 
+  // ---------------------------------------------------------------- tahap 3: kondisi, bekas, edisi terbatas, antik
+  // P.kond[id] = kondisi 0-100 (nggak ada = 100, baru). Satu angka per jenis barang: punya dua kasur yang sama = kondisinya dirata-rata.
+  // Kondisi turun tiap barang fungsi dipakai waktu rawat di rumah yang sudah punya denah (denah.js onCare). P.sejak[id] = hari pertama
+  // punya (umur barang buat harga antik). Barang yang dibeli sebelum tahap 3 nggak punya keduanya: harga jualnya tetap separuh seperti dulu.
+  const E = () => (typeof module !== "undefined") ? require("./engine.js") : globalThis.Engine;
+  const YEAR = 365, VINTAGE = YEAR, ANTIQUE = 4 * YEAR, LIM_EVERY = 28, LIM_OPEN = 7;
+  const cond = (home, id) => { const P = peek(home); return P && P.kond && P.kond[id] != null ? P.kond[id] : 100; };
+  const condMul = k => 0.5 + 0.5 * k / 100;   // efek perabot di kondisi k
+  const condLabel = k => k >= 90 ? "Like new" : k >= 70 ? "Good" : k >= 45 ? "Worn" : "Battered";
+  function countOwned(home, id) {
+    const P = peek(home); let n = P ? (P.gudang[id] || 0) : 0;
+    const D = home && home.world && home.world.denah;
+    if (D) n += D.I.filter(it => it[0] === id).length;
+    else if (P) for (const r of ROOM_IDS) for (const s of SLOT_IDS) if (placed(home, r, s) === id) n++;
+    return n;
+  }
+  const owns = (home, id) => countOwned(home, id) > 0;
+  function gain(home, P, id, k, day) {
+    const n = countOwned(home, id), was = cond(home, id), nk = Math.round((was * n + k) / (n + 1) * 10) / 10;
+    P.gudang[id] = (P.gudang[id] || 0) + 1;
+    if (nk < 100) (P.kond ||= {})[id] = nk; else if (P.kond) delete P.kond[id];
+    if (n === 0) (P.sejak ||= {})[id] = day;
+  }
+  // dipakai: turun sedikit (denah.js)
+  function wear(home, id, by = 0.4) {
+    const x = item(id); if (!x || x.def) return;
+    const P = S(home), k = cond(home, id);
+    (P.kond ||= {})[id] = Math.max(0, Math.round((k - by) * 10) / 10);
+  }
+  const repairCost = x => Math.ceil(x.price * 0.15);
+  // edisi terbatas: tiap 28 hari satu barang, dijual 7 hari pertama
+  const LIMITED = () => I.filter(x => x.lim);
+  function limited(day) {
+    const k = Math.floor(day / LIM_EVERY), L = LIMITED(), x = L[k % L.length];
+    return { k, id: x.id, item: x, open: day - k * LIM_EVERY < LIM_OPEN, from: k * LIM_EVERY, to: k * LIM_EVERY + LIM_OPEN - 1, next: (k + 1) * LIM_EVERY };
+  }
+  // umur dan kelangkaan: antik (>= 4 tahun) x2.5, vintage (>= 1 tahun) x1.4, edisi terbatas yang sudah tutup x1.5
+  function ageMul(home, id, day) {
+    const P = peek(home), x = item(id), s = P && P.sejak ? P.sejak[id] : null;
+    let m = 1;
+    if (s != null) m = day - s >= ANTIQUE ? 2.5 : day - s >= VINTAGE ? 1.4 : 1;
+    if (x && x.lim && s != null) { const L = limited(day); if (!(L.id === id && L.open)) m *= 1.5; }
+    return m;
+  }
+  const ageLabel = (home, id, day) => { const P = peek(home), s = P && P.sejak ? P.sejak[id] : null; return s == null ? null : day - s >= ANTIQUE ? "Antique" : day - s >= VINTAGE ? "Vintage" : null; };
+  function sellPrice(home, id, day) {
+    const x = item(id); if (!x) return 0;
+    const k = cond(home, id);
+    return Math.floor(x.price / 2 * (0.4 + 0.6 * k / 100) * ageMul(home, id, day));
+  }
+  // barang bekas hari ini: tiga tawaran dari benih hari, sama buat semua keluarga
+  function usedToday(day) {
+    const r = E().seed_rng("perabot-bekas", day), pool = I.filter(x => !x.def && !x.lim && x.price >= 100), out = [];
+    while (out.length < 3) {
+      const x = r.choice(pool); if (out.some(u => u.id === x.id)) continue;
+      const k = r.randint(35, 80), f = 0.4 + 0.3 * (k - 35) / 45;
+      out.push({ id: x.id, item: x, cond: k, price: Math.max(10, Math.round(x.price * f / 5) * 5) });
+    }
+    return out;
+  }
+
   // ---------------------------------------------------------------- aksi (dari Game._act0)
   function act(home, c, kind, day) {
     const [, verb, a, b, id] = kind.split(":");
     if (verb === "beli") {
       const x = item(a);
       if (!x || x.def || !canBuy(c, day)) return false;
+      const L = x.lim ? limited(day) : null;
+      if (x.lim && (!L.open || L.id !== x.id || (peek(home) && (peek(home).lim || {})[L.k]))) return false;
       if (!Money.move(c, -x.price, "perabot", day, "need")) return false;
-      const P = S(home); P.gudang[x.id] = (P.gudang[x.id] || 0) + 1; P.beli += 1;
+      const P = S(home); gain(home, P, x.id, 100, day); P.beli += 1;
+      if (L) (P.lim ||= {})[L.k] = 1;
+      return true;
+    }
+    if (verb === "bekas") {
+      // barang bekas hari ini (usedToday): lebih murah, kondisinya kurang
+      const x = item(a), L = usedToday(day).find(u => u.id === a), P0 = peek(home);
+      if (!x || !L || !canBuy(c, day) || (P0 && P0.bekas && P0.bekas.d === day && P0.bekas.ids.includes(a))) return false;
+      if (!Money.move(c, -L.price, "perabot", day, "need")) return false;
+      const P = S(home); gain(home, P, x.id, L.cond, day); P.beli += 1;
+      if (!P.bekas || P.bekas.d !== day) P.bekas = { d: day, ids: [] };
+      P.bekas.ids.push(a);
+      return true;
+    }
+    if (verb === "servis") {
+      // perbaiki: semua yang sama jadi seperti baru, 15% harga
+      const x = item(a), P = peek(home), k = cond(home, a);
+      if (!x || x.def || !P || k >= 100 || !owns(home, a) || !c || !c.st) return false;
+      if (!Money.move(c, -repairCost(x), "perabot", day, "need")) return false;
+      delete P.kond[a];
       return true;
     }
     if (verb === "jual") {
       const x = item(a), P = peek(home);
       if (!x || x.def || !P || !(P.gudang[x.id] > 0) || !c || !c.st) return false;
-      if (--P.gudang[x.id] <= 0) delete P.gudang[x.id];
-      Money.move(c, Math.floor(x.price / 2), "perabot", day);
+      const v = sellPrice(home, x.id, day);
+      if (--P.gudang[x.id] <= 0) { delete P.gudang[x.id]; if (!owns(home, x.id)) { if (P.kond) delete P.kond[x.id]; if (P.sejak) delete P.sejak[x.id]; } }
+      Money.move(c, v, "perabot", day);
       return true;
     }
     if ((verb === "pasang" || verb === "simpan") && hasPlan(home)) return false;
@@ -259,11 +368,12 @@
     };
   }
   // katalog buat Bazaar (tab Home): semua barang yang bisa dibeli, urut ruangan lalu harga
-  const catalog = () => I.filter(x => !x.def).slice().sort((a, b) => (a.room ? ROOM_IDS.indexOf(a.room) : 9) - (b.room ? ROOM_IDS.indexOf(b.room) : 9) || a.price - b.price);
-  const where = x => x.room ? ROOMS[x.room].name : "Any room";
+  const catalog = () => I.filter(x => !x.def && !x.lim).slice().sort((a, b) => (a.room ? ROOM_ORDER.indexOf(a.room) : 9) - (b.room ? ROOM_ORDER.indexOf(b.room) : 9) || a.price - b.price);
+  const where = x => x.room ? ROOM_NAME[x.room] : "Any room";
   const tagNames = x => x.tags.map(g => TAGS[g]);
 
-  const API = { ROOMS, ROOM_IDS, SLOTS, SLOT_IDS, TAGS, ITEMS: I, DEF, item, fits, fresh, placed, layout, storage, touched, canBuy, act, taste, likes, ambience, moodOf, onCare, view, catalog, where, tagNames };
+  const API = { ROOM_NAME, ROOM_ORDER, cond, condMul, condLabel, countOwned, owns, wear, repairCost, limited, ageMul, ageLabel, sellPrice, usedToday, YEAR, VINTAGE, ANTIQUE,
+    ROOMS, ROOM_IDS, SLOTS, SLOT_IDS, TAGS, ITEMS: I, DEF, item, fits, fresh, placed, layout, storage, touched, canBuy, act, taste, likes, ambience, moodOf, onCare, view, catalog, where, tagNames };
   if (typeof module !== "undefined") module.exports = API;
   else globalThis.Perabot = API;
 })();

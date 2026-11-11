@@ -14,10 +14,10 @@ function adult(over = {}) {
 const home0 = () => ({ world: {} });
 const ctx = c => ({ need: (k, n) => { c.needs[k] = Math.min(100, c.needs[k] + n); }, stat: (k, n) => { c.stats[k] += n; } });
 
-test("katalog: tiap ruangan punya bawaan di slot utama dan samping, harga bawaan 0, 30-40 barang beli", () => {
+test("katalog: tiap ruangan punya bawaan di slot utama dan samping, harga bawaan 0, 30-60 barang beli", () => {
   for (const r of P.ROOM_IDS) for (const s of ["utama", "samping"]) { const x = P.item(P.DEF[r][s]); assert.ok(x && x.def && x.price === 0, r + s); }
   const shop = P.catalog();
-  assert.ok(shop.length >= 30 && shop.length <= 40, String(shop.length));
+  assert.ok(shop.length >= 30 && shop.length <= 60, String(shop.length));
   for (const x of P.ITEMS) if (x.def) { assert.equal(x.hias, 0, x.id); assert.equal(x.fx, null, x.id); }
   assert.ok(shop.some(x => x.kind === "fungsi") && shop.some(x => x.kind === "hias") && shop.some(x => x.kind === "dua"));
 });
