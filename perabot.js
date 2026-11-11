@@ -180,7 +180,9 @@
     const n = countOwned(home, id), was = cond(home, id), nk = Math.round((was * n + k) / (n + 1) * 10) / 10;
     P.gudang[id] = (P.gudang[id] || 0) + 1;
     if (nk < 100) (P.kond ||= {})[id] = nk; else if (P.kond) delete P.kond[id];
+    // umur dirata-rata juga, jadi beli baru lalu jual lagi nggak bisa numpang umur barang lama
     if (n === 0) (P.sejak ||= {})[id] = day;
+    else if (P.sejak && P.sejak[id] != null) P.sejak[id] = Math.round((P.sejak[id] * n + day) / (n + 1));
   }
   // dipakai: turun sedikit (denah.js)
   function wear(home, id, by = 0.4) {

@@ -185,3 +185,11 @@ test("game.js: replay sama dengan kamar anak, ruangan baru, dan barang bekas", (
   assert.deepEqual(D.plan(g2.home), D.plan(g.home));
   assert.equal(g2.home.snapshot(), g.home.snapshot());
 });
+
+test("antik: beli baru lalu jual nggak numpang umur barang lama", () => {
+  const home = { world: {} }, c = adult();
+  P.act(home, c, "perabot:beli:art_mountain", 0);
+  P.act(home, c, "perabot:beli:art_mountain", 2000);
+  assert.equal(P.ageLabel(home, "art_mountain", 2000), "Vintage");   // umur dirata-rata jadi 1000 hari: vintage, bukan antik
+  assert.ok(P.sellPrice(home, "art_mountain", 2000) < P.item("art_mountain").price);
+});

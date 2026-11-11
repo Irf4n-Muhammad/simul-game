@@ -9,7 +9,13 @@ const ROOM_LOOK = {
   mandi: { action: "Wash", bg: ["#E3E8EA", "#C5CFD3"], wall: [0xf0ebe3, 0x9fb2bc, "tile"], floor: ["terrazzo", 0xe6e0d6, 0x9a8f84], edge: 0x8f8a84, trim: 0xf3ede4, curtain: 0xc9d6dc },
   tidur: { action: "Sleep", bg: ["#DCD6DE", "#B9B0BF"], wall: [0x8e97a8, 0x6d7790, "plain"], floor: ["planks", 0xb48a64, 0x9c7552], edge: 0x7a5a41, trim: 0xe9e2d6, curtain: 0xcbb8a0 },
   peluk: { action: "Play", bg: ["#EDE5D8", "#D6C8B4"], wall: [0xe9dfcf, 0xd2b48a, "panel"], floor: ["planks", 0xd2b48f, 0xc3a27b], edge: 0x8c6a4f, trim: 0xf3ede4, curtain: 0xd8c7ae },
+  // tahap 3
+  tamu: { action: "Relax", bg: ["#EDE3D6", "#D3C2AC"], wall: [0xefe7da, 0xb59a7c, "panel"], floor: ["planks", 0xc19a72, 0xab855f], edge: 0x7a5a41, trim: 0xf3ede4, curtain: 0xc9b39a },
+  kerja: { action: "Study", bg: ["#E2E3DC", "#C3C6BA"], wall: [0xe8e6dc, 0x7f8f7a, "plain"], floor: ["planks", 0x9c7552, 0x86613f], edge: 0x6b4f39, trim: 0xe9e2d6, curtain: 0xb9c2b0 },
+  taman: { action: "Garden", bg: ["#CFE3EC", "#E8F0E0"], wall: [0xeee6d8, 0xb9ab95, "plain"], floor: ["grass", 0x9db37f, 0x7f9a63], edge: 0x7a6a50, trim: 0xe9e2d6, curtain: 0xd8c7ae },
 };
+// rawat yang jalan di tiap jenis ruangan (tombol aksi)
+const CARE_ACT = { makan: "makan", mandi: "mandi", tidur: "tidur", peluk: "peluk", tamu: "peluk", kerja: "peluk", taman: "peluk" };
 const DN_SC = { beanbag_playroom: 0.72 };
 const ROT_Y = [0, Math.PI / 2, Math.PI, -Math.PI / 2], BACK = [[0, -1], [-1, 0], [0, 1], [1, 0]];
 let HOUSE_MODE = "main", HOUSE_KEY = "", HOUSE_GEN = 0, HOUSE_PLAN = null, ROOM_HALF = 2.75, DN_DRAFT = null;
@@ -67,47 +73,79 @@ function dnItem(roomG, parent, plan, ri, it, mode) {
   return g;
 }
 
-// dinding satu sisi ruangan: run = petak berurutan yang bukan pintu
+// dinding ruangan (induk + sayap, tahap 3): tiap sisi petak yang tetangganya bukan ruangan ini, dikelompokkan jadi deretan lurus.
+// s = 0 utara, 1 barat, 2 selatan, 3 timur. Tiap petak deretan: kunci sisi, pintu?, jendela?, luar?, sebelahnya taman?
 function dnSides(plan, ri) {
-  const [, rx, rz, w, d] = plan.R[ri], D = new Set(plan.D), N = new Set(plan.N), out = [];
-  const keyOf = (s, i) => s === 0 ? Denah.ek("h", rx + i, rz) : s === 2 ? Denah.ek("h", rx + i, rz + d) : s === 1 ? Denah.ek("v", rx, rz + i) : Denah.ek("v", rx + w, rz + i);
+  const cells = Denah.cellsOfRoom(plan, ri), has = new Set(cells.map(c => c.join(","))), D = new Set(plan.D), N = new Set(plan.N), out = [];
+  const nb = [[0, -1], [-1, 0], [0, 1], [1, 0]];
+  const keyOf = (s, x, z) => s === 0 ? Denah.ek("h", x, z) : s === 2 ? Denah.ek("h", x, z + 1) : s === 1 ? Denah.ek("v", x, z) : Denah.ek("v", x + 1, z);
   for (const s of [0, 1, 2, 3]) {
-    const n = s % 2 ? d : w, cells = [];
-    for (let i = 0; i < n; i++) { const k = keyOf(s, i); cells.push({ i, k, door: D.has(k), win: N.has(k), out: (() => { const e = Denah.parseEdge(k); return Denah.sidesOf(e).some(([x, z]) => Denah.roomAt(plan, x, z) < 0); })() }); }
-    out.push({ s, n, cells });
+    const es = cells.filter(([x, z]) => !has.has((x + nb[s][0]) + "," + (z + nb[s][1])));
+    es.sort((A, B) => s % 2 ? A[0] - B[0] || A[1] - B[1] : A[1] - B[1] || A[0] - B[0]);
+    let run = null;
+    for (const [x, z] of es) {
+      const k = keyOf(s, x, z), oi = Denah.roomAt(plan, x + nb[s][0], z + nb[s][1]);
+      const C = { x, z, k, door: D.has(k), win: N.has(k), out: oi < 0, yard: oi >= 0 && Denah.OUTDOOR(plan.R[oi][0]) };
+      const last = run && run.cells[run.cells.length - 1];
+      if (last && (s % 2 ? last.x === x && last.z === z - 1 : last.z === z && last.x === x - 1)) run.cells.push(C);
+      else { run = { s, cells: [C] }; out.push(run); }
+    }
   }
+  for (const S of out) { S.n = S.cells.length; S.cells.forEach((C, i) => { C.i = i; }); }
   return out;
 }
-// kotak dinding dari petak a sampai b (termasuk) di sisi s: [cx, cz, sx, sz]
-function dnSeg(R, s, a, b) {
-  const [, rx, rz, w, d] = R, x0 = rx * CELL, z0 = rz * CELL, len = (b - a + 1) * CELL;
-  if (s === 0) return [x0 + a * CELL + len / 2, z0 + WT / 2, len, WT];
-  if (s === 2) return [x0 + a * CELL + len / 2, z0 + d * CELL - WT / 2, len, WT];
-  if (s === 1) return [x0 + WT / 2, z0 + a * CELL + len / 2, WT, len];
-  return [x0 + w * CELL - WT / 2, z0 + a * CELL + len / 2, WT, len];
+// kotak dinding dari petak ke-a sampai ke-b (termasuk) deretan S: [cx, cz, sx, sz]
+function dnSeg(S, a, b) {
+  const A = S.cells[a], B = S.cells[b], s = S.s;
+  if (s === 0 || s === 2) { const x0 = A.x * CELL, len = (B.x - A.x + 1) * CELL, z = s === 0 ? A.z * CELL + WT / 2 : (A.z + 1) * CELL - WT / 2; return [x0 + len / 2, z, len, WT]; }
+  const z0 = A.z * CELL, len = (B.z - A.z + 1) * CELL, x = s === 1 ? A.x * CELL + WT / 2 : (A.x + 1) * CELL - WT / 2;
+  return [x, z0 + len / 2, WT, len];
 }
 const INNER = [4, 0, 5, 1];   // sisi kotak yang menghadap ke dalam ruangan (+z, +x, -z, -x)
 
 function dnRoom(plan, ri, mode) {
-  const R = plan.R[ri], [t, rx, rz, w, d] = R, L = ROOM_LOOK[t], paint = (plan.C && plan.C[ri]) || ["", ""];
+  const R = plan.R[ri], [t, rx, rz, w, d] = R, L = ROOM_LOOK[t], paint = (plan.C && plan.C[ri]) || ["", ""], yard = Denah.OUTDOOR(t);
   const g = new THREE.Group(); g.visible = false; scene.add(g);
-  const x0 = rx * CELL, z0 = rz * CELL, W = w * CELL, Dp = d * CELL;
+  // kotak luar ruangan (induk + sayap)
+  const parts = Denah.partsOf(plan, ri).map(i => plan.R[i]);
+  const bx0 = Math.min(...parts.map(p => p[1])), bz0 = Math.min(...parts.map(p => p[2])), bx1 = Math.max(...parts.map(p => p[1] + p[3])), bz1 = Math.max(...parts.map(p => p[2] + p[4]));
+  const x0 = bx0 * CELL, z0 = bz0 * CELL, W = (bx1 - bx0) * CELL, Dp = (bz1 - bz0) * CELL;
   const st = dnStand(plan, ri);
-  // lantai. Mode main: lantai diteruskan ke arah kamera (dinding depan dibuang), jadi bawah layar tetap lantai seperti dulu.
-  const floorM = TM(dnFloorTex(t, ""), {}), edgeM = M(L.edge), FD = mode === "main" ? Math.max(Dp, st[1] * CELL + 9 - z0) : Dp;
+  // lantai. Mode main: satu lantai selebar kotak luar, diteruskan ke arah kamera (dinding depan dibuang), jadi bawah layar tetap lantai.
+  // Mode bangun: lantai tiap bagian sendiri-sendiri, supaya bentuk L-nya kebaca.
+  const floorM = TM(dnFloorTex(t, ""), {}), edgeM = M(L.edge);
   floorM.userData.color0 = floorM.color.getHex(); floorM.userData.map0 = floorM.map;
-  const fl = mesh(uvScale(new THREE.BoxGeometry(W, SLAB, FD), W / 4.27, FD / 4.27), [edgeM, edgeM, floorM, edgeM, edgeM, edgeM], x0 + W / 2, -SLAB / 2, z0 + FD / 2, g);
-  fl.castShadow = false;
+  const slab = (fx, fz, FW, FD) => { const fl = mesh(uvScale(new THREE.BoxGeometry(FW, SLAB, FD), FW / 4.27, FD / 4.27), [edgeM, edgeM, floorM, edgeM, edgeM, edgeM], fx + FW / 2, -SLAB / 2, fz + FD / 2, g); fl.castShadow = false; };
+  if (mode === "main") slab(x0, z0, W, Math.max(Dp, st[1] * CELL + 9 - z0));
+  else for (const p of parts) slab(p[1] * CELL, p[2] * CELL, p[3] * CELL, p[4] * CELL);
   const walls = [], trimM = M(L.trim), outM = M(0xefe6d6);
   const sides = dnSides(plan, ri);
+  const hedgeM = M(0x6f8a5a, { roughness: 1 }), hedgeM2 = M(0x7f9a63, { roughness: 1 });
   if (mode === "main") {
     for (const S of sides) {
       if (S.s === 2) continue;   // dinding depan dibuang: potongan diorama
+      // taman: sisi ke luar = pagar tanaman rendah (celah di gerbang); sisi ke rumah = dinding luar rumah biasa
+      if (yard) {
+        let a = 0;
+        const hedge = b => {
+          if (b < a) return;
+          const [cx, cz, sx, sz] = dnSeg(S, a, b);
+          const h = mesh(RB(Math.max(sx, 0.5), 1.1, Math.max(sz, 0.5), 0.2), hedgeM, cx, 0.55, cz, g); h.castShadow = false;
+          for (let k = 0; k <= b - a; k++) { const [px, pz] = dnSeg(S, a + k, a + k); mesh(SPH(0.36, 10, 8), k % 2 ? hedgeM : hedgeM2, px, 1.1, pz, g).scale.set(1.2, 0.7, 1.2); }
+        };
+        const outs = S.cells.every(C => C.out || C.yard);
+        if (outs) {
+          for (const C of S.cells) if (C.door) { hedge(C.i - 1); a = C.i + 1; const [cx, cz, sx, sz] = dnSeg(S, C.i, C.i); for (const e of [-1, 1]) mesh(CYL(0.08, 0.08, 1.4, 10), M(0x8a6a4f), cx + (S.s % 2 ? 0 : e * sx / 2), 0.7, cz + (S.s % 2 ? e * sz / 2 : 0), g); }
+          hedge(S.n - 1);
+          continue;
+        }
+      }
       let a = 0;
+      const wallMat = () => { const wm = yard ? M(0xe9e1d6) : TM(dnWallTex(t, ""), { color: S.s === 0 ? 0xffffff : 0xe9e1d6 }); wm.userData.color0 = wm.color.getHex(); wm.userData.map0 = wm.map; if (!yard) walls.push(wm); return wm; };
       const flush = b => {
         if (b < a) return;
-        const [cx, cz, sx, sz] = dnSeg(R, S.s, a, b), len = (b - a + 1) * CELL;
-        const wm = TM(dnWallTex(t, ""), { color: S.s === 0 ? 0xffffff : 0xe9e1d6 }); wm.userData.color0 = wm.color.getHex(); wm.userData.map0 = wm.map; walls.push(wm);
+        const [cx, cz, sx, sz] = dnSeg(S, a, b), len = (b - a + 1) * CELL;
+        const wm = wallMat();
         const ms = [outM, outM, trimM, trimM, outM, outM]; ms[INNER[S.s]] = wm;
         const wl = mesh(uvScale(new THREE.BoxGeometry(sx, WALL_H, sz), len / 6.9, 1), ms, cx, WALL_H / 2, cz, g); wl.castShadow = false;
         // list bawah + pita gelap tempat dinding ketemu lantai
@@ -119,20 +157,20 @@ function dnRoom(plan, ri, mode) {
       for (const C of S.cells) {
         if (C.door) {
           flush(C.i - 1); a = C.i + 1;
-          const [cx, cz, sx, sz] = dnSeg(R, S.s, C.i, C.i);
-          const wm = TM(dnWallTex(t, ""), { color: S.s === 0 ? 0xffffff : 0xe9e1d6 }); wm.userData.color0 = wm.color.getHex(); wm.userData.map0 = wm.map; walls.push(wm);
+          const [cx, cz, sx, sz] = dnSeg(S, C.i, C.i);
+          const wm = wallMat();
           const ms = [outM, outM, trimM, trimM, outM, outM]; ms[INNER[S.s]] = wm;
           mesh(uvScale(new THREE.BoxGeometry(sx, WALL_H - DOOR_H, sz), CELL / 6.9, (WALL_H - DOOR_H) / WALL_H), ms, cx, (WALL_H + DOOR_H) / 2, cz, g).castShadow = false;
           // daun pintu tertutup + kusen
           const dg = new THREE.Group(); dg.position.set(cx, 0, cz); dg.rotation.y = [0, Math.PI / 2, 0, -Math.PI / 2][S.s]; g.add(dg);
-          const leaf = C.out ? 0x8a5a3c : 0xc9a27a;
+          const leaf = C.out || C.yard ? 0x8a5a3c : 0xc9a27a;
           mesh(RB(CELL * 0.78, DOOR_H - 0.08, 0.07, 0.02), M(leaf, { roughness: 0.6 }), 0, (DOOR_H - 0.08) / 2, WT / 2 + 0.02, dg);
           for (const y of [0.9, 2.0]) mesh(RB(CELL * 0.55, 0.7, 0.02, 0.01), M(shade(leaf, 0.88), { roughness: 0.6 }), 0, y, WT / 2 + 0.065, dg);
           mesh(SPH(0.05, 10, 8), M(brass, { metalness: 0.7, roughness: 0.35 }), CELL * 0.28, 1.4, WT / 2 + 0.09, dg);
           for (const sx2 of [-1, 1]) mesh(RB(0.08, DOOR_H, 0.1, 0.02), trimM, sx2 * CELL * 0.43, DOOR_H / 2, WT / 2 + 0.02, dg);
           mesh(RB(CELL * 0.94, 0.1, 0.1, 0.02), trimM, 0, DOOR_H, WT / 2 + 0.02, dg);
         } else if (C.win) {
-          const [cx, cz] = dnSeg(R, S.s, C.i, C.i), wg = new THREE.Group();
+          const [cx, cz] = dnSeg(S, C.i, C.i), wg = new THREE.Group();
           const off = WT + 0.02;
           wg.position.set(cx + (S.s === 1 ? off - WT / 2 : S.s === 3 ? -(off - WT / 2) : 0), 0, cz + (S.s === 0 ? off - WT / 2 : 0));
           wg.rotation.y = [0, Math.PI / 2, 0, -Math.PI / 2][S.s]; g.add(wg);
@@ -142,15 +180,15 @@ function dnRoom(plan, ri, mode) {
       flush(S.n - 1);
     }
   } else {
-    // mode bangun: dinding rendah polos di empat sisi, pintu = celah, jendela = kaca di atasnya
-    const lowM = M(dnWallTop(t, paint[0])); walls.push(lowM); lowM.userData.low = 1;
+    // mode bangun: dinding rendah polos di semua sisi, pintu = celah, jendela = kaca di atasnya; taman = pagar tanaman
+    const lowM = yard ? hedgeM : M(dnWallTop(t, paint[0])); if (!yard) { walls.push(lowM); lowM.userData.low = 1; }
     const glassM = M(0xa9cfe0, { roughness: 0.15, emissive: 0x6a9cb3, emissiveIntensity: 0.25 });
     for (const S of sides) {
       let a = 0;
-      const flush = b => { if (b < a) return; const [cx, cz, sx, sz] = dnSeg(R, S.s, a, b); mesh(new THREE.BoxGeometry(sx, LOW_H, sz), lowM, cx, LOW_H / 2, cz, g).castShadow = false; };
+      const flush = b => { if (b < a) return; const [cx, cz, sx, sz] = dnSeg(S, a, b); mesh(new THREE.BoxGeometry(sx, yard ? LOW_H * 0.7 : LOW_H, sz), lowM, cx, (yard ? LOW_H * 0.7 : LOW_H) / 2, cz, g).castShadow = false; };
       for (const C of S.cells) {
-        if (C.door) { flush(C.i - 1); a = C.i + 1; const [cx, cz, sx, sz] = dnSeg(R, S.s, C.i, C.i); pbFlat(mesh(new THREE.BoxGeometry(sx, 0.04, sz), M(C.out ? 0x8a5a3c : 0xc9a27a), cx, 0.02, cz, g)); }
-        else if (C.win) { const [cx, cz, sx, sz] = dnSeg(R, S.s, C.i, C.i); pbFlat(mesh(new THREE.BoxGeometry(S.s % 2 ? sx + 0.02 : sx * 0.8, 0.07, S.s % 2 ? sz * 0.8 : sz + 0.02), glassM, cx, LOW_H + 0.035, cz, g)); }
+        if (C.door) { flush(C.i - 1); a = C.i + 1; const [cx, cz, sx, sz] = dnSeg(S, C.i, C.i); pbFlat(mesh(new THREE.BoxGeometry(sx, 0.04, sz), M(C.out ? 0x8a5a3c : 0xc9a27a), cx, 0.02, cz, g)); }
+        else if (C.win) { const [cx, cz, sx, sz] = dnSeg(S, C.i, C.i); pbFlat(mesh(new THREE.BoxGeometry(S.s % 2 ? sx + 0.02 : sx * 0.8, 0.07, S.s % 2 ? sz * 0.8 : sz + 0.02), glassM, cx, LOW_H + 0.035, cz, g)); }
       }
       flush(S.n - 1);
     }
@@ -163,13 +201,13 @@ function dnRoom(plan, ri, mode) {
     if (mode === "main" && m.m === "wall" && it[3] === 2) return;   // dinding depan nggak ada
     dnItem(g, itemsG, plan, ri, it, mode);
   });
-  // titik berdiri + lampu ruangan
+  // titik berdiri + lampu ruangan (taman: nggak ada lampu langit-langit)
   const standG = new THREE.Group(); standG.position.set(st[0] * CELL, 0, st[1] * CELL); g.add(standG);
   if (t === "makan" && mode === "main") {
     mesh(CYL(0.012, 0.012, 1.4, 6), M(ink), 0.2, 4.1, -0.6, standG);
     mesh(new THREE.ConeGeometry(0.38, 0.32, 32, 1, true), M(ink, { side: THREE.DoubleSide, metalness: 0.3, roughness: 0.5 }), 0.2, 3.3, -0.6, standG);
     mesh(SPH(0.1, 12, 10), glowM(), 0.2, 3.18, -0.6, standG); lampLight(standG, 0.2, 3.0, -0.6, 1.2);
-  } else lampLight(g, x0 + W / 2, 3.6, z0 + Dp / 2, 0.9);
+  } else if (!yard) lampLight(g, rx * CELL + w * CELL / 2, 3.6, rz * CELL + d * CELL / 2, 0.9);
   if (standG.userData.lamps) { (g.userData.lamps ||= []).push(...standG.userData.lamps); }
   if (t === "peluk") {
     // bola buat main (07-rooms-actions.js melempar dan mengembalikannya), di sisi yang masih dalam ruangan
@@ -186,7 +224,7 @@ function dnRoom(plan, ri, mode) {
   }
   const shelf = itemsG.children.find(o => o.userData.item && o.userData.item[0] === "toy_shelf");
   const names = Denah.names(plan);
-  return { name: names[ri], action: L.action, act: t, t, ri, bg: L.bg, g, stand: st, rect: [rx, rz, w, d], paint,
+  return { name: names[ri], action: L.action, act: CARE_ACT[t], t, ri, bg: L.bg, g, stand: st, rect: [rx, rz, w, d], paint, yard,
     half: Math.min(5, Math.max(W < 5 ? 2.2 : 2.75, W * 0.43)), mats: { walls, floor: floorM }, standG, shelf: shelf || null };
 }
 
@@ -212,7 +250,7 @@ function buildHouse(plan, mode) {
   for (const r of ROOMS) dnDispose(r.g);
   for (let i = windows.length - 1; i >= 0; i--) { let o = windows[i]; while (o.parent) o = o.parent; if (o !== scene) windows.splice(i, 1); }
   ROOMS.length = 0;
-  plan.R.forEach((_, i) => ROOMS.push(dnRoom(plan, i, mode)));
+  plan.R.forEach((r, i) => { if (Denah.isRoot(plan, i)) ROOMS.push(dnRoom(plan, i, mode)); });
   HOUSE_PLAN = plan; HOUSE_MODE = mode; HOUSE_GEN++;
   if (mode === "bangun") dnLot(Denah.lotOf(game ? game.home : null).map((n, k) => Math.max(n, ...plan.R.map(r => k ? r[2] + r[4] : r[1] + r[3]))));
   if (typeof roomIx !== "undefined") roomIx = Math.min(roomIx, ROOMS.length - 1);
@@ -259,10 +297,13 @@ function applyHome() {
     fm.needsUpdate = true;
   }
 }
-// ruangan buat rawat (makan_p, mandi, makan_m, tidur): yang paling enak buat makhluk ini (denah.js careRoom)
+// ruangan buat rawat (makan_p, mandi, makan_m, tidur): yang paling enak buat makhluk ini (denah.js careRoom); tidur di rumah yang denahnya
+// sudah disimpan = kamarnya sendiri (pembagian kamar). Hasil = indeks ROOMS (bukan indeks denah: sayap nggak jadi ruangan sendiri).
 function careRoomOf(item) {
   const t = { makan_p: "makan", makan_m: "makan", mandi: "mandi", tidur: "tidur", peluk: "peluk" }[item];
   const c = typeof game !== "undefined" && game && cur ? game.home.get(cur.id) : null;
-  const ri = HOUSE_PLAN && c ? Denah.careRoom(HOUSE_PLAN, c, t, item === "makan_p" ? "pagi" : item === "makan_m" ? "malam" : null) : -1;
-  return ri >= 0 ? ri : Math.max(0, ROOMS.findIndex(r => r.act === t));
+  const sl = t === "tidur" && c && HOUSE_PLAN && Denah.saved(game.home) && HOUSE_PLAN === game.home.world.denah ? Denah.sleepers(game.home, today()) : null;
+  const ri = HOUSE_PLAN && c ? Denah.careRoom(HOUSE_PLAN, c, t, item === "makan_p" ? "pagi" : item === "makan_m" ? "malam" : null, sl) : -1;
+  const k = ROOMS.findIndex(r => r.ri === ri);
+  return k >= 0 ? k : Math.max(0, ROOMS.findIndex(r => r.t === t));
 }
