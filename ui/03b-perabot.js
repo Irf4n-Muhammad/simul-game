@@ -1,24 +1,6 @@
-// ================================================================ Tata Rumah: perabot di slot ruangan (perabot.js) + cat per ruangan
-// Tiap ruangan punya lima slot (utama, samping, dinding, lantai, sudut). Isi slot dibangun dari model di bawah; model bawaan sama
-// persis dengan ruangan sebelum Tata Rumah (kodenya dipindah dari ui/03-scene.js). Model dibangun di titik nol, slot yang menaruhnya.
-const PB_ANCHOR = {
-  makan: {
-    utama: { p: [1.7, 0, -1.9] }, samping: { p: [-1.9, 0, R0 + 0.17] },
-    dinding: { p: [R0 + 0.04, 2.9, -1.6], ry: Math.PI / 2, w: 0.7, h: 0.9 }, lantai: { p: [0.1, 0, 0.8], w: 1.8, d: 1.2 }, sudut: { p: [2.2, 0, R0 + 0.5] },
-  },
-  mandi: {
-    utama: { p: [-2.2, 0, R0 + 0.75], ry: Math.PI / 2 }, samping: { p: [1.6, 0, R0 + 0.4] },
-    dinding: { p: [-0.3, 3.4, R0 + 0.04], w: 0.8, h: 0.8 }, lantai: { p: [-0.2, 0, 0.9], w: 1.1, d: 0.7 }, sudut: { p: [2.35, 0, -1.6] },
-  },
-  tidur: {
-    utama: { p: [1.55, 0, R0 + 1.25] }, samping: { p: [R0 + 0.3, 0, -1.4], ry: Math.PI / 2 },
-    dinding: { p: [1.55, 2.75, R0 + 0.04], w: 1.1, h: 0.75 }, lantai: { p: [0.1, 0, 0.6], w: 2.5, d: 1.9 }, sudut: { p: [1.9, 0, 1.4], ry: -0.7 },
-  },
-  peluk: {
-    utama: { p: [R0 + 0.95, 0, R0 + 2.4], ry: 0.6 }, samping: { p: [-1.6, 0, R0 + 0.35] },
-    dinding: { p: [1.4, 2.6, R0 + 0.04], w: 0.9, h: 0.9 }, lantai: { p: [0, 0, 0.2], w: 3.2, d: 3.2 }, sudut: { p: [1.7, 0, -1.9] },
-  },
-};
+// ================================================================ Tata Rumah: model perabot (perabot.js) + palet cat
+// Model dibangun di titik nol menghadap +z (punggung ke -z); denah (ui/03c-denah.js) yang menaruh dan memutarnya.
+// Tahap 2: barang yang dulu ditempel langsung di ruangan (konter, kulkas, rak tinggi, handuk, bebek) jadi model biasa di sini.
 const PB_TOY = [0xb86f52, 0x8fa287, 0x7e9cb3, 0xd9b36c];
 const pbBrass = () => M(brass, { metalness: 0.8, roughness: 0.3 });
 const pbFlat = m => { m.castShadow = false; return m; };
@@ -35,6 +17,8 @@ const PB_ART = {
   art_tapestry: c => { const cs = ["#C9A27A", "#E3CFC4", "#8FA287", "#D9B36C", "#B86F52"]; for (let y = 0; y < 128; y += 16) for (let x = 0; x < 128; x += 16) { c.fillStyle = cs[((x + y) / 16 + (y / 16) * 2) % 5]; c.beginPath(); c.moveTo(x, y + 8); c.lineTo(x + 8, y); c.lineTo(x + 16, y + 8); c.lineTo(x + 8, y + 16); c.fill(); } },
 };
 const PB_FRAME = { art_tapestry: 0xc9a27a, art_stars: 0xb8945a, art_family: 0xf3ede4, art_abstract: 0x222222 };
+const pbTexMemo = {};
+const pbTex = (k, f) => pbTexMemo[k] || (pbTexMemo[k] = f());
 function pbRug(g, a, kind) {
   const w = a.w || 1.8, d = a.d || 1.2, r = Math.min(w, d) / 2;
   if (kind === "rug_kitchen") pbFlat(mesh(RB(1.8, 0.02, 1.2, 0.01), M(0xd8c3a5, { roughness: 1 }), 0, 0.01, 0, g));
@@ -42,21 +26,21 @@ function pbRug(g, a, kind) {
   else if (kind === "rug_bedroom") { const m = pbFlat(mesh(CYL(1.25, 1.25, 0.02, 48), M(0xb86f52, { roughness: 1 }), 0, 0.01, 0, g)); m.scale.z = 0.75; }
   else if (kind === "rug_playroom") { pbFlat(mesh(CYL(1.6, 1.6, 0.02, 56), M(0xd9b36c, { roughness: 1 }), 0, 0.01, 0, g)); pbFlat(mesh(CYL(1.2, 1.2, 0.022, 56), M(0xe3c487, { roughness: 1 }), 0, 0.012, 0, g)); }
   else if (kind === "rug_stripe") {
-    const t = canvasTex((c, cw, ch) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#E9E1D2" : "#7E9CB3"; c.fillRect(i * cw / 8, 0, cw / 8, ch); } noise(c, cw, ch, 0.05, 500); }, 128, 64);
+    const t = pbTex("rug_stripe", () => canvasTex((c, cw, ch) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#E9E1D2" : "#7E9CB3"; c.fillRect(i * cw / 8, 0, cw / 8, ch); } noise(c, cw, ch, 0.05, 500); }, 128, 64));
     pbFlat(mesh(RB(w * 0.9, 0.02, d * 0.85, 0.01), [M(0xe9e1d2), M(0xe9e1d2), TM(t, { roughness: 1 }), M(0xe9e1d2), M(0xe9e1d2), M(0xe9e1d2)], 0, 0.01, 0, g));
   } else if (kind === "rug_shaggy") {
     const m = pbFlat(mesh(CYL(r * 1.05, r * 1.05, 0.06, 40), M(0xf0e8da, { roughness: 1 }), 0, 0.03, 0, g)); m.scale.x = w / d > 1.2 ? 1.3 : 1;
     for (let i = 0; i < 26; i++) { const a2 = i * 2.4, rr = r * 0.9 * Math.sqrt((i + 0.5) / 26); pbFlat(mesh(SPH(0.09, 8, 6), M(0xe8dfcf, { roughness: 1 }), Math.cos(a2) * rr * m.scale.x, 0.07, Math.sin(a2) * rr, g)).scale.y = 0.5; }
   } else if (kind === "rug_patch") {
-    const t = canvasTex((c, cw, ch) => { const cs = ["#B86F52", "#8FA287", "#D9B36C", "#7E9CB3", "#E3CFC4", "#C9A27A"]; for (let y = 0; y < 4; y++) for (let x = 0; x < 6; x++) { c.fillStyle = cs[(x * 5 + y * 3) % 6]; c.fillRect(x * cw / 6 + 1, y * ch / 4 + 1, cw / 6 - 2, ch / 4 - 2); } }, 192, 128);
+    const t = pbTex("rug_patch", () => canvasTex((c, cw, ch) => { const cs = ["#B86F52", "#8FA287", "#D9B36C", "#7E9CB3", "#E3CFC4", "#C9A27A"]; for (let y = 0; y < 4; y++) for (let x = 0; x < 6; x++) { c.fillStyle = cs[(x * 5 + y * 3) % 6]; c.fillRect(x * cw / 6 + 1, y * ch / 4 + 1, cw / 6 - 2, ch / 4 - 2); } }, 192, 128));
     pbFlat(mesh(RB(w * 0.9, 0.025, d * 0.85, 0.01), [M(0xc9a27a), M(0xc9a27a), TM(t, { roughness: 1 }), M(0xc9a27a), M(0xc9a27a), M(0xc9a27a)], 0, 0.012, 0, g));
   } else if (kind === "rug_persian") {
-    const t = canvasTex((c, cw, ch) => {
+    const t = pbTex("rug_persian", () => canvasTex((c, cw, ch) => {
       c.fillStyle = "#8C2F2A"; c.fillRect(0, 0, cw, ch); c.strokeStyle = "#E3C487"; c.lineWidth = 6; c.strokeRect(10, 10, cw - 20, ch - 20); c.strokeStyle = "#2F4A6B"; c.lineWidth = 4; c.strokeRect(22, 22, cw - 44, ch - 44);
       c.fillStyle = "#E3C487"; c.beginPath(); c.ellipse(cw / 2, ch / 2, cw / 5, ch / 4, 0, 0, 7); c.fill(); c.fillStyle = "#2F4A6B"; c.beginPath(); c.ellipse(cw / 2, ch / 2, cw / 9, ch / 8, 0, 0, 7); c.fill();
       for (let i = 0; i < 8; i++) { c.fillStyle = "#D9B36C"; c.beginPath(); c.arc(40 + (i % 4) * (cw - 80) / 3, i < 4 ? 40 : ch - 40, 6, 0, 7); c.fill(); }
       noise(c, cw, ch, 0.06, 800);
-    }, 256, 170);
+    }, 256, 170));
     pbFlat(mesh(RB(w * 0.95, 0.02, d * 0.85, 0.01), [M(0x8c2f2a), M(0x8c2f2a), TM(t, { roughness: 1 }), M(0x8c2f2a), M(0x8c2f2a), M(0x8c2f2a)], 0, 0.01, 0, g));
   }
 }
@@ -256,6 +240,40 @@ const PB_MODEL = {
     mesh(RB(0.36, 0.26, 0.03, 0.01), M(0xf7f2ea), 0, 1.15, 0.24, g).rotation.x = -0.2;
     mesh(CYL(0.08, 0.06, 0.18, 14), M(0xc8674f), 0.45, 1.44, -0.05, g);
   },
+  // ---- bawaan tahap 2 (dulu bagian ruangan di ui/03-scene.js)
+  kitchen_counter: g => {
+    mesh(RB(2.6, 1.2, 1.0, 0.04), M(0x8fa287), 0, 0.6, 0, g);
+    mesh(RB(2.75, 0.1, 1.08, 0.03), M(0xc9a27a, { roughness: 0.6 }), 0, 1.25, 0.02, g);
+    for (const dx of [-0.88, 0, 0.88]) { mesh(RB(0.8, 1.0, 0.04, 0.02), M(0x9bb093), dx, 0.58, 0.51, g); mesh(RB(0.22, 0.03, 0.03, 0.01), M(brass, { metalness: 0.7, roughness: 0.35 }), dx, 0.98, 0.55, g); }
+    mesh(CYL(0.32, 0.28, 0.32, 28), M(0xc8674f, { roughness: 0.5 }), 0.7, 1.46, 0.05, g); mesh(CYL(0.34, 0.34, 0.04, 28), M(0xb25a44), 0.7, 1.64, 0.05, g);
+    mesh(RB(0.55, 0.04, 0.38, 0.02), M(0xd8b48c), -0.6, 1.32, 0.1, g);
+  },
+  fridge: g => {
+    mesh(RB(0.95, 2.4, 1.0, 0.18), M(0xefe6d6, { roughness: 0.45 }), 0, 1.2, 0, g);
+    mesh(RB(0.06, 0.5, 0.06, 0.02), M(brass, { metalness: 0.7, roughness: 0.35 }), -0.32, 1.75, 0.52, g);
+  },
+  nightstand: (g, x) => {
+    mesh(RB(0.7, 0.75, 0.6, 0.04), M(wood), 0, 0.375, 0, g); mesh(RB(0.55, 0.02, 0.02, 0.01), M(shade(wood, 0.7)), 0, 0.5, 0.31, g);
+    mesh(CYL(0.1, 0.14, 0.35, 16), M(0xc8674f, { roughness: 0.5 }), 0, 0.93, 0, g);
+    mesh(CYL(0.16, 0.26, 0.3, 24, 1), M(0xf3e6cf, { emissive: 0xffc98a, emissiveIntensity: 0.35, side: THREE.DoubleSide, roughness: 1 }), 0, 1.25, 0, g);
+    x.lamp(0, 1.5, 0.15, 1.5);
+  },
+  rubber_duck: g => {
+    const dk = new THREE.Group(); dk.rotation.y = -0.6; g.add(dk);
+    mesh(SPH(0.22, 20, 14), M(0xe8c35a, { roughness: 0.4 }), 0, 0.17, 0, dk).scale.set(1.1, 0.75, 1.3);
+    mesh(SPH(0.14, 16, 12), M(0xe8c35a, { roughness: 0.4 }), 0, 0.4, 0.14, dk); mesh(new THREE.ConeGeometry(0.05, 0.12, 10), M(0xd9893f), 0, 0.38, 0.3, dk).rotation.x = Math.PI / 2;
+  },
+  shelf_jars: g => highShelf(g, 0, 4.3, [[0xe9dfcf, "jar"], [0x9dae95, "jar"], [0xc8674f, "pot"]]),
+  shelf_bath: g => highShelf(g, 0, 4.2, [[0xf3ede4, "jar"], [0xa9c4cf, "jar"], [0x7d9470, "plant"]]),
+  shelf_books: g => highShelf(g, 0, 4.4, [[0xd9b36c, "books"], [0x9dae95, "plant"], [cream, "jar"]]),
+  towel_rail: g => {
+    mesh(CYL(0.02, 0.02, 0.9, 8), pbBrass(), 0, 2.2, 0, g).rotation.z = Math.PI / 2;
+    mesh(RB(0.65, 0.95, 0.06, 0.03), M(0xd6b8a3, { roughness: 1 }), 0, 1.75, 0.04, g);
+  },
+  garland: g => {
+    mesh(CYL(0.01, 0.01, 3.4, 4), M(ink), 0, 3.82, 0, g).rotation.z = Math.PI / 2;
+    for (let i = 0; i < 6; i++) { const f = mesh(new THREE.ConeGeometry(0.16, 0.34, 3), M(PB_TOY[i % 4], { roughness: 1 }), -1.5 + i * 0.6, 3.7 - Math.sin(i / 5 * Math.PI) * 0.3, 0.02, g); f.rotation.x = Math.PI; f.scale.z = 0.25; }
+  },
   // ---- sudut (hiasan berdiri)
   plant_kitchen: g => plant(g, 0, 0, 1.1),
   plant_bathroom: g => plant(g, 0, 0, 0.95, 0xe6e0d6, 0x6f8a68),
@@ -306,34 +324,16 @@ const PB_MODEL = {
 // lampu dari perabot: ikut daftar lampu ruangan (ui/29-town.js menyalakannya waktu malam)
 function pbBuild(roomG, slotG, id, a) {
   const ctx = { a, lamp: (x, y, z, s) => { const l = new THREE.PointLight(0xffc68a, 0, 6, 1.6); l.position.set(x, y, z); slotG.add(l); (roomG.userData.lamps ||= []).push({ l, strength: s }); } };
-  if (PB_ART[id]) wallArt(slotG, 0, 0, 0, a.w || 0.9, a.h || 0.9, false, PB_ART[id], PB_FRAME[id]);
+  if (PB_ART[id]) pbArt(slotG, id, a.w || 0.9, a.h || 0.9, a.y || 0);
   else if (id && id.startsWith("rug_")) pbRug(slotG, a, id);
   else if (PB_MODEL[id]) PB_MODEL[id](slotG, ctx);
 }
-function pbClear(roomG, slotG) {
-  if (roomG.userData.lamps) roomG.userData.lamps = roomG.userData.lamps.filter(e => e.l.parent !== slotG);
-  slotG.traverse(o => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) { if (m.map && m.map !== aoTex) m.map.dispose(); m.dispose(); } });
-  while (slotG.children.length) slotG.remove(slotG.children[0]);
+// lukisan: bingkai + kanvas (teksturnya dibuat sekali per lukisan)
+function pbArt(g, id, w, h, y) {
+  mesh(RB(w + 0.12, h + 0.12, 0.06, 0.02), M(PB_FRAME[id] || 0x3a332d, { roughness: 0.6 }), 0, y, 0, g);
+  const t = pbTex("art:" + id, () => canvasTex((c, cw, ch) => { c.fillStyle = "#EFE6D8"; c.fillRect(0, 0, cw, ch); PB_ART[id](c, cw, ch); noise(c, cw, ch, 0.04, 300); }, 128, 128));
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), M(0xffffff, { map: t })); p.position.set(0, y, 0.035); g.add(p);
 }
-// pasang isi slot dari keadaan game. Cuma slot yang berubah yang dibangun ulang.
-function applyFurniture() {
-  const L = (typeof game !== "undefined" && game && game.home) ? Perabot.layout(game.home) : null;
-  for (const r of ROOMS) {
-    const A = PB_ANCHOR[r.act]; if (!A) continue;
-    const S = r.g.userData.slots || (r.g.userData.slots = {});
-    for (const s of Perabot.SLOT_IDS) {
-      const id = L ? L[r.act][s] : Perabot.DEF[r.act][s], a = A[s];
-      let g = S[s];
-      if (!g) { g = S[s] = new THREE.Group(); g.position.set(...a.p); g.rotation.y = a.ry || 0; r.g.add(g); g.userData.id = undefined; }
-      if (g.userData.id === id) continue;
-      pbClear(r.g, g); g.userData.id = id;
-      if (id) { pbBuild(r.g, g, id, a); g.traverse(envScale); }
-    }
-  }
-}
-applyFurniture();
-
-// ---- cat per ruangan (cuma rupa, disimpan di state.cat, nggak masuk replay). Urutan: pilihan ruangan > closet > kertas asli.
 const PB_WALLS = [
   { id: "oat", name: "Oat and sage", top: 0xeee4d4, low: 0x9dae95 }, { id: "sky", name: "Sky and slate", top: 0xe6edf2, low: 0x8fa3b5 },
   { id: "blush", name: "Blush", top: 0xf3e3dc, low: 0xc99a8c }, { id: "lemon", name: "Lemon", top: 0xf4ecd0, low: 0xd8b45f },
@@ -345,20 +345,3 @@ const PB_FLOORS = [
   { id: "terracotta", name: "Terracotta", a: 0xc58b67, b: 0xb47657 }, { id: "ash", name: "Ash", a: 0xd9d4cc, b: 0xbdb6ab },
   { id: "slate", name: "Slate", a: 0x8f969d, b: 0x767d84 }, { id: "sage", name: "Sage", a: 0xa9b79a, b: 0x93a284 },
 ];
-const PB_KIND = { makan: { w: "panel", f: "terra" }, mandi: { w: "tile", f: "terrazzo" }, tidur: { w: "plain", f: "planks" }, peluk: { w: "panel", f: "planks" } };
-const pbTexCache = {};
-function roomPaint(act) { const P = state && state.cat && state.cat[act]; return { w: P && PB_WALLS.find(x => x.id === P.w) || null, f: P && PB_FLOORS.find(x => x.id === P.f) || null }; }
-function setRoomPaint(act, part, id) {
-  if (!state) return;
-  const C = state.cat || (state.cat = {}), R = C[act] || (C[act] = {});
-  if (id) R[part] = id; else delete R[part];
-  applyHome();
-}
-// tekstur cat: satu gambar per (ruangan, warna), dibuat sekali; tiap material dapat salinan dengan repeat-nya sendiri
-function pbPaintTex(part, act, P, mat) {
-  const k = part + act + P.id, km = k + mat.uuid;
-  if (pbTexCache[km]) return pbTexCache[km];
-  const K = PB_KIND[act], base = pbTexCache[k] || (pbTexCache[k] = part === "w" ? wallTex(P.top, P.low, K.w) : floorTex(K.f, P.a, P.b));
-  const t = base.clone(); t.needsUpdate = true; t.repeat.copy(mat.userData.map0.repeat);
-  return pbTexCache[km] = t;
-}

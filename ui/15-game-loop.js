@@ -11,7 +11,7 @@ function refresh(force) {
     cur = alive[0] || cur || v.anggota[v.anggota.length - 1]; selected = cur.id;
   }
   if (!K || K.key !== lookKey(cur)) buildCreature(cur);
-  petSync(); bubbleSync(); applyFurniture();
+  petSync(); bubbleSync(); if (houseSync()) setRoom(roomIx, true);
   drawHud(); careUi();
 }
 // DEV-BEGIN

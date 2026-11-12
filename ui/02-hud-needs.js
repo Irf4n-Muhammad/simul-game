@@ -18,7 +18,7 @@ function careOfNeed(k) {
 function careTap(i) {
   if (!i) return;
   if (!i.open && !i.done) return say(`${i.label} is after noon.`);
-  if (roomIx !== CARE_ROOM[i.id]) setRoom(CARE_ROOM[i.id]);
+  if (roomIx !== careRoomOf(i.id)) setRoom(careRoomOf(i.id));
   if (!i.done) setTimeout(() => careDo(i), 220);
 }
 const NEED_WORD = { lapar: ["Full", "Peckish", "Hungry"], kebersihan: ["Clean", "A bit grubby", "Needs a bath"], energi: ["Rested", "Tired", "Exhausted"], mood: ["Happy", "Okay", "Sad"], perhatian: ["Loved", "Wants you", "Lonely"] };

@@ -12,12 +12,14 @@ let trophyKey = null, trophyG = null;
 function trophyShelf() {
   const R = ROOMS.find(r => r.act === "peluk"), W = state && state.dapur;
   if (!R || !W) return;
-  const ranks = MG_ORDER.map(k => Dapur.tier(k, W.best[k]).ix), key = ranks.join("");
+  const ranks = MG_ORDER.map(k => Dapur.tier(k, W.best[k]).ix), key = ranks.join("") + "|" + HOUSE_GEN;   // rumah dibangun ulang: rak dipasang lagi
   if (key === trophyKey) return;
   trophyKey = key;
-  if (trophyG) { R.g.remove(trophyG); trophyG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  if (trophyG) { if (trophyG.parent) trophyG.parent.remove(trophyG); trophyG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   if (!ranks.some(t => t > 0)) { trophyG = null; return; }
-  const g = trophyG = new THREE.Group(); g.position.set(-1.6, 2.3, R0 + 0.2); R.g.add(g);   // di atas rak mainan, kelihatan dari kamera
+  // di atas rak mainan (kalau ada di ruang main), kalau nggak ada: di dinding belakang dekat makhluk
+  const g = trophyG = new THREE.Group();
+  if (R.shelf) { g.position.set(0, 2.3, -0.15); R.shelf.add(g); } else { g.position.set(-1.6, 2.3, (R.rect[1] - R.stand[1]) * Denah.CELL + 0.3); R.standG.add(g); }
   // v67: tujuh game, jadi jarak dan ukuran piala ngikutin jumlahnya biar muat di rak yang sama
   const n = ranks.length, gap = Math.min(0.53, 2.3 / n), sc = Math.min(1, gap / 0.5);
   mesh(RB(gap * n + 0.1, 0.07, 0.36, 0.02), M(0xc9a27a, { roughness: 0.7 }), 0, 0, 0, g);
