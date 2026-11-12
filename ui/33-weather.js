@@ -4,7 +4,8 @@
 // atau lokasi persis kalau pemain memilihnya. Pengaturan dan cache di localStorage (mk-cuaca), bukan di save.
 // Kalau fetch diblokir (artifact, offline) langitnya tetap cerah dan tidak ada pesan apa pun. Aturan dan tabel: weather.js.
 const WX_KEY = "mk-cuaca", WX_TTL = 60 * 60 * 1000, WX_EVERY = 10 * 60 * 1000;
-let WX = null, wxShown = null, wxBusy = false;
+// v88: WX_FORCE = cuaca yang dipilih tombol hujan di kamar panjang (ui/38j-kamar.js); wxReal = cuaca asli terakhir
+let WX = null, wxShown = null, wxBusy = false, WX_FORCE = null, wxReal = null;
 let wxCfg = (() => { try { return JSON.parse(localStorage.getItem(WX_KEY)) || null; } catch (e) { return null; } })() || { on: true, src: "tz" };
 const wxSave = () => { try { localStorage.setItem(WX_KEY, JSON.stringify(wxCfg)); } catch (e) { /* tanpa simpanan: tetap jalan */ } };
 function wxZone() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { return null; } }
@@ -16,10 +17,11 @@ function wxWhere() {
   return p ? [p[0], p[1], Weather.cityOf(tz)] : null;
 }
 function wxApply(skin) {
-  const s = skin && Weather.SKINS.includes(skin) ? skin : null;
+  wxReal = skin && Weather.SKINS.includes(skin) ? skin : null;
+  const s = WX_FORCE || wxReal;
   if (s === WX) return;
   WX = s; $("app").dataset.wx = s || ""; applyLight(true);
-  if (s && s !== wxShown) { wxShown = s; Tele.ev("cuaca", { k: s, a: "tampil" }); }
+  if (!WX_FORCE && s && s !== wxShown) { wxShown = s; Tele.ev("cuaca", { k: s, a: "tampil" }); }
 }
 async function wxSync(force) {
   const w = wxWhere(); if (!w) { wxApply(null); return; }

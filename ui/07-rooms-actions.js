@@ -1,6 +1,7 @@
 // ================================================================ rooms + actions
 let roomIx = 0;
 function setRoom(i, instant) {
+  if (!instant && app.classList.contains("kamar")) return;   // v88: kamar panjang cuma satu ruangan, geser nggak pindah
   roomIx = (i + ROOMS.length) % ROOMS.length;
   const go = () => {
     dnShow(); resize();   // denah (ui/03c-denah.js): ruangan ini ke titik nol, kamera ikut lebarnya
