@@ -306,7 +306,7 @@
       const c = this.home.get(cid);
       if (!c || !c.alive(day) || !GROWN.has(E.phase_of(Math.max(0, day - c.born)))) return null;
       const kindOf = kind.startsWith("rencana:") && kind.length > 8 ? "plan" : kind.startsWith("apply:") || kind.startsWith("lamar:") ? "job"
-        : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || kind.startsWith("perabot:beli:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
+        : kind.startsWith("pasar:beli:") || kind.startsWith("pasar:drop:") || kind.startsWith("perabot:beli:") || kind.startsWith("perabot:bekas:") || (kind.startsWith("beli:") && !kind.includes("@")) ? "buy"
         : kind.startsWith("biz:suggest:") ? "open" : /^biz:(price|focus|hire|fire|close|wait|post|pick|raise|train|borrow|repay|invest|supplier|promo|product|grow|contract|bake|plan|open|dayold|card|rnd|niche|seat|music|mode|extra)\b/.test(kind) ? "biz" : /^kerja:(shift|ot|style|rest|card)\b/.test(kind) ? "work" : /^pet:(adopt|food|walk|vet|card)\b/.test(kind) ? "pet" : null;
       if (!kindOf) return null;
       const N0 = c.info.nolak && c.info.nolak.d === day ? c.info.nolak : null;

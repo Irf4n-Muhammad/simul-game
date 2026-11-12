@@ -56,7 +56,10 @@ function bdRoom() {
 // tiap perubahan: jendela yang jadi dinding dalam dan pintu yang nggak nempel dinding lagi ikut hilang (seperti di game bangun rumah)
 function bdChanged() {
   const pl = BD.plan, side = k => Denah.sidesOf(Denah.parseEdge(k)).map(([x, z]) => Denah.roomAt(pl, x, z));
-  pl.N = pl.N.filter(k => { const [a, b] = side(k); return (a < 0) !== (b < 0); });
+  // sayap selalu ikut jenis induknya
+  pl.R.forEach(r => { if (r.length > 5 && pl.R[r[5]]) r[0] = pl.R[r[5]][0]; });
+  const inside = v => v >= 0 && !Denah.OUTDOOR(pl.R[v][0]), open = v => v < 0 || Denah.OUTDOOR(pl.R[v][0]);
+  pl.N = pl.N.filter(k => { const [a, b] = side(k); return (inside(a) && open(b)) || (inside(b) && open(a)); });
   pl.D = pl.D.filter(k => { const [a, b] = side(k); return a !== b; });
   DN_DRAFT = pl; houseSync(); bdOverlay();
 }
@@ -75,10 +78,14 @@ function bdOverlay() {
   };
   const fill = (x, z, w, d, col, op) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w * CELL - 0.08, d * CELL - 0.08), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set((x + w / 2) * CELL, 0.03, (z + d / 2) * CELL); m.renderOrder = 4; BD_G.add(m); };
   const errs = bdErrs(), badR = new Set(errs.filter(e => e.r != null).map(e => e.r)), badI = new Set(errs.filter(e => e.i != null).map(e => e.i));
-  BD.plan.R.forEach(([, x, z, w, d], i) => { if (badR.has(i)) { fill(x, z, w, d, 0xd9472e, 0.3); rect(x, z, w, d, 0xd9472e, LOW_H + 0.04, 0.12, 0.1); } });
+  BD.plan.R.forEach(([, x, z, w, d], i) => { if (badR.has(i) || badR.has(Denah.rootOf(BD.plan, i))) { fill(x, z, w, d, 0xd9472e, 0.3); rect(x, z, w, d, 0xd9472e, LOW_H + 0.04, 0.12, 0.1); } });
   BD.plan.I.forEach((it, k) => { if (!badI.has(k)) return; const m = Denah.meta(it[0]); if (!m) return; const [w, d] = Denah.dims(m, it[3]); fill(it[1], it[2], w, d, 0xd9472e, 0.45); });
   const R = BD.sel && BD.sel.k === "room" ? BD.sel.i : (BD.tool === "items" || BD.tool === "paint") ? bdRoom() : -1;
-  if (R >= 0 && BD.plan.R[R]) { const [, x, z, w, d] = BD.plan.R[R]; rect(x, z, w, d, 0xd4a853, LOW_H + 0.06, 0, 0.16); }
+  // garis keliling ruangan terpilih (induk + sayap jadi satu bentuk)
+  if (R >= 0 && BD.plan.R[R]) for (const S of dnSides(BD.plan, R)) {
+    const [cx, cz, sx, sz] = dnSeg(S, 0, S.n - 1), y = LOW_H + 0.06, t = 0.2;
+    bar(cx, cz, S.s % 2 ? t : sx + t, S.s % 2 ? sz + t : t, y, 0xd4a853);
+  }
   if (BD.sel && BD.sel.k === "item" && BD.plan.I[BD.sel.i]) {
     const it = BD.plan.I[BD.sel.i], m = Denah.meta(it[0]), [w, d] = Denah.dims(m, it[3]);
     fill(it[1], it[2], w, d, badI.has(BD.sel.i) ? 0xd9472e : 0xd4a853, 0.4); rect(it[1], it[2], w, d, 0xffffff, 0.08, 0.05, 0.07);
@@ -193,6 +200,7 @@ const BUILD = {
     if (D.kind === "tap-room" && !D.moved) { BD.sel = BD.tool === "items" ? null : { k: "room", i: D.i }; BD.last = D.i; bdPanel(); bdOverlay(); return; }
     if (D.kind === "edge-tap" && !D.moved) { bdToggleEdge(D.e); return; }
     if (D.kind === "item") { BD.sel = { k: "item", i: D.i }; const r = bdItemRoom(D.i); if (r >= 0) BD.last = r; bdPanel(); bdOverlay(); return; }
+    if (D.kind === "edge") { bdFixWallItems(); bdChanged(); }
     if (D.kind === "room" || D.kind === "edge") { bdPanel(); bdOverlay(); }
   },
   cancel(e) { PTR.delete(e.pointerId); BD.drag = null; },
@@ -200,13 +208,13 @@ const BUILD = {
 };
 // geser ruangan beserta isinya (barang di dalamnya, pintu dan jendela di dindingnya)
 function bdMoveRoom(snap, i, dx, dz) {
-  const pl = Denah.clone(snap), [, x, z, w, d] = pl.R[i];
-  const inside = (cx, cz) => cx >= x && cx < x + w && cz >= z && cz < z + d;
+  const pl = Denah.clone(snap), parts = Denah.partsOf(pl, i);
+  const inside = (cx, cz) => parts.some(j => { const [, x, z, w, d] = snap.R[j]; return cx >= x && cx < x + w && cz >= z && cz < z + d; });
   pl.I.forEach(it => { const m = Denah.meta(it[0]); if (!m) return; const c = Denah.cellsOf(m, it)[0]; if (inside(c[0], c[1])) { it[1] += dx; it[2] += dz; } });
   const onWall = k => { const e = Denah.parseEdge(k); return Denah.sidesOf(e).some(([a, b]) => inside(a, b)); };
   const shift = k => { const e = Denah.parseEdge(k); return Denah.ek(e.o, e.x + dx, e.z + dz); };
   pl.D = pl.D.map(k => onWall(k) ? shift(k) : k); pl.N = pl.N.map(k => onWall(k) ? shift(k) : k);
-  pl.R[i] = [pl.R[i][0], x + dx, z + dz, w, d];
+  for (const j of parts) { pl.R[j][1] += dx; pl.R[j][2] += dz; }
   return pl;
 }
 function bdToggleEdge(k) {
@@ -248,13 +256,27 @@ function bdRoomsHtml() {
   const s = BD.sel && BD.sel.k === "room" ? BD.sel.i : -1, nm = Denah.names(BD.plan);
   const add = `<h3 class="pb-h">Add a room</h3><div class="bd-chips">${Denah.TYPES.map(t => `<button class="chip" data-add="${t}">+ ${esc(Denah.TYPE_NAME[t])}</button>`).join("")}</div>`;
   if (s < 0) return `<p class="pb-note">Tap a room to pick it. Drag a picked room to move it, drag its edge to resize.</p>${add}`;
-  const [t, , , w, d] = BD.plan.R[s];
-  return `<h2>${esc(nm[s])} <small class="bd-size">${w} × ${d}</small></h2>
+  const [t, , , w, d] = BD.plan.R[s], wing = BD.plan.R.findIndex(r => r.length > 5 && r[5] === s);
+  const wingHtml = wing >= 0 ? `<h3 class="pb-h">L-shape</h3><div class="bd-grid"><span>Width</span><button class="pb-nav" data-wsz="3,-1" aria-label="Narrower">−</button><b>${BD.plan.R[wing][3]}</b><button class="pb-nav" data-wsz="3,1" aria-label="Wider">+</button>
+      <span>Depth</span><button class="pb-nav" data-wsz="4,-1" aria-label="Shallower">−</button><b>${BD.plan.R[wing][4]}</b><button class="pb-nav" data-wsz="4,1" aria-label="Deeper">+</button></div>
+      <div class="bd-chips"><button class="chip" data-wing="flip">Move the extra part</button><button class="chip" data-wing="del">Make it square again</button></div>`
+    : `<div class="bd-chips"><button class="chip" data-wing="add">Make it L-shaped</button></div>`;
+  return `<h2>${esc(nm[s])} <small class="bd-size">${Denah.areaOf(BD.plan, s)} squares</small></h2>
     <p class="pb-note">Drag inside to move it (everything moves along). Drag an edge to resize.</p>
     <div class="bd-grid"><span>Width</span><button class="pb-nav" data-sz="w,-1" aria-label="Narrower">−</button><b>${w}</b><button class="pb-nav" data-sz="w,1" aria-label="Wider">+</button>
       <span>Depth</span><button class="pb-nav" data-sz="d,-1" aria-label="Shallower">−</button><b>${d}</b><button class="pb-nav" data-sz="d,1" aria-label="Deeper">+</button></div>
+    ${wingHtml}${t === "tidur" ? bdBedsHtml(s) : ""}
     <h3 class="pb-h">Room type</h3><div class="bd-chips">${Denah.TYPES.map(k => `<button class="chip${k === t ? " on" : ""}" data-type="${k}">${esc(Denah.TYPE_NAME[k])}</button>`).join("")}</div>
-    <div class="bd-chips"><button class="chip" data-bd="del-room" ${BD.plan.R.length <= 1 ? "disabled" : ""}>Remove room</button></div>${add}`;
+    <div class="bd-chips"><button class="chip" data-bd="del-room" ${Denah.rootsOf(BD.plan).length <= 1 ? "disabled" : ""}>Remove room</button></div>${add}`;
+}
+// kamar tidur: siapa tidur di sini (denah.js sleepers). Ketuk nama = pindahkan ke kamar ini; ketuk lagi = biar diatur otomatis.
+function bdBedsHtml(ri) {
+  const day = today(), sl = Denah.sleepers(game.home, day, BD.plan), beds = Denah.bedsIn(BD.plan, ri), A = BD.plan.A || [];
+  const ms = game.home.living(day).filter(m => m.age(day) >= 60);
+  const here = ms.filter(m => sl[m.id] === ri), none = ms.filter(m => sl[m.id] === -1);
+  return `<h3 class="pb-h">Who sleeps here</h3>
+    <p class="pb-note">${beds} bed${beds === 1 ? "" : "s"}. A bed fits one grown-up or teen, a couple, or two little ones.${none.length ? ` <b>No bed: ${esc(none.map(m => m.name).join(", "))}</b>` : ""}</p>
+    <div class="bd-chips">${ms.map(m => { const pin = A.some(a => a[0] === m.id && a[1] === ri); return `<button class="chip${here.includes(m) ? " on" : ""}" data-sleep="${esc(m.id)}" aria-pressed="${pin}">${pin ? "📌 " : ""}${esc(m.name)}</button>`; }).join("")}</div>`;
 }
 function bdItemsHtml(c) {
   const ri = bdRoom(), nm = Denah.names(BD.plan), t = BD.plan.R[ri][0], left = bdOwnLeft(), day = today();
@@ -262,7 +284,9 @@ function bdItemsHtml(c) {
   let top;
   if (BD.sel && BD.sel.k === "item") {
     const x = Perabot.item(BD.plan.I[BD.sel.i][0]);
-    top = `<div class="bd-sel"><b>${esc(x.name)}${pbLike(Perabot.likes(c, x), cur.nama)}</b><small>${esc(PB_KIND_LBL[x.kind])}${x.def ? " · came with the house" : ""}</small><p>${esc(x.note)}</p>
+    const k = Perabot.cond(game.home, x.id), fix = !x.def && k < 100;
+    top = `<div class="bd-sel"><b>${esc(x.name)}${pbLike(Perabot.likes(c, x), cur.nama)}</b><small>${esc(PB_KIND_LBL[x.kind])}${x.def ? " · came with the house" : ` · ${Perabot.condLabel(k)}${k < 100 ? ` (${Math.round(k)}%)` : ""}`}</small><p>${esc(x.note)}</p>
+      ${fix ? `<div class="bd-chips"><button class="chip" data-fix="${x.id}" ${canCare() && wallet >= Perabot.repairCost(x) ? "" : "disabled"}>Repair · ${pbC(Perabot.repairCost(x))}</button></div>` : ""}
       <div class="bd-chips"><button class="chip" data-bd="rot">Rotate</button><button class="chip" data-bd="away">${x.def ? "Remove" : "Put in storage"}</button><button class="chip" data-bd="desel">Done</button></div></div>`;
   } else top = `<p class="pb-note">Drag things to move them. Tap one to rotate or put it away. New things go in <b>${esc(nm[ri])}</b>; tap a room to switch.</p>`;
   const fitsHere = x => x.room == null || x.room === t;
@@ -313,10 +337,31 @@ function bdBind(c) {
     BD.msg = "New room! Drag it next to the house, then add a door.";
     bdChanged(); bdPanel();
   });
-  on("[data-sz]", b => { const [k, n] = b.dataset.sz.split(","), R = BD.plan.R[BD.sel.i], j = k === "w" ? 3 : 4; R[j] = Math.max(2, Math.min(16, R[j] + Number(n))); bdChanged(); bdPanel(); });
-  on("[data-type]", b => { BD.plan.R[BD.sel.i][0] = b.dataset.type; bdChanged(); bdPanel(); });
+  on("[data-sz]", b => { const [k, n] = b.dataset.sz.split(","), R = BD.plan.R[BD.sel.i], j = k === "w" ? 3 : 4; R[j] = Math.max(2, Math.min(16, R[j] + Number(n))); bdFixWallItems(); bdChanged(); bdPanel(); });
+  on("[data-type]", b => { BD.plan.R[BD.sel.i][0] = b.dataset.type; if (b.dataset.type !== "tidur" && BD.plan.A) BD.plan.A = BD.plan.A.filter(a => a[1] !== BD.sel.i); bdChanged(); bdPanel(); });
+  on("[data-wing]", b => {
+    const ri = BD.sel.i, a = b.dataset.wing, wi = BD.plan.R.findIndex(r => r.length > 5 && r[5] === ri);
+    if (a === "del" && wi >= 0) bdRemoveRows([wi]);
+    else if (a === "add" || a === "flip") { const from = wi >= 0 ? BD.plan.R[wi].slice() : null; if (wi >= 0) bdRemoveRows([wi]); if (!bdAddWing(ri, from)) { if (from) { BD.plan.R.push(from); BD.plan.C.push(["", ""]); } BD.msg = "No space next to this room for an extra part."; } }
+    BD.sel = { k: "room", i: ri }; bdFixWallItems(); bdChanged(); bdPanel();
+  });
+  on("[data-wsz]", b => { const [j, n] = b.dataset.wsz.split(",").map(Number), wi = BD.plan.R.findIndex(r => r.length > 5 && r[5] === BD.sel.i); if (wi < 0) return; BD.plan.R[wi][j] = Math.max(2, Math.min(16, BD.plan.R[wi][j] + n)); bdFixWallItems(); bdChanged(); bdPanel(); });
+  on("[data-sleep]", b => {
+    const id = b.dataset.sleep, ri = BD.sel.i, A = (BD.plan.A ||= []), k = A.findIndex(a => a[0] === id), pinned = k >= 0 && A[k][1] === ri;
+    if (k >= 0) A.splice(k, 1);
+    if (!pinned) A.push([id, ri]);
+    if (!A.length) delete BD.plan.A;
+    const sl = Denah.sleepers(game.home, today(), BD.plan), m = game.home.get(id);
+    if (!pinned && sl[id] !== ri) BD.msg = `There's no free bed here for ${m ? m.name : "them"}. Add a bed first.`;
+    bdChanged(); bdPanel();
+  });
   on("[data-door]", b => { BD.door = b.dataset.door; bdPanel(); });
   on("[data-put]", b => bdPlace(b.dataset.put));
+  on("[data-fix]", b => {
+    const x = Perabot.item(b.dataset.fix);
+    if (!game.act(cur.id, "perabot:servis:" + x.id)) { BD.msg = "Can't repair that right now."; return bdPanel(); }
+    Tele.ev("perabot", { a: "servis", i: x.id }); save(); BD.msg = `${x.name} looks like new again.`; bdPanel();
+  });
   on("[data-buy]", b => {
     const x = Perabot.item(b.dataset.buy);
     // dewasa bisa nolak: jawabannya muncul di panel (makhluknya lagi disembunyiin)
@@ -334,9 +379,9 @@ function bdBind(c) {
     if (a === "cancel") { closeSheet(); return; }
     if (a === "save") { bdSave(); return; }
     if (a === "del-room") {
-      const i = BD.sel.i, [, x, z, w, d] = BD.plan.R[i];
-      BD.plan.I = BD.plan.I.filter(it => { const m = Denah.meta(it[0]), cc = m && Denah.cellsOf(m, it)[0]; return !(cc && cc[0] >= x && cc[0] < x + w && cc[1] >= z && cc[1] < z + d); });
-      BD.plan.R.splice(i, 1); BD.plan.C.splice(i, 1); BD.sel = null; BD.last = 0;
+      const i = BD.sel.i;
+      BD.plan.I = BD.plan.I.filter(it => { const m = Denah.meta(it[0]), cc = m && Denah.cellsOf(m, it)[0]; return !(cc && Denah.roomAt(BD.plan, cc[0], cc[1]) === i); });
+      bdRemoveRows(Denah.partsOf(BD.plan, i)); BD.sel = null; BD.last = 0;
     }
     if (a === "rot") { const it = BD.plan.I[BD.sel.i]; it[3] = (it[3] + 1) % 4; }
     if (a === "away") { BD.plan.I.splice(BD.sel.i, 1); BD.sel = null; }
@@ -344,11 +389,47 @@ function bdBind(c) {
     bdChanged(); bdPanel();
   });
 }
+// barang dinding yang dindingnya hilang (ruangan jadi L, diperkecil): cari tempat lain di ruangan yang sama, kalau nggak ada balik ke gudang
+function bdFixWallItems() {
+  const pl = BD.plan, lot = bdLot();
+  for (let k = pl.I.length - 1; k >= 0; k--) {
+    const it = pl.I[k], m = Denah.meta(it[0]); if (!m || m.m !== "wall" || Denah.fitsAt(pl, k, lot)) continue;
+    const c = Denah.cellsOf(m, it)[0], ri = Denah.roomAt(pl, c[0], c[1]);
+    pl.I.splice(k, 1);
+    const pos = ri >= 0 ? Denah.findSpot(pl, it[0], ri, lot) : null;
+    if (pos) pl.I.splice(k, 0, [it[0], ...pos]);
+  }
+  if (BD.sel && BD.sel.k === "item" && !pl.I[BD.sel.i]) BD.sel = null;
+}
+// hapus baris R (dan C) lalu betulkan indeks induk sayap dan pembagian kamar
+function bdRemoveRows(rows) {
+  const pl = BD.plan, gone = new Set(rows), map = [];
+  let n = 0; pl.R.forEach((_, i) => { map[i] = gone.has(i) ? -1 : n++; });
+  pl.R = pl.R.filter((_, i) => !gone.has(i)).map(r => r.length > 5 ? [...r.slice(0, 5), map[r[5]]] : r).filter(r => r.length === 5 || r[5] >= 0);
+  pl.C = pl.C.filter((_, i) => !gone.has(i));
+  if (pl.A) { pl.A = pl.A.map(([id, ri]) => [id, map[ri]]).filter(a => a[1] >= 0); if (!pl.A.length) delete pl.A; }
+}
+// sayap 3x3 di sisi yang masih kosong (atau pindah ke sisi berikutnya: from = sayap lama)
+function bdAddWing(ri, from) {
+  const pl = BD.plan, [t, x, z, w, d] = pl.R[ri], lot = bdLot(), W = from ? from[3] : 3, D = from ? from[4] : 3;
+  const cand = [[x + w, z + d - D], [x + w - W, z + d], [x - W, z + d - D], [x, z + d], [x + w, z], [x - W, z], [x + w - W, z - D], [x, z - D]];
+  let k0 = 0;
+  if (from) { const k = cand.findIndex(([cx, cz]) => cx === from[1] && cz === from[2]); k0 = k + 1; }
+  for (let n = 0; n < cand.length; n++) {
+    const [nx, nz] = cand[(k0 + n) % cand.length];
+    if (nx < 0 || nz < 0 || nx + W > lot[0] || nz + D > lot[1]) continue;
+    if (pl.R.some(([, x2, z2, w2, d2]) => nx < x2 + w2 && x2 < nx + W && nz < z2 + d2 && z2 < nz + D)) continue;
+    const r = [t, nx, nz, W, D, ri]; if (!Denah.touch(r, pl.R[ri])) continue;
+    pl.R.push(r); pl.C.push(["", ""]);
+    return true;
+  }
+  return false;
+}
 function bdSave() {
   if (bdErrs().length) return bdPanel();
   const kind = Denah.encode(BD.plan);
   if (Denah.saved(game.home) && Denah.encode(Denah.plan(game.home)) === kind) { closeSheet(); return; }
-  const more = BD.plan.R.length > Denah.plan(game.home).R.length;
+  const more = Denah.rootsOf(BD.plan).length > Denah.rootsOf(Denah.plan(game.home)).length;
   if (!game.act(cur.id, kind)) { BD.msg = "Couldn't save the plan."; return bdPanel(); }
   Tele.ev("perabot", { a: "denah", r: BD.plan.R.length, i: BD.plan.I.length });
   save(); closeSheet(); refresh();
@@ -357,27 +438,45 @@ function bdSave() {
 $("roomName").setAttribute("role", "button"); $("roomName").setAttribute("tabindex", "0"); $("roomName").setAttribute("aria-label", "Build and decorate");
 $("roomName").onclick = () => { if (cur && !app.classList.contains("in-town")) showDecor(); };
 
-// ---- tab Home di Bazaar: semua perabot, beli masuk gudang, tata lewat mode bangun
+// ---- tab Home di Bazaar: semua perabot, beli masuk gudang, tata lewat mode bangun.
+// Tahap 3: edisi terbatas minggu ini, tiga barang bekas hari ini, dan perabot keluarga (kondisi, servis, jual; yang lama jadi vintage/antik).
 function bzHome() {
   const c = bz.c, day = today(), can = canCare() && Perabot.canBuy(c, day), wallet = c.st ? c.st.wallet : 0, G = Perabot.storage(game.home);
   const toast = bz.toast; bz.toast = null;
+  const P0 = game.home.world.perabot || {}, L = Perabot.limited(day), gotL = !!(P0.lim || {})[L.k];
+  const sold = P0.bekas && P0.bekas.d === day ? P0.bekas.ids : [];
   const groups = {};
   for (const x of Perabot.catalog()) (groups[Perabot.where(x)] ||= []).push(x);
+  const btn = (attr, price, ok) => `<button class="chip pb-buy" ${attr} ${can && ok && wallet >= price ? "" : "disabled"}>${pbC(price)}</button>`;
+  const row = (x, sub, right, note = x.note) => `<div class="pb-item bz"><div><b>${esc(x.name)}${pbLike(Perabot.likes(c, x), c.name)}</b><small>${sub}</small>${note ? `<p>${esc(note)}</p>` : ""}</div>${right}</div>`;
+  const kindSub = x => esc(PB_KIND_LBL[x.kind]) + (x.tags.length ? " · " + esc(Perabot.tagNames(x).join(", ")) : "") + (x.room ? " · " + esc(Perabot.where(x)) : "");
+  // edisi terbatas
+  const lim = `<h4 class="pb-h2">LIMITED EDITION</h4>${row(L.item, L.open ? `${gotL ? "You got one" : `One per family · ends day ${L.to}`} · ${kindSub(L.item)}` : `Next drop on day ${L.next}`,
+    L.open ? (gotL ? `<span class="chip on">Yours</span>` : btn(`data-pbb="${L.id}"`, L.item.price, true)) : `<span class="chip" aria-disabled="true">Soon</span>`, L.item.note + " Worth more once the drop is over.")}`;
+  // bekas hari ini
+  const used = `<h4 class="pb-h2">PRE-OWNED TODAY</h4><p class="bz2-note" style="margin:4px 16px">New pieces every day. Cheaper, a little worn. Worn things work a bit less until you repair them.</p>
+    ${Perabot.usedToday(day).map(u => row(u.item, `${esc(Perabot.condLabel(u.cond))} (${u.cond}%) · was ${pbC(u.item.price)} new · ${kindSub(u.item)}`,
+      sold.includes(u.id) ? `<span class="chip on">Sold</span>` : btn(`data-pbu="${u.id}"`, u.price, true), "")).join("")}`;
+  // perabot keluarga
+  const own = Denah.own(game.home), mine = Object.keys(own).map(Perabot.item).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  const yours = mine.length ? `<h4 class="pb-h2">YOUR FURNITURE</h4>${mine.map(x => {
+    const k = Perabot.cond(game.home, x.id), age = Perabot.ageLabel(game.home, x.id, day), inS = G[x.id] || 0, fix = k < 100;
+    const sub = `${own[x.id]} owned${inS ? ` · ${inS} in storage` : ""} · ${esc(Perabot.condLabel(k))}${k < 100 ? ` (${Math.round(k)}%)` : ""}${age ? ` · <b class="pb-like">${age}</b>` : ""}${x.lim ? " · Limited" : ""}`;
+    const right = `<span class="bd-chips" style="flex-direction:column;align-items:flex-end;margin:0">${fix ? `<button class="chip" data-pbfix="${x.id}" ${canCare() && wallet >= Perabot.repairCost(x) ? "" : "disabled"}>Repair ${pbC(Perabot.repairCost(x))}</button>` : ""}${inS ? `<button class="chip" data-pbsell="${x.id}" ${canCare() ? "" : "disabled"}>Sell ${pbC(Perabot.sellPrice(game.home, x.id, day))}</button>` : ""}</span>`;
+    return row(x, sub, right, "");
+  }).join("")}<p class="bz2-note" style="margin:4px 16px">Only things in storage can be sold. Furniture kept a year turns vintage, four years antique, and sells for more.</p>` : "";
   return `${toast ? `<p class="bz2-toast">${esc(toast)}</p>` : ""}<div class="bz2-intro"><h2>HOME</h2><p>Furniture for the family home. Useful pieces make care in that room work better; decor makes a room cozier, and everyone has their own taste. Things you buy wait in storage. Tap the room name at home to build and place them.</p></div>
     ${can ? "" : `<p class="bz2-note">${esc(c.name)} can buy furniture from the teen years.</p>`}
-    ${Object.entries(groups).map(([where, xs]) => `<h4 class="pb-h2">${bzUp(where)}</h4>${xs.map(x => {
-      const lk = Perabot.likes(c, x);
-      return `<div class="pb-item bz"><div><b>${esc(x.name)}${pbLike(lk, c.name)}</b><small>${esc(PB_KIND_LBL[x.kind])}${x.tags.length ? " · " + esc(Perabot.tagNames(x).join(", ")) : ""}${G[x.id] ? ` · ${G[x.id]} in storage` : ""}</small><p>${esc(x.note)}</p></div>
-        <button class="chip pb-buy" data-pbb="${x.id}" ${can && wallet >= x.price ? "" : "disabled"}>${pbC(x.price)}</button></div>`;
-    }).join("")}`).join("")}`;
+    ${lim}${used}${yours}
+    ${Object.entries(groups).map(([where, xs]) => `<h4 class="pb-h2">${bzUp(where)}</h4>${xs.map(x => row(x, `${esc(PB_KIND_LBL[x.kind])}${x.tags.length ? " · " + esc(Perabot.tagNames(x).join(", ")) : ""}${G[x.id] ? ` · ${G[x.id]} in storage` : ""}`, btn(`data-pbb="${x.id}"`, x.price, true))).join("")}`).join("")}`;
 }
 function bzHomeBind(body) {
-  body.querySelectorAll("[data-pbb]").forEach(b => b.onclick = () => {
-    const x = Perabot.item(b.dataset.pbb);
-    if (!game.act(cur.id, "perabot:beli:" + x.id)) { if (!game.refused) say("Can't do that right now."); return; }
-    Tele.ev("perabot", { a: "beli", i: x.id, harga: x.price });
-    save(); refresh(); say("Ooh, new!");
-    bz.toast = `${x.name} is in storage. Tap the room name at home to place it.`;
-    bzShow("home");
-  });
+  const go = (kind, ok, tele) => {
+    if (!game.act(cur.id, kind)) { if (!game.refused) say("Can't do that right now."); return; }
+    Tele.ev("perabot", tele); save(); refresh(); bz.toast = ok; bzShow("home");
+  };
+  body.querySelectorAll("[data-pbb]").forEach(b => b.onclick = () => { const x = Perabot.item(b.dataset.pbb); say("Ooh, new!"); go("perabot:beli:" + x.id, `${x.name} is in storage. Tap the room name at home to place it.`, { a: "beli", i: x.id, harga: x.price }); });
+  body.querySelectorAll("[data-pbu]").forEach(b => b.onclick = () => { const x = Perabot.item(b.dataset.pbu); go("perabot:bekas:" + x.id, `A pre-owned ${x.name.toLowerCase()} is in storage.`, { a: "bekas", i: x.id }); });
+  body.querySelectorAll("[data-pbfix]").forEach(b => b.onclick = () => { const x = Perabot.item(b.dataset.pbfix); go("perabot:servis:" + x.id, `${x.name}: good as new.`, { a: "servis", i: x.id }); });
+  body.querySelectorAll("[data-pbsell]").forEach(b => b.onclick = () => { const x = Perabot.item(b.dataset.pbsell), v = Perabot.sellPrice(game.home, x.id, today()); go("perabot:jual:" + x.id, `Sold the ${x.name.toLowerCase()} for ${pbC(v)}.`, { a: "jual", i: x.id, harga: v }); });
 }

@@ -34,6 +34,14 @@ function pbRug(g, a, kind) {
   } else if (kind === "rug_patch") {
     const t = pbTex("rug_patch", () => canvasTex((c, cw, ch) => { const cs = ["#B86F52", "#8FA287", "#D9B36C", "#7E9CB3", "#E3CFC4", "#C9A27A"]; for (let y = 0; y < 4; y++) for (let x = 0; x < 6; x++) { c.fillStyle = cs[(x * 5 + y * 3) % 6]; c.fillRect(x * cw / 6 + 1, y * ch / 4 + 1, cw / 6 - 2, ch / 4 - 2); } }, 192, 128));
     pbFlat(mesh(RB(w * 0.9, 0.025, d * 0.85, 0.01), [M(0xc9a27a), M(0xc9a27a), TM(t, { roughness: 1 }), M(0xc9a27a), M(0xc9a27a), M(0xc9a27a)], 0, 0.012, 0, g));
+  } else if (kind === "koi_rug") {
+    const t = pbTex("koi_rug", () => canvasTex((c, cw, ch) => {
+      c.fillStyle = "#2F5D8A"; c.fillRect(0, 0, cw, ch); c.strokeStyle = "#E9E1D2"; c.lineWidth = 5; c.strokeRect(8, 8, cw - 16, ch - 16);
+      for (const [x, y, a, col] of [[70, 60, 0.5, "#E8783A"], [170, 110, -2.4, "#F3EDE4"], [120, 50, 2.8, "#E8A03A"]]) { c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 26, 11, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(-22, 0); c.lineTo(-40, -10); c.lineTo(-40, 10); c.fill(); c.restore(); }
+      c.fillStyle = "#7D9470"; for (const [x, y] of [[40, 130], [210, 40]]) { c.beginPath(); c.arc(x, y, 16, 0, 7); c.fill(); }
+      noise(c, cw, ch, 0.05, 600);
+    }, 256, 170));
+    pbFlat(mesh(RB(w * 0.95, 0.02, d * 0.85, 0.01), [M(0x2f5d8a), M(0x2f5d8a), TM(t, { roughness: 1 }), M(0x2f5d8a), M(0x2f5d8a), M(0x2f5d8a)], 0, 0.01, 0, g));
   } else if (kind === "rug_persian") {
     const t = pbTex("rug_persian", () => canvasTex((c, cw, ch) => {
       c.fillStyle = "#8C2F2A"; c.fillRect(0, 0, cw, ch); c.strokeStyle = "#E3C487"; c.lineWidth = 6; c.strokeRect(10, 10, cw - 20, ch - 20); c.strokeStyle = "#2F4A6B"; c.lineWidth = 4; c.strokeRect(22, 22, cw - 44, ch - 44);
@@ -320,12 +328,136 @@ const PB_MODEL = {
     for (const [x, y, col] of [[0.15, 1.15, 0xe8a03a], [0.3, 1.0, 0xe85d3a]]) { mesh(SPH(0.06, 10, 8), M(col, { roughness: 0.4 }), x, y, 0.05, g).scale.set(1.4, 0.8, 0.6); mesh(new THREE.ConeGeometry(0.04, 0.08, 6), M(col), x + 0.1, y, 0.05, g).rotation.z = Math.PI / 2; }
     for (let i = 0; i < 4; i++) { const l = mesh(SPH(0.04, 6, 4), M(0x5f7d55), 0.35 - i * 0.05, 0.92 + i * 0.07, -0.1, g); l.scale.set(0.6, 2, 0.4); }
   },
+  // ---- tahap 3: ruang tamu
+  sofa: g => pbSofa(g, 0x8fa287, ink, false),
+  velvet_sofa: g => pbSofa(g, 0x2f5d4a, brass, true),
+  corner_sofa: g => {
+    pbSofa(g, 0xc9a27a, ink, false, -0.05);
+    const cm = M(0xc9a27a, { roughness: 0.95 });
+    mesh(RB(1.0, 0.45, 1.3, 0.1), cm, 1.15, 0.35, 0.95, g); mesh(RB(0.95, 0.2, 1.2, 0.08), M(tint(0xc9a27a, 0.15), { roughness: 1 }), 1.15, 0.66, 0.95, g);
+    mesh(RB(0.22, 0.6, 1.3, 0.08), cm, 1.7, 0.6, 0.95, g);
+  },
+  tv_stand: g => {
+    mesh(RB(2.0, 0.6, 0.55, 0.04), M(wood), 0, 0.3, 0, g); for (const x of [-0.5, 0.5]) mesh(RB(0.85, 0.42, 0.02, 0.01), M(shade(wood, 0.85)), x, 0.3, 0.28, g);
+    mesh(RB(1.3, 0.82, 0.14, 0.04), M(0x2a2a2e, { roughness: 0.4 }), 0, 1.05, -0.08, g);
+    mesh(new THREE.PlaneGeometry(1.18, 0.7), M(0x3d5468, { roughness: 0.2, emissive: 0x23394d, emissiveIntensity: 0.4 }), 0, 1.05, -0.005, g);
+    for (let i = 0; i < 4; i++) mesh(RB(0.16, 0.24, 0.12, 0.01), M(PB_TOY[i]), -0.85 + i * 0.17, 0.72, 0.05, g);
+  },
+  record_player: g => {
+    mesh(RB(0.9, 0.75, 0.5, 0.04), M(0x7a5a41, { roughness: 0.6 }), 0, 0.375, 0, g);
+    mesh(RB(0.7, 0.1, 0.45, 0.02), M(0xe9dfcf), 0, 0.8, 0, g); mesh(CYL(0.19, 0.19, 0.02, 28), M(0x1e1e1e, { roughness: 0.3 }), -0.05, 0.86, 0, g);
+    mesh(CYL(0.05, 0.05, 0.022, 12), M(0xc8674f), -0.05, 0.875, 0, g); mesh(RB(0.02, 0.02, 0.3, 0.005), pbBrass(), 0.22, 0.88, 0, g);
+    for (let i = 0; i < 5; i++) mesh(RB(0.03, 0.32, 0.3, 0.01), M(PB_TOY[i % 4]), -0.32 + i * 0.05, 0.35, 0.02, g);
+  },
+  board_games: g => {
+    mesh(RB(1.9, 1.3, 0.5, 0.04), M(wood), 0, 0.65, 0, g); mesh(RB(1.8, 0.03, 0.46, 0.01), M(shade(wood, 0.8)), 0, 0.65, 0.02, g);
+    for (let i = 0; i < 5; i++) mesh(RB(0.32, 0.08, 0.3, 0.01), M(PB_TOY[i % 4]), -0.6 + (i % 3) * 0.5, 1.34 + Math.floor(i / 3) * 0.08, 0, g);
+    for (let i = 0; i < 4; i++) mesh(RB(0.36, 0.42, 0.06, 0.01), M(PB_TOY[(i + 1) % 4]), -0.6 + i * 0.4, 0.92, 0.12, g);
+  },
+  // ---- ruang kerja
+  work_desk: g => pbDesk(g, 0xb48a64, 1.0),
+  standing_desk: g => { pbDesk(g, 0xe9e1d6, 1.45, true); },
+  drafting_table: g => {
+    const tg = new THREE.Group(); tg.position.set(0, 1.25, 0); tg.rotation.x = 0.45; g.add(tg);
+    mesh(RB(1.9, 0.06, 1.0, 0.02), M(0xe9e1d6), 0, 0, 0, tg); mesh(new THREE.PlaneGeometry(1.2, 0.7), M(0xf7f3ea), 0.1, 0.035, 0, tg).rotation.x = -Math.PI / 2;
+    mesh(RB(0.6, 0.02, 0.06, 0.005), M(0x3a332d), -0.2, 0.05, 0.1, tg);
+    for (const x of [-0.8, 0.8]) mesh(RB(0.06, 1.2, 0.06, 0.02), M(ink), x, 0.6, 0, g);
+    mesh(CYL(0.25, 0.25, 0.06, 20), M(0xc8674f), 0, 0.85, 0.85, g); mesh(CYL(0.03, 0.03, 0.85, 8), M(ink), 0, 0.42, 0.85, g);
+  },
+  paper_shelf: g => {
+    mesh(RB(0.9, 2.2, 0.45, 0.03), M(0x9c7552, { roughness: 0.7 }), 0, 1.1, 0, g);
+    for (let k = 0; k < 4; k++) { mesh(RB(0.84, 0.03, 0.4, 0.01), M(shade(0x9c7552, 0.8)), 0, 0.3 + k * 0.5, 0.02, g); for (let j = 0; j < 3; j++) mesh(RB(0.2, 0.36, 0.3, 0.01), M([0xe9dfcf, 0x9dae95, 0xd9b36c][(k + j) % 3]), -0.25 + j * 0.25, 0.5 + k * 0.5, 0.05, g); }
+  },
+  library_wall: g => {
+    mesh(RB(3.4, 3.2, 0.45, 0.03), M(0x6b4f39, { roughness: 0.7 }), 0, 1.6, 0, g);
+    const cs = [0xb86f52, 0x8fa287, 0x7e9cb3, 0xd9b36c, 0xe3cfc4, 0x6d7790];
+    for (let k = 0; k < 5; k++) {
+      mesh(RB(3.3, 0.04, 0.4, 0.01), M(0x5a4230), 0, 0.2 + k * 0.62, 0.03, g);
+      for (let j = 0; j < 14; j++) { const h = 0.38 + ((j * 7 + k * 3) % 5) * 0.03; mesh(RB(0.18, h, 0.3, 0.01), M(cs[(j + k * 2) % 6], { roughness: 0.8 }), -1.45 + j * 0.22, 0.22 + k * 0.62 + h / 2, 0.06, g); }
+    }
+  },
+  whiteboard: g => {
+    mesh(RB(2.0, 1.15, 0.05, 0.02), M(0xb9b4ad, { metalness: 0.4, roughness: 0.4 }), 0, 2.5, 0, g);
+    mesh(new THREE.PlaneGeometry(1.9, 1.05), M(0xffffff, { map: pbTex("whiteboard", () => canvasTex(c => { c.fillStyle = "#FBFBF8"; c.fillRect(0, 0, 256, 140); c.strokeStyle = "#2F5D8A"; c.lineWidth = 3; c.strokeRect(20, 20, 70, 40); c.strokeRect(150, 70, 80, 40); c.beginPath(); c.moveTo(90, 40); c.lineTo(150, 90); c.stroke(); c.strokeStyle = "#C0504D"; c.beginPath(); c.moveTo(30, 100); c.lineTo(120, 100); c.stroke(); }, 256, 140)) }), 0, 2.5, 0.03, g);
+  },
+  // ---- taman
+  garden_bench: g => {
+    const wm = M(0xa07850, { roughness: 0.85 });
+    for (let i = 0; i < 4; i++) mesh(RB(2.0, 0.06, 0.12, 0.02), wm, 0, 0.78, -0.25 + i * 0.16, g);
+    for (let i = 0; i < 3; i++) mesh(RB(2.0, 0.12, 0.05, 0.02), wm, 0, 1.0 + i * 0.2, -0.32, g);
+    for (const x of [-0.85, 0.85]) { mesh(RB(0.08, 0.78, 0.6, 0.02), M(0x3a3a3a, { metalness: 0.4 }), x, 0.39, 0, g); mesh(RB(0.08, 0.6, 0.06, 0.02), M(0x3a3a3a, { metalness: 0.4 }), x, 1.1, -0.32, g); }
+  },
+  planter_box: g => {
+    mesh(RB(2.0, 0.55, 0.6, 0.04), M(0x9c7552, { roughness: 0.9 }), 0, 0.275, 0, g); mesh(RB(1.9, 0.05, 0.5, 0.02), M(0x5a4230), 0, 0.54, 0, g);
+    for (let i = 0; i < 5; i++) { const y = 0.75 + (i % 2) * 0.12; mesh(SPH(0.22, 10, 8), M(i % 2 ? 0x6f8a68 : 0x7d9470, { roughness: 0.8 }), -0.75 + i * 0.37, y, 0, g).scale.set(1, 1.2, 1); }
+    for (const x of [-0.4, 0.4]) mesh(SPH(0.06, 8, 6), M(0xe08ca0), x, 1.0, 0.05, g);
+  },
+  swing_seat: g => {
+    const fm = M(0xa07850, { roughness: 0.85 });
+    for (const x of [-1.05, 1.05]) for (const z of [-0.5, 0.5]) { const l = mesh(RB(0.1, 2.9, 0.1, 0.03), fm, x, 1.4, z * 0.6, g); l.rotation.x = z * 0.35; }
+    mesh(RB(2.3, 0.12, 0.12, 0.03), fm, 0, 2.75, 0, g);
+    for (const x of [-0.6, 0.6]) mesh(CYL(0.015, 0.015, 1.8, 6), M(0xe9dfcf), x, 1.85, 0, g);
+    mesh(RB(1.4, 0.1, 0.55, 0.03), fm, 0, 0.95, 0, g); mesh(RB(1.4, 0.45, 0.06, 0.03), fm, 0, 1.2, -0.25, g);
+    mesh(RB(1.2, 0.12, 0.45, 0.05), M(0xd9b36c, { roughness: 1 }), 0, 1.05, 0.02, g);
+  },
+  hammock: g => {
+    const fm = M(0xa07850, { roughness: 0.85 });
+    for (const x of [-1.65, 1.65]) mesh(RB(0.14, 1.9, 0.14, 0.04), fm, x, 0.95, 0, g);
+    const cl = mesh(new THREE.CylinderGeometry(0.5, 0.5, 3.0, 24, 1, true, Math.PI * 0.55, Math.PI * 0.9), M(0xe3cfc4, { side: THREE.DoubleSide, roughness: 1 }), 0, 1.45, 0, g);
+    cl.rotation.z = Math.PI / 2; cl.scale.set(1, 1, 0.9);
+    for (const x of [-1.55, 1.55]) mesh(CYL(0.012, 0.012, 0.6, 6), M(0xe9dfcf), x * 0.97, 1.6, 0, g).rotation.z = x > 0 ? 0.9 : -0.9;
+  },
+  veg_patch: g => {
+    mesh(RB(2.2, 0.3, 2.2, 0.04), M(0x8a6a4f, { roughness: 0.9 }), 0, 0.15, 0, g); mesh(RB(2.05, 0.04, 2.05, 0.02), M(0x5a4230, { roughness: 1 }), 0, 0.31, 0, g);
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) {
+      const x = -0.75 + i * 0.5, z = -0.65 + r * 0.65;
+      mesh(SPH(0.16, 8, 6), M(r === 1 ? 0x7d9470 : 0x6f8a68, { roughness: 0.8 }), x, 0.45, z, g).scale.set(1, 1.3, 1);
+      if (r === 0 && i % 2 === 0) mesh(SPH(0.07, 8, 6), M(0xc0504d, { roughness: 0.5 }), x + 0.08, 0.5, z + 0.1, g);
+    }
+  },
+  fountain: g => {
+    const sm = M(0xcfc6b8, { roughness: 0.8 });
+    mesh(CYL(1.0, 1.05, 0.45, 32), sm, 0, 0.225, 0, g); mesh(CYL(0.88, 0.88, 0.04, 32), M(0x8fb3c9, { roughness: 0.1, emissive: 0x3d6a85, emissiveIntensity: 0.2 }), 0, 0.42, 0, g);
+    mesh(CYL(0.12, 0.18, 1.0, 16), sm, 0, 0.9, 0, g); mesh(CYL(0.45, 0.3, 0.16, 24), sm, 0, 1.45, 0, g);
+    mesh(CYL(0.38, 0.38, 0.03, 24), M(0x8fb3c9, { roughness: 0.1 }), 0, 1.53, 0, g); mesh(SPH(0.1, 12, 8), sm, 0, 1.62, 0, g);
+  },
+  // ---- edisi terbatas
+  moon_lamp: (g, x) => {
+    mesh(CYL(0.2, 0.24, 0.06, 20), M(0x3a332d), 0, 0.03, 0, g); mesh(CYL(0.02, 0.02, 0.9, 8), pbBrass(), 0, 0.5, 0, g);
+    mesh(SPH(0.42, 28, 20), M(0xf4ecd8, { emissive: 0xfff0c8, emissiveIntensity: 0.6, roughness: 1 }), 0, 1.35, 0, g);
+    for (const [a, b, r] of [[0.2, 0.1, 0.08], [-0.15, -0.05, 0.06], [0.05, -0.2, 0.05]]) mesh(SPH(r, 10, 8), M(0xdcd2bc, { emissive: 0xe8dcc0, emissiveIntensity: 0.4 }), a, 1.35 + b, 0.38, g).scale.z = 0.3;
+    x.lamp(0, 1.4, 0.3, 1.1);
+  },
+  gilded_mirror: g => {
+    const fr = mesh(new THREE.TorusGeometry(0.55, 0.07, 10, 40), M(0xd4a853, { metalness: 0.8, roughness: 0.3 }), 0, WIN_Y + 0.1, 0.04, g); fr.scale.y = 1.35;
+    const mi = mesh(new THREE.CircleGeometry(0.53, 36), M(0xcfdde3, { metalness: 0.9, roughness: 0.08 }), 0, WIN_Y + 0.1, 0.03, g); mi.scale.y = 1.35;
+  },
 };
+// sofa: dudukan, tiga bantal, sandaran, lengan (punggung di -z)
+function pbSofa(g, col, legC, tuft, dz = 0) {
+  const cm = M(col, { roughness: 0.95 }), cm2 = M(tint(col, 0.12), { roughness: 1 });
+  mesh(RB(3.2, 0.45, 0.85, 0.1), cm, 0, 0.38, dz, g);
+  for (let i = 0; i < 3; i++) mesh(RB(0.98, 0.2, 0.7, 0.08), cm2, -1.0 + i * 1.0, 0.7, 0.05 + dz, g);
+  mesh(RB(3.2, 0.85, 0.24, 0.1), cm, 0, 0.95, -0.32 + dz, g);
+  for (const x of [-1.58, 1.58]) mesh(RB(0.24, 0.62, 0.85, 0.1), cm, x, 0.62, dz, g);
+  for (const x of [-1.45, 1.45]) for (const z of [-0.3, 0.3]) mesh(CYL(0.04, 0.03, 0.16, 8), M(legC, legC === brass ? { metalness: 0.7, roughness: 0.35 } : {}), x, 0.08, z + dz, g);
+  if (tuft) for (let i = 0; i < 6; i++) mesh(SPH(0.03, 6, 4), M(shade(col, 0.7)), -1.25 + i * 0.5, 1.05, -0.19 + dz, g);
+}
+// meja kerja (tinggi h), kursi di depan, lampu, kertas
+function pbDesk(g, col, h, metal) {
+  mesh(RB(2.0, 0.07, 0.62, 0.02), M(col, { roughness: 0.6 }), 0, h, 0, g);
+  for (const x of [-0.92, 0.92]) mesh(RB(metal ? 0.08 : 0.07, h, metal ? 0.5 : 0.07, 0.02), M(metal ? 0x3a3a3a : shade(col, 0.75), metal ? { metalness: 0.5 } : {}), x, h / 2, metal ? 0 : -0.24, g);
+  if (!metal) for (const x of [-0.92, 0.92]) mesh(RB(0.07, h, 0.07, 0.02), M(shade(col, 0.75)), x, h / 2, 0.24, g);
+  mesh(RB(0.5, 0.02, 0.36, 0.005), M(0xf7f3ea), -0.4, h + 0.045, 0.05, g).rotation.y = 0.15;
+  mesh(CYL(0.06, 0.06, 0.16, 12), M(0xc8674f), 0.7, h + 0.11, -0.1, g);
+  mesh(RB(0.55, 0.36, 0.03, 0.01), M(0x2a2a2e), 0.15, h + 0.24, -0.15, g).rotation.x = -0.15;
+  if (!metal) { mesh(RB(0.6, 0.08, 0.55, 0.03), M(0x8fa287), 0, 0.62, 0.65, g); mesh(RB(0.6, 0.6, 0.07, 0.03), M(0x8fa287), 0, 0.95, 0.92, g); for (const x of [-0.25, 0.25]) for (const z of [0.42, 0.88]) mesh(CYL(0.025, 0.025, 0.6, 6), M(ink), x, 0.3, z, g); }
+}
 // lampu dari perabot: ikut daftar lampu ruangan (ui/29-town.js menyalakannya waktu malam)
 function pbBuild(roomG, slotG, id, a) {
   const ctx = { a, lamp: (x, y, z, s) => { const l = new THREE.PointLight(0xffc68a, 0, 6, 1.6); l.position.set(x, y, z); slotG.add(l); (roomG.userData.lamps ||= []).push({ l, strength: s }); } };
   if (PB_ART[id]) pbArt(slotG, id, a.w || 0.9, a.h || 0.9, a.y || 0);
-  else if (id && id.startsWith("rug_")) pbRug(slotG, a, id);
+  else if (id && (id.startsWith("rug_") || id === "koi_rug")) pbRug(slotG, a, id);
   else if (PB_MODEL[id]) PB_MODEL[id](slotG, ctx);
 }
 // lukisan: bingkai + kanvas (teksturnya dibuat sekali per lukisan)

@@ -8,7 +8,9 @@ function setRoom(i, instant) {
     paintBg();
     $("roomName").textContent = r.name;
     $("dots").innerHTML = ROOMS.map((_, k) => `<i class="${k === roomIx ? "on" : ""}"></i>`).join("");
-    const icons = { Feed: '<path d="M4 11h16a8 8 0 0 1-16 0Z" fill="none"/>', Wash: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z" fill="none"/>', Sleep: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" fill="none"/>', Play: '<circle cx="12" cy="12" r="8" fill="none"/><path d="M4 12h16"/>' };
+    const icons = { Feed: '<path d="M4 11h16a8 8 0 0 1-16 0Z" fill="none"/>', Wash: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z" fill="none"/>', Sleep: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" fill="none"/>', Play: '<circle cx="12" cy="12" r="8" fill="none"/><path d="M4 12h16"/>',
+      Relax: '<path d="M4 18v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M4 14h16M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/>', Study: '<path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4ZM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6Z"/>',
+      Garden: '<path d="M12 20v-8M12 12c0-4 3-7 7-7 0 4-3 7-7 7ZM12 14c0-3-2-5-6-5 0 3 2 5 6 5Z"/>' };
     $("actBtn").innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[r.action]}</svg>${r.action}`;
     delete $("actBtn").dataset.lbl; if (game) careUi();
   };
@@ -170,7 +172,7 @@ function doAction() {
   const before = r.act === "makan" ? cur.needs.lapar : r.act === "mandi" ? cur.needs.kebersihan : r.act === "tidur" ? cur.needs.energi : cur.ikatan;
   if (r.act !== "peluk" && before > 95) { say({ makan: "I'm full!", mandi: "Already clean!", tidur: "Not sleepy!" }[r.act]); play("shake", 600); return; }
   if (!game.act(selected, r.act)) return;
-  if (r.act === "peluk") attnFill(selected, 100);   // v48: main di Playroom ngisi Attention
+  if (r.act === "peluk") attnFill(selected, 100);   // v48: main di Playroom ngisi Attention (tahap 3: juga ruang tamu, ruang kerja, taman)
   save(); refresh(); joyUntil = now() + 2600;
   playCare(r.act);
 }
@@ -189,8 +191,11 @@ function playCare(act, item, opt) {
   } else if (act === "tidur") {
     napUntil = now() + 4000; say({ story: "One more page...", cuddle: "Love you...", early: "Nigh-night..." }[opt] || "Nigh-night...", 1500);
     setTimeout(() => { say("I feel great!"); play("jump", 700); }, 4100);
+  } else if (!ROOMS[roomIx].g.userData.ball) {
+    // ruang tamu, ruang kerja, taman (tahap 3): nggak ada bola
+    play("jump", 800); burst(["♥"], 4); say({ tamu: "So comfy!", kerja: "Ooh, what's this book?", taman: "Fresh air!" }[ROOMS[roomIx].t] || "Yay!");
   } else {
-    const RB0 = ROOMS[roomIx].g.userData.ball ? ROOMS[roomIx] : ROOMS.find(r => r.g.userData.ball), ball = RB0.g.userData.ball, t0 = now();
+    const RB0 = ROOMS[roomIx], ball = RB0.g.userData.ball, t0 = now();
     (function toss() {
       const p = Math.min(1, (now() - t0) / 900);
       const h0 = RB0.g.userData.ballHome; ball.position.set(h0.x * (1 - p), h0.y + Math.sin(p * Math.PI) * 3.6, h0.z + (1.4 - h0.z) * p);

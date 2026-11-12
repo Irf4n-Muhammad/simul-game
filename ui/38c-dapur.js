@@ -10,7 +10,7 @@ const coinTxt = n => `${COIN} ${n}`;
 const TROPHY_COL = [null, 0xC98A4B, 0xC9CED6, 0xF2C94C, 0x7FD8F0, 0xE58AF0];
 let trophyKey = null, trophyG = null;
 function trophyShelf() {
-  const R = ROOMS.find(r => r.act === "peluk"), W = state && state.dapur;
+  const R = ROOMS.find(r => r.t === "peluk"), W = state && state.dapur;
   if (!R || !W) return;
   const ranks = MG_ORDER.map(k => Dapur.tier(k, W.best[k]).ix), key = ranks.join("") + "|" + HOUSE_GEN;   // rumah dibangun ulang: rak dipasang lagi
   if (key === trophyKey) return;
@@ -122,7 +122,7 @@ function arcClose() {
   ARC.el.remove(); ARC = null;
   dapurChip();
   // peringkat naik di sesi ini: ada piala baru di Playroom, makhluknya ikut bangga
-  if (up && cur) { play("jump", 900); say(ROOMS[roomIx].act === "peluk" ? "A new trophy on the shelf!" : "There's a new trophy in the playroom!", 3000); }
+  if (up && cur) { play("jump", 900); say(ROOMS[roomIx].t === "peluk" ? "A new trophy on the shelf!" : "There's a new trophy in the playroom!", 3000); }
 }
 
 // ---- layar mini game bersama: kanvas 2D di atas layar (adegan 3D berhenti selama FC ada, lihat ui/29)
