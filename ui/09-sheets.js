@@ -1,8 +1,8 @@
 // ================================================================ sheets
 const sheet = $("sheet");
 let sheetKind = null;
-function openSheet(kind, html) { if (PH) closePhone(true); if (tour) tourEnd("lanjut"); coachHide(); sheetKind = kind; Tele.layar("lembar", kind); sheet.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; sheet.hidden = false; sheetQ(kind); }
-function closeSheet() { sheet.classList.remove("clear"); if (TOWN) TOWN.clearPreview(); sheet.hidden = true; sheet.innerHTML = ""; sheetKind = null; if (state && state.tut < COACH.length) setTimeout(coachShow, 400); }
+function openSheet(kind, html) { if (PB_MODE && !kind.startsWith("decor")) exitDecor(); if (PH) closePhone(true); if (tour) tourEnd("lanjut"); coachHide(); sheetKind = kind; Tele.layar("lembar", kind); sheet.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; sheet.hidden = false; sheetQ(kind); }
+function closeSheet() { sheet.classList.remove("clear"); if (PB_MODE) exitDecor(); if (TOWN) TOWN.clearPreview(); sheet.hidden = true; sheet.innerHTML = ""; sheetKind = null; if (state && state.tut < COACH.length) setTimeout(coachShow, 400); }
 sheet.addEventListener("click", e => { if (e.target === sheet && sheetKind !== "setup") closeSheet(); });
 
 // ---- label versi: ketuk 7 kali buat nyalain atau matiin Dev (muat ulang)

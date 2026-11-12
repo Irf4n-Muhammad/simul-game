@@ -206,6 +206,40 @@ svg { stroke: currentColor; }
 .arrow { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
 .arrow svg { width: 16px; height: 16px; }
 .room-name { font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; border-radius: 999px; padding: 9px 18px; min-width: 110px; text-align: center; }
+.room-name[role="button"] { cursor: pointer; }
+.room-name[role="button"]::after { content: ""; display: inline-block; width: 11px; height: 11px; margin-left: 7px; vertical-align: -1px; opacity: .55;
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233a332d' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16Z'/%3E%3C/svg%3E"); }
+.pb-amb { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin: 2px 0 8px; } .pb-amb b { color: var(--accent); }
+.pb-dots { display: inline-flex; gap: 3px; } .pb-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(58,51,45,.15); } .pb-dots i.on { background: var(--accent); }
+.pb-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pb-slot { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; } .pb-slot small { font-size: 10px; letter-spacing: .12em; opacity: .55; font-weight: 800; } .pb-slot b { font-size: 14px; } .pb-slot span { font-size: 11.5px; opacity: .6; font-weight: 600; }
+.pb-slot:first-child { grid-column: span 2; }
+.pb-like, .pb-meh { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; margin-left: 4px; white-space: nowrap; vertical-align: 1px; }
+.pb-like { background: #F4DAD6; color: #9A3B2F; } .pb-meh { background: rgba(58,51,45,.08); color: rgba(58,51,45,.6); }
+.pb-h { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 12px 0 6px; }
+.pb-sw { display: flex; flex-wrap: wrap; gap: 8px; }
+.pb-swatch { width: 38px; height: 38px; border-radius: 12px; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 0 1px var(--line); background: #fff; font: inherit; font-size: 16px; color: rgba(58,51,45,.6); cursor: pointer; }
+.pb-swatch.on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pb-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.pb-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pb-item > div { min-width: 0; } .pb-item b { font-size: 14.5px; } .pb-item small { display: block; font-size: 11.5px; opacity: .6; font-weight: 700; } .pb-item p { margin: 3px 0 0; font-size: 12.5px; opacity: .8; }
+.pb-item .chip { flex: none; } .pb-buy[disabled] { opacity: .45; }
+.pb-note { font-size: 12.5px; opacity: .75; }
+.pb-item.bz { padding: 12px 16px; }
+/* mode dekor melintang: seluruh ruangan di kiri, panel Decorate di kanan */
+#app.pb-mode { max-width: none; }
+#app.pb-mode .hud-top, #app.pb-mode #bottom, #app.pb-mode .hint, #app.pb-mode #floats, #app.pb-mode .veil, #app.pb-mode .talk-topic, #app.pb-mode .talkbar, #app.pb-mode .quota { display: none !important; }
+#app.pb-rot { position: fixed; top: 0; left: 0; width: 100vh; width: 100dvh; height: 100vw; max-width: none; margin: 0; transform-origin: top left; transform: translateX(100vw) rotate(90deg); }
+#app.pb-mode .sheet-wrap { align-items: stretch; justify-content: flex-end; padding: 10px; padding-right: calc(10px + env(safe-area-inset-right, 0px)); }
+#app.pb-mode .sheet-wrap .card { width: min(42%, 400px); max-height: none; padding: 16px; gap: 10px; animation: pbIn .3s cubic-bezier(.2,1,.3,1); }
+#app.pb-mode .card h2 { font-size: 19px; }
+@keyframes pbIn { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
+.pb-top { display: flex; align-items: center; gap: 8px; }
+.pb-nav { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 18px; line-height: 1; padding: 0; display: grid; place-items: center; }
+.pb-top .ribbon { align-self: center; }
+.pb-say { background: #F4DAD6; color: #7A2F25 !important; border-radius: 12px; padding: 8px 12px; font-size: 13.5px !important; }
+.bz2 .pb-buy { border: 1px solid currentColor; background: transparent; border-radius: 999px; padding: 7px 12px; font-size: 12.5px; font-weight: 800; letter-spacing: .02em; }
+.bz2 .pb-h2 { padding: 18px 16px 4px; margin: 0; font-size: 11px; letter-spacing: .16em; font-weight: 800; opacity: .7; }
 .dots { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(46,42,38,.25); transition: width .2s; }
 .dots i.on { background: var(--ink); width: 14px; border-radius: 3px; }
@@ -1647,6 +1681,7 @@ svg { stroke: currentColor; }
 <script src="anak.js"></script>
 <script src="remaja.js"></script>
 <script src="obrolan.js"></script>
+<script src="perabot.js"></script>
 <script src="game.js"></script>
 <script src="net.js"></script>
 <script src="today.js"></script>
