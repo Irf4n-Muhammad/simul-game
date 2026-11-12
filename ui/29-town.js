@@ -129,6 +129,7 @@ function sndTick() {
   if (KONSER && KONSER.on) return SND.set({ rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: KONSER.crowd() });
   if (GLOBE && GLOBE.on) return SND.set({ rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: 0 });
   if (CONT && CONT.on) return SND.set(Object.assign(Suara.mixOf({ wx, period: litName, zoom: 1, fair: 0 }), { traffic: 0 }));
+  if (kamarOn()) return SND.set(kpMix(wx));
   if (!(TOWN && TOWN.on)) return SND.silence();
   const F = fairInfo(), P = Kota.PLACE[Kota.FAIR.place], f = TOWN.focus();
   const fair = F && F.on ? Math.max(0, 1 - Math.hypot(f.x - P.x, f.z - (P.z - 10)) / 30) : 0;
@@ -365,6 +366,7 @@ function resize() {
   camera.position.set(CAM_LOOK.x, CAM_LOOK.y + dist * 0.12, CAM_LOOK.z + dist);
   camera.lookAt(CAM_LOOK); camera.updateProjectionMatrix();
   if (PB_MODE) pbCamera(w, h);   // Tata Rumah: mode dekor melintang (ui/27b-tata-rumah.js)
+  if (app.classList.contains("kamar")) kpCam();   // v88: kamar panjang desktop (ui/38j-kamar.js)
 }
 addEventListener("resize", resize); resize();
 
@@ -383,7 +385,9 @@ function frame(t) {
   const game3d = (LIAR && LIAR.on) || (KONSER && KONSER.on);   // konser dan wilayah liar punya jam sendiri: jangan dijeda
   if (!game3d && coveredUp()) { last = t; return; }
   // lembar (sheet) setengah layar dengan latar blur: adegan di belakangnya cukup 20 kali per detik
-  if (!game3d && sheetKind && !sheet.classList.contains("clear")) { if (t - coverT < 48) return; coverT = t; }
+  // v88: di kamar panjang lembar disembunyikan (muncul lagi waktu keluar), jadi adegannya tetap jalan penuh
+  const sheetUp = sheetKind && !sheet.classList.contains("clear") && !kamarOn();
+  if (!game3d && sheetUp) { if (t - coverT < 48) return; coverT = t; }
   const dt = Math.min(0.05, (t - last) / 1000); last = t; const ts = t / 1000;
   qFull = !sheetKind;
   renderer.shadowMap.autoUpdate = true;   // v79: kota (dan rumah yang diam, v87) boleh mematikannya; adegan lain selalu hitung bayangan
@@ -414,15 +418,15 @@ function frame(t) {
   if (!K) { renderer.render(scene, camera); return; }
   // v87: makhluk diam (nggak ada animasi, ngomong, makan, atau sentuhan > 2,5 detik) = 30 fps dan bayangan dihitung ulang
   // ~8 kali per detik; begitu ada gerakan atau disentuh, balik 60 fps. HP lebih adem, jadi nggak makin lambat karena panas.
-  const calm = !anim && !idle && !bubble && t > inputT + 2500 && t > talkUntil && t > chewUntil && t > joyUntil && t > surpriseUntil;
+  const calm = !anim && !idle && !bubble && t > inputT + 2500 && t > talkUntil && t > chewUntil && t > joyUntil && t > surpriseUntil && !kpBusy();
   if (calm) {
     qFull = false;
     // di balik lembar berlatar blur, gambar yang diam nggak usah digambar ulang sama sekali: blur-nya nggak perlu dihitung ulang tiap frame,
     // jadi scroll lembarnya mulus. Begitu makhluknya gerak (iseng, animasi), digambar lagi.
-    if (sheetKind && !sheet.classList.contains("clear")) { if (coverDrawn) return; coverDrawn = true; }
+    if (sheetUp) { if (coverDrawn) return; coverDrawn = true; }
     if (t - homeT < 31) return;
   }
-  if (!calm || !sheetKind) coverDrawn = false;
+  if (!calm || !sheetUp) coverDrawn = false;
   const hdt = Math.min(0.05, (t - homeT) / 1000); homeT = t;
   renderer.shadowMap.autoUpdate = false;
   if (!calm || t - homeShT > 120) { renderer.shadowMap.needsUpdate = true; homeShT = t; }
@@ -430,7 +434,8 @@ function frame(t) {
   K.root.visible = !gone && !PB_MODE;
   const lights = napping ? 0.3 : 1; hemi.intensity += (LIT.hemi * lights - hemi.intensity) * 0.1; sun.intensity += (LIT.sunI * lights - sun.intensity) * 0.1;
   if (Math.floor(ts / 30) !== Math.floor((ts - hdt) / 30)) applyLight();
-  const lampOn = napping ? Math.max(LIT.lamp, 0.4) : LIT.lamp;
+  let lampOn = napping ? Math.max(LIT.lamp, 0.4) : LIT.lamp;
+  if (kamarOn()) lampOn = kpLamp(lampOn);
   for (const r of ROOMS) if (r.g.visible) for (const { l, strength } of r.g.userData.lamps || []) l.intensity += (lampOn * strength - l.intensity) * 0.1;
   let y = 0, sx = 1, sy = 1, rz = 0;
   const breathe = reduce ? 0 : Math.sin(ts * (cur?.fase === "tua" ? 1.4 : 2.2)) * 0.025;
@@ -469,6 +474,7 @@ function frame(t) {
   if (idle?.kind === "stretch") { sy += 0.12 * ik; sx -= 0.06 * ik; K.root.scale.set(s * sx, s * sy, s * sx); }
   K.root.rotation.y += idleLook.x * 0.02;
   if (idle?.kind === "spin") { const e = ip < 0.5 ? 2 * ip * ip : 1 - 2 * (1 - ip) * (1 - ip); let a = e * Math.PI * 2; if (a > Math.PI) a -= Math.PI * 2; K.body.rotation.y = a; }
+  if (kamarOn()) kpFrame(t, hdt, ts, napping);   // v88: jalan kanan kiri di kamar panjang
   const follow = cur && habitsOf(cur.id).includes("follower") ? HABITS.follower.follow : 1;
   K.pupils.forEach(p => { p.position.x += ((lookX * follow + idleLook.x) * 0.07 - p.position.x) * 0.2; p.position.y += (-(lookY * follow + idleLook.y) * 0.06 - 0.02 - p.position.y) * 0.2; });
   const ex = napping ? "sleep" : t < surpriseUntil ? "surprise" : t < joyUntil ? "joy" : cur && cur.needs.mood < 35 ? "sad" : "calm";
@@ -497,8 +503,8 @@ function frame(t) {
   const dirty = cur ? Math.max(0, (60 - cur.needs.kebersihan) / 60) : 0;
   K.dirtMat.opacity = dirty; K.dirt.forEach(d => d.visible = dirty > 0.02);
   K.root.getWorldPosition(head); head.y += 3.0 * K.root.scale.y;
-  flies.forEach((f, i) => { f.visible = !gone && !PB_MODE && !!cur && cur.needs.kebersihan < 35; const a = ts * (2.5 + i * 0.7) + i * 2; f.position.set(Math.cos(a) * (1.4 + i * 0.15), head.y + Math.sin(a * 1.7) * 0.3, Math.sin(a) * 1.1 + 0.4); });
-  const top = screenOf(new THREE.Vector3(0, head.y + 0.4, 0));
+  flies.forEach((f, i) => { f.visible = !gone && !PB_MODE && !!cur && cur.needs.kebersihan < 35; const a = ts * (2.5 + i * 0.7) + i * 2; f.position.set(head.x + Math.cos(a) * (1.4 + i * 0.15), head.y + Math.sin(a * 1.7) * 0.3, head.z + Math.sin(a) * 1.1 + 0.4); });
+  const top = screenOf(new THREE.Vector3(head.x, head.y + 0.4, head.z));
   if (bubble) { bubble.style.left = top.x + "px"; bubble.style.top = top.y + "px"; if (t > bubbleUntil) { bubble.remove(); bubble = null; } }
   // engine dilemma waiting? show the "!" above the head
   if (game && game.pending && !alertEl) {

@@ -88,7 +88,7 @@ function say(text, ms = 2200) {
   bubble.innerHTML = `<div class="bubble">${esc(text)}</div>`; bubbleUntil = performance.now() + ms; talkUntil = performance.now() + Math.min(ms * 0.6, 2500);
 }
 function burst(chars, n = 6, color = "var(--berry)", size = 28, cls = "") {
-  const p = screenOf(new THREE.Vector3(0, head.y - 0.6, 0));
+  const p = screenOf(new THREE.Vector3(head.x, head.y - 0.6, head.z));
   for (let i = 0; i < n; i++) {
     const s = document.createElement("div"); s.className = "particle " + cls; s.textContent = chars[i % chars.length];
     Object.assign(s.style, { left: p.x + (Math.random() - 0.5) * 80 + "px", top: p.y + "px", color, fontSize: size + "px", animationDelay: i * 0.08 + "s" });
