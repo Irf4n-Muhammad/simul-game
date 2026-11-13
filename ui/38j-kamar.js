@@ -76,7 +76,7 @@ function kpCam() {
 // ---- tiap frame (dipanggil frame() di ui/29-town.js setelah gerak makhluk dihitung, sebelum bubble ditaruh)
 function kpFrame(t, dt, ts, napping) {
   if (!K || !KP.b) return;
-  if (!K.__kp) { K.__kp = true; K.scale *= KP_CS; }
+  if (!K.__kp) { K.__kp = true; K.scale *= KP_CS; K.root.scale.multiplyScalar(KP_CS); }   // makhluk baru dibangun: frame ini juga sudah kecil
   if (PT3 && !PT3.__kp) { PT3.__kp = true; PT3.sc *= KP_PS; }
   // v89: ke mana dan ngapain diatur kegiatan ikut jam (khStep, ui/38k-kamar-hangat.js): jalan, baca di sofa, meja, jendela, tidur
   const face = khStep(t, dt, napping);

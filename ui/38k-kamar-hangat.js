@@ -8,12 +8,18 @@
 // Dipanggil dari: kpCam (khDress, sekali per grup ruangan), kpFrame (khStep + khFrame), applyLight di ui/03-scene.js (khWarm),
 // pointerup/pointermove di ui/08-input.js (khTap, khHover), kpExit (khExit).
 const KH = { act: null, y: 0, z: 0, lie: 0, flash: 0, boltAt: 0, nbAt: 0, mainV: 0, candle: null, curT: 1, curV: 1, hoverAt: 0, napped: false, wokeSay: false, fakeH: null, book: null, pano: null, panoKey: "" };
-const KH_MOOD = { night: { hemi: 0.05, sunI: 0.05, exp: 1.0, env: 0.05, lamp: 1.0 }, evening: { hemi: 0.16, sunI: 0.7, exp: 0.88, env: 0.3, lamp: 1.6 } };
+// pagi/siang: bukan terang rata dari mana-mana, tapi kamar agak redup yang diterangi sinar matahari hangat dari jendela (khSun)
+const KH_MOOD = { night: { hemi: 0.05, sunI: 0.05, exp: 1.0, env: 0.05, lamp: 1.0 }, evening: { hemi: 0.16, sunI: 0.7, exp: 0.88, env: 0.3, lamp: 1.6 },
+  morning: { hemi: 0.1, sunI: 0.4, exp: 0.95, env: 0.17, lamp: 0, sun: 0xffb878 }, day: { hemi: 0.12, sunI: 0.45, exp: 0.95, env: 0.2, lamp: 0, sun: 0xffcf98 } };
+const KH_WALL = { night: [0.6, 0.6, 0.6], evening: [0.85, 0.85, 0.85], morning: [1.0, 0.84, 0.66], day: [1.0, 0.87, 0.7] };
+const KH_SUN = { morning: [0xffb877, 11, 1.2], day: [0xffcf8f, 9, 1], evening: [0xffb27a, 0.6, 0.12], night: [0x6f86c9, 1.4, 0] };   // [warna, kuat sorot, terang berkas+petak lantai]
 const khH = () => { const r = ROOMS[0]; return kamarOn() && r ? r.g.userData.kh || null : null; };
 const khHour = () => { if (KH.fakeH !== null) return KH.fakeH; const d = new Date(); return d.getHours() + d.getMinutes() / 60; };
 const khBed = () => { const h = khHour(); return h >= 23 || h < 6; };
 const khDark = () => litName === "night" || litName === "evening";
 const khHaloTex = canvasTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.25, "rgba(255,255,255,.45)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 128, 128);
+const khBeamTex = canvasTex((g, w, h) => { for (let y = 0; y < h; y++) { const a = Math.pow(y / h, 0.8) * 0.9; const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.25, `rgba(255,255,255,${a})`); gr.addColorStop(0.75, `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, h - 1 - y, w, 1); } }, 64, 128);
+const khPaneTex = canvasTex((g, w, h) => { g.filter = "blur(6px)"; g.fillStyle = "#fff"; const m = 10, gp = 7; for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]]) g.fillRect(m + x * (w / 2 - m + gp / 2), m + y * (h / 2 - m + gp / 2), w / 2 - m - gp, h / 2 - m - gp); }, 128, 128);
 const khSteamTex = canvasTex((g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, 64, 64);
 
 // ---- pemandangan Old Town: satu panorama selebar kamar (tidak diunggah), tiap jendela dapat potongannya sendiri (kanvas kecil)
@@ -169,9 +175,17 @@ function khDress(r) {
     sky.material = sky.material.clone(); sky.userData.khC = sky.material.color.clone();
     const drops = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), new THREE.MeshBasicMaterial({ map: dropTex.clone(), transparent: true, depthWrite: false })); drops.material.map.needsUpdate = true; drops.material.map.repeat.set(ww / 0.9, wh / 1.8);
     drops.position.z = 0.07; grp.add(drops);
-    const spot = new THREE.SpotLight(0x6f86c9, 0, 9, 0.6, 0.8, 1.5); spot.position.set((b.min.x + b.max.x) / 2 - GP.x, b.max.y, b.max.z + 0.2 - GP.z); spot.target.position.set(spot.position.x, 0, spot.position.z + 3.2); G.add(spot); G.add(spot.target);
+    const spot = new THREE.SpotLight(0x6f86c9, 0, 10, 0.7, 0.7, 1.4); spot.position.set((b.min.x + b.max.x) / 2 - GP.x, b.max.y, b.max.z + 0.2 - GP.z); spot.target.position.set(spot.position.x, 0, spot.position.z + 3.2); G.add(spot); G.add(spot.target);
     const cur = grp.children.filter(o => o.isMesh && Math.abs(o.position.z - 0.2) < 0.01 && Math.abs(Math.abs(o.position.x) - (ww / 2 + 0.25)) < 0.02).map(o => ({ o, x0: o.position.x, sx: Math.sign(o.position.x), cw: (o.geometry.computeBoundingBox(), o.geometry.boundingBox.max.x - o.geometry.boundingBox.min.x) }));
     const W = { sky, grp, cv, g: cv.getContext("2d"), tex, drops, spot, cur, ww, x: (b.min.x + b.max.x) / 2, u: ((b.min.x + b.max.x) / 2 - X0) / (KP.b.x1 - X0), aspect: ww / wh, rects: [] };
+    // sinar matahari: berkas tipis dari jendela turun ke lantai + petak cahaya berbentuk kaca jendela di lantai
+    const zw = b.max.z + 0.1 - GP.z, xc = W.x - GP.x, zf = zw + 2.3, sh = 0.35;
+    const bg = new THREE.BufferGeometry(); bg.setAttribute("position", new THREE.Float32BufferAttribute([xc - ww / 2, b.max.y - 0.1, zw, xc + ww / 2, b.max.y - 0.1, zw, xc + ww / 2 + sh, 0.03, zf, xc - ww / 2 + sh, 0.03, zf], 3));
+    bg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); bg.setIndex([0, 2, 1, 0, 3, 2]);
+    const sunMat = map => new THREE.MeshBasicMaterial({ map, color: 0xffc98a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    W.beam = new THREE.Mesh(bg, sunMat(khBeamTex)); G.add(W.beam);
+    W.patch = new THREE.Mesh(new THREE.PlaneGeometry(ww * 1.25, wh * 0.85), sunMat(khPaneTex)); W.patch.rotation.x = -Math.PI / 2; W.patch.position.set(xc + sh, 0.035, zf - 0.15); G.add(W.patch);
+    W.spill = halo(W.x, (b.min.y + b.max.y) / 2 - 0.2, b.max.z + 0.15, 4.2, 0xffc27a, 1); W.spill.sp.renderOrder = 2;   // cahaya siang yang memantul di dinding sekitar jendela
     H.wins.push(W);
     for (const o of [sky, drops, ...cur.map(c => c.o)]) H.clicks.push({ o, fn: khCurtain });
   }
@@ -197,12 +211,12 @@ function khWarm() {
   // hujan/badai/mendung: matahari dan pantulan ikut redup, lampu kecil makin kerasa
   const wet = WX === "rain" || WX === "storm" ? (WX === "storm" ? 0.45 : 0.6) : WX === "cloud" || WX === "fog" ? 0.8 : 1;
   const mood = KH_MOOD[p] || (wet < 1 ? {} : null);
-  if (mood) { LIT = Object.assign({}, LIT, mood); if (wet < 1) LIT = Object.assign(LIT, { sunI: LIT.sunI * wet, hemi: LIT.hemi * (0.5 + wet / 2), env: LIT.env * (0.4 + wet * 0.6) }); renderer.toneMappingExposure = LIT.exp; scene.traverse(envScale); }
+  if (mood) { LIT = Object.assign({}, LIT, mood); sun.color.setHex(LIT.sun); if (wet < 1) LIT = Object.assign(LIT, { sunI: LIT.sunI * wet, hemi: LIT.hemi * (0.5 + wet / 2), env: LIT.env * (0.4 + wet * 0.6) }); renderer.toneMappingExposure = LIT.exp; scene.traverse(envScale); }
   const lift = o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) if (m.isMeshStandardMaterial && m.userData.env0 !== undefined) m.envMapIntensity = m.userData.env0 * (dark ? 0.3 : eve ? 0.5 : LIT.env); };
   if (K) K.root.traverse(lift); if (PT3) PT3.root.traverse(lift);
   for (const o of r.g.userData.lamps || []) if (o.s0 !== undefined) o.strength = o.s0 * (eve ? 0.8 : dark ? (o.s0 > 1.2 ? 0.75 : 0.3) : 1);
-  for (const mm of r.mats.walls) { if (!mm.userData.khc) mm.userData.khc = mm.color.clone(); mm.color.copy(mm.userData.khc).multiplyScalar(dark ? 0.6 : eve ? 0.85 : 1); }
-  const fm = r.mats.floor; if (!fm.userData.khc) fm.userData.khc = fm.color.clone(); fm.color.copy(fm.userData.khc).multiplyScalar(dark ? 0.7 : eve ? 0.9 : 1);
+  for (const mm of r.mats.walls) { if (!mm.userData.khc) mm.userData.khc = mm.color.clone(); const k = KH_WALL[p] || [1, 1, 1]; mm.color.copy(mm.userData.khc).multiply(new THREE.Color(k[0], k[1], k[2])); }
+  const fm = r.mats.floor; if (!fm.userData.khc) fm.userData.khc = fm.color.clone(); fm.color.copy(fm.userData.khc).multiplyScalar(dark ? 0.7 : eve ? 0.9 : 0.88);
   khView(H);
 }
 function khExit() {
@@ -353,9 +367,10 @@ function khFrame(t, dt, ts) {
   // kilat waktu badai (langit jendela dan cahaya dari jendela menyala sebentar, guntur menyusul)
   if (WX === "storm" && t > KH.boltAt) { KH.flash = 1; KH.boltAt = t + 7000 + Math.random() * 14000; if (SND) SND.thunder(); }
   KH.flash *= Math.exp(-dt * 5); const fl = KH.flash > 0.02 ? KH.flash * (0.6 + 0.4 * Math.sin(t * 0.06)) : 0;
-  const spotK = { night: [0x6f86c9, 1.4], evening: [0xffb27a, 0.6], morning: [0xffd9a8, 2.2], day: [0xfff1dc, 1.2] }[litName] || [0x6f86c9, 1.4];
+  const spotK = KH_SUN[litName] || KH_SUN.night, wetK = kpRaining() ? 0.2 : WX === "cloud" || WX === "fog" || WX === "snow" ? 0.5 : 1;
   for (const W of H.wins) {
-    W.spot.color.setHex(spotK[0]); W.spot.intensity = spotK[1] * (kpRaining() && litName !== "night" ? 0.5 : 1) * (0.12 + 0.88 * KH.curV) + fl * 9;
+    W.spot.color.setHex(spotK[0]); W.spot.intensity = spotK[1] * (litName === "night" ? 1 : wetK) * (0.12 + 0.88 * KH.curV) + fl * 9;
+    const sunO = spotK[2] * wetK * KH.curV; W.beam.material.opacity = sunO * 0.22; W.patch.material.opacity = Math.min(1, sunO * 0.9); W.spill.sp.material.opacity = sunO * 0.5; W.beam.visible = W.patch.visible = sunO > 0.01;
     W.sky.material.color.copy(W.sky.userData.khC).multiplyScalar(1 + fl * 2.5);
     if (W.drops.visible && !reduce) W.drops.material.map.offset.y += dt * 0.012;
   }
