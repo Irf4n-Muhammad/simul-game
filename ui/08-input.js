@@ -8,6 +8,7 @@ canvas.addEventListener("pointermove", e => {
   const ov = outView(); if (ov) return ov.move(e);
   const r = canvas.getBoundingClientRect();
   lookX = ((e.clientX - r.left) / r.width - 0.5) * 2; lookY = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  if (kamarOn()) khHover(e);
   if (down && ROOMS[roomIx] && ROOMS[roomIx].act === "mandi" && canCare() && hitCreature(e)) {
     rubbing += Math.abs(e.movementX) + Math.abs(e.movementY);
     if (rubbing > 400) { rubbing = 0; const ci = careItemFor("mandi"); if (ci) { if (!ci.done && ci.open) careAct(ci, null); } else if (cur.needs.kebersihan < 95 && game.act(selected, "mandi")) { save(); refresh(); burst(["○"], 6, "#8DA9BD", 22); say("Bubbles!"); } }
@@ -17,6 +18,7 @@ canvas.addEventListener("pointerup", e => {
   { const ov = outView(); if (ov) return ov.up(e); }
   if (!down) return; const dx = e.clientX - down.x, dy = e.clientY - down.y; down = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { hideHint(); setRoom(roomIx + (dx < 0 ? 1 : -1)); coachEvent("room"); return; }
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && kamarOn() && khTap(e)) return;   // v89: lampu, gorden, lilin, pet di kamar hangat
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && hitCreature(e)) { poke(); coachEvent("poke"); }
 });
 function hitCreature(e) {

@@ -203,6 +203,7 @@ function applyLight(force) {
   sun.color.setHex(LIT.sun); sun.position.set(...LIT.pos); renderer.toneMappingExposure = LIT.exp;
   windows.forEach(w => { w.material.map = skyTex(p, wx); w.material.needsUpdate = true; });
   scene.traverse(envScale);
+  if (app.classList.contains("kamar")) khWarm();   // v89: kamar hangat (ui/38k-kamar-hangat.js)
   paintBg();
 }
 // the reflected room light fades at night so the lamps carry the room

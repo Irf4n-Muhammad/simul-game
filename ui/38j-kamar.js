@@ -54,10 +54,10 @@ function kpDress(r) {
 // ---- kamera: lebar kamar pas layar (KP_FIT), tepi bawah lantai kamar di bawah layar
 function kpCam() {
   const r = ROOMS[0]; if (!r) return;
-  if (!r.g.userData.kp) kpDress(r);
   const G = r.g.position, x0 = G.x + CELL, x1 = G.x + 11 * CELL, zB = G.z + CELL, zF = G.z + 4 * CELL;
   KP.b = { x0, x1, zB, zF };
   KP.z = zF - 0.6;
+  if (!r.g.userData.kp) { kpDress(r); khDress(r); }   // v89: lampu kecil, gorden, titik kegiatan (ui/38k-kamar-hangat.js)
   camera.fov = 18;
   const t = Math.tan(THREE.MathUtils.degToRad(9)), el = 0.12, zM = (zB + zF) / 2;
   const dist = ((x1 - x0) * KP_FIT / 2) / (t * camera.aspect) + (zF - zM);
@@ -76,47 +76,41 @@ function kpCam() {
 // ---- tiap frame (dipanggil frame() di ui/29-town.js setelah gerak makhluk dihitung, sebelum bubble ditaruh)
 function kpFrame(t, dt, ts, napping) {
   if (!K || !KP.b) return;
-  if (!K.__kp) { K.__kp = true; K.scale *= KP_CS; }
+  if (!K.__kp) { K.__kp = true; K.scale *= KP_CS; K.root.scale.multiplyScalar(KP_CS); }   // makhluk baru dibangun: frame ini juga sudah kecil
   if (PT3 && !PT3.__kp) { PT3.__kp = true; PT3.sc *= KP_PS; }
-  const lo = KP.b.x0 + 1.4, hi = KP.b.x1 - 1.4;
-  const still = napping || anim || t < talkUntil || chatBusy;
-  KP.walking = false;
-  if (!still) {
-    if (KP.wait > 0) KP.wait -= dt;
-    else {
-      const d = KP.tx - KP.x;
-      if (Math.abs(d) < 0.04) {
-        KP.wait = 3 + Math.random() * 9;
-        let n = KP.x; for (let k = 0; k < 6 && Math.abs(n - KP.x) < 1.6; k++) n = lo + Math.random() * (hi - lo);
-        KP.tx = n;
-      } else { KP.dir = Math.sign(d); KP.x += KP.dir * Math.min(Math.abs(d), KP_SPEED * dt); KP.walking = true; }
-    }
-  }
-  KP.x = Math.max(lo, Math.min(hi, KP.x));
-  // jalan = hadap samping + loncat kecil; berhenti = hadap depan (ikut kursor sedikit)
-  const want = KP.walking ? KP.dir * 1.2 : lookX * 0.3;
+  // v89: ke mana dan ngapain diatur kegiatan ikut jam (khStep, ui/38k-kamar-hangat.js): jalan, baca di sofa, meja, jendela, tidur
+  const face = khStep(t, dt, napping);
+  // jalan = hadap samping + loncat kecil; berhenti = hadap depan (ikut kursor sedikit), atau arah kegiatan (meja/jendela = membelakangi)
+  const want = KP.walking ? KP.dir * 1.2 : face !== null && face !== undefined ? face : lookX * 0.3;
   KP.rot += (want - KP.rot) * 0.12;
-  K.root.rotation.y = KP.rot + idleLook.x * 0.02;
+  K.root.rotation.y = KP.rot + idleLook.x * 0.02 * (1 - KH.lie);
   if (KP.walking && !reduce) K.root.position.y += Math.abs(Math.sin(ts * 8)) * 0.12;
-  K.root.position.x = KP.x; K.root.position.z = KP.z; blob.position.z = KP.z + 0.1;
+  // rebahan di kasur: miring ke arah bantal (kiri), badan sedikit turun ke kasur
+  K.root.rotation.z = KH.lie * 1.45;
+  K.root.position.y += KH.y + KH.lie * 0.4;
+  K.root.position.x = KP.x + KH.lie * 0.5; K.root.position.z = KH.z; blob.position.z = KH.z + 0.1; blob.position.y = 0.03 + KH.y;
+  khFrame(t, dt, ts);
   if (PT3) {
     const want2 = KP.x - KP.dir * 1.1;
     KP.px += (want2 - KP.px) * Math.min(1, dt * 1.6);
     PT3.root.position.x = KP.px; PT3.root.position.z = KP.z - 0.35;
   }
 }
-function kpLamp(v) { return KP.lamp === null ? v : KP.lamp ? Math.max(v, litName === "night" ? 2.6 : 1.3) : 0; }
+// lampu bawaan ruangan ikut lampu berdiri (khMain): nyala sore/malam, mati siang dan waktu tidur, tombol/klik menimpa. Meredup pelan (KH.mainV).
+function kpLamp() { return KH.mainV * Math.max(LIT.lamp, 1.2); }
 
 // ---- suara di dalam kamar: hujan diredam, jangkrik malam, burung pagi, sedikit jalanan
 function kpMix(wx) {
   const wet = { rain: 0.38, storm: 0.6 }[wx] || 0, dry = !wet && wx !== "snow";
-  return { rain: wet, traffic: 0.04, birds: dry && litName === "morning" ? 0.25 : 0, crickets: dry && litName === "night" ? 0.45 : 0, crowd: 0 };
+  const H = khH(), fire = H ? H.candles.reduce((a, C) => Math.max(a, C.v), 0) : 0;
+  return { rain: wet, traffic: 0.04, birds: dry && litName === "morning" ? 0.25 : 0, crickets: dry && litName === "night" ? 0.45 : 0, crowd: 0, glass: wet ? 0.6 + wet * 0.4 : 0, fire: fire * 0.6 };
 }
 
 // ---- tombol dan chat
 const KP_IC = {
   rain: '<path d="M7 15a4 4 0 0 1-.6-8A5.5 5.5 0 0 1 17 8.5a3.5 3.5 0 0 1 .5 6.5"/><path d="M9 18l-1 2M13 18l-1 2M17 18l-1 2"/>',
   lamp: '<path d="M8 3h8l3 8H5Z"/><path d="M12 11v8M8 21h8"/>',
+  focus: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
   snd: '<path d="M11 5 6 9H3v6h3l5 4z"/><path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="x" d="M16 9l5 6M21 9l-5 6"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
   full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
@@ -127,13 +121,14 @@ function kpUi() {
   el.innerHTML = `<div class="kp-top"><div class="kp-who"><b id="kpName"></b><span id="kpClock"></span></div>
       <div class="kp-row"><button class="kp-round" id="kpFull" aria-label="Full screen">${kpSvg("full")}</button><button class="kp-round" id="kpExit" aria-label="Back to the game">${kpSvg("x")}</button></div></div>
     <button class="kp-alert" id="kpAlert" hidden></button>
-    <div class="kp-amb"><button id="kpRain" aria-pressed="false">${kpSvg("rain")}Rain</button><button id="kpLamp" aria-pressed="false">${kpSvg("lamp")}Lamp</button><button id="kpSnd" aria-pressed="true" aria-label="Room sounds">${kpSvg("snd")}</button></div>
+    <div class="kp-amb"><button id="kpRain" aria-pressed="false">${kpSvg("rain")}Rain</button><button id="kpLamp" aria-pressed="false">${kpSvg("lamp")}Lamp</button><button id="kpFocus" aria-pressed="false">${kpSvg("focus")}<span>Focus</span></button><button id="kpSnd" aria-pressed="true" aria-label="Room sounds">${kpSvg("snd")}</button></div>
     <form class="kp-talk" id="kpTalk"><input id="kpIn" autocomplete="off" maxlength="300"><button>Send</button></form>`;
   app.appendChild(el); KP.ui = el;
   $("kpExit").onclick = kpExit;
   $("kpFull").onclick = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) { /* browser nolak: tetap di jendela */ } };
   $("kpRain").onclick = () => { const on = !kpRaining(); WX_FORCE = on ? "rain" : "clear"; wxApply(wxReal); kpSync(); };
   $("kpLamp").onclick = () => { KP.lamp = !kpLampOn(); kpSync(); };
+  $("kpFocus").onclick = () => { if (focus) focusEnd("batal"); else focusStart(); kpSync(); };
   $("kpSnd").onclick = () => { if (!SND) sndInit(); else SND.mute(SND.on); kpSync(); };
   $("kpAlert").onclick = () => { kpExit(); if (game && game.pending) setTimeout(showDilemma, 250); };
   $("kpTalk").addEventListener("submit", async e => {
@@ -150,17 +145,18 @@ function kpUi() {
   kpSync();
 }
 const kpRaining = () => WX === "rain" || WX === "storm";
-const kpLampOn = () => KP.lamp === null ? LIT.lamp > 0 : KP.lamp;
+const kpLampOn = () => khMain() > 0.5;
 function kpSync() {
   if (!KP.ui) return;
   const set = (id, on) => { const b = $(id); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); };
-  set("kpRain", kpRaining()); set("kpLamp", kpLampOn());
+  set("kpRain", kpRaining()); set("kpLamp", kpLampOn()); set("kpFocus", !!focus);
+  $("kpFocus").lastChild.textContent = focus ? `Focus ${focusClock(focusLeftMs())}` : "Focus";
   const s = $("kpSnd"), on = !!(SND && SND.on); s.classList.toggle("off", !on); s.setAttribute("aria-pressed", String(on));
   const n = cur ? cur.nama : "";
   $("kpName").textContent = n; $("kpIn").placeholder = n ? `Say something to ${n}…` : "Say something…";
   $("kpClock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   // keputusan yang nunggu, atau lembar hasil yang muncul selama di sini (disembunyikan): satu tombol kecil, ketuk = balik ke game
-  const pend = !!(game && game.pending), al = $("kpAlert"), t = pend ? `${n} needs you to decide something` : sheetKind ? `Something new for ${n}` : "";
+  const pend = !!(game && game.pending), al = $("kpAlert"), t = pend ? `${n} needs you to decide something` : sheetKind && sheetKind !== "fokus" ? `Something new for ${n}` : "";
   al.hidden = !t; if (t && KP.alert !== t) { KP.alert = t; al.textContent = t; }
   KP.ui.classList.toggle("quiet", now() - KP.moveT > 5000 && document.activeElement !== $("kpIn"));
 }
@@ -175,13 +171,14 @@ function kpEnter() {
   if (talkOpen) closeTalk();
   app.classList.add("kamar"); kpUi();
   DN_DRAFT = KP_PLAN; houseSync(); setRoom(0, true);
-  KP.x = KP.px = (KP.b.x0 + KP.b.x1) / 2; KP.tx = KP.x + 3; KP.wait = 1.5; KP.rot = 0;
+  KP.x = KP.px = (KP.b.x0 + KP.b.x1) / 2; KP.tx = KP.x + 3; KP.wait = 1.5; KP.rot = 0; khEnter();
   sndInit(); applyLight(true); kpSync();
   try { document.documentElement.requestFullscreen().catch(() => {}); } catch (e) { /* tanpa layar penuh juga jalan */ }
   Tele.ev("kamar", { a: "masuk" });
 }
 function kpExit() {
   if (!kamarOn()) return;
+  khExit();
   app.classList.remove("kamar"); if (KP.ui) { KP.ui.remove(); KP.ui = null; }
   WX_FORCE = null; wxApply(wxReal);
   if (K) { if (K.__kp) { K.scale /= KP_CS; K.__kp = false; } K.root.position.set(0, 0, 0); K.root.rotation.y = 0; } blob.position.z = 0.1;
