@@ -25,7 +25,7 @@
   function create() {
     const S = { on: true, started: false };
     try { S.on = localStorage.getItem(KEY) !== "off"; } catch (e) { /* tanpa simpanan: nyala */ }
-    let ac = null, master = null, gains = {}, birdT = 0, mix = null;
+    let ac = null, master = null, gains = {}, birdT = 0, mix = null, pop = null;
     function noiseBuf(kind) {
       const n = ac.sampleRate * 2, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
       let last = 0;
@@ -54,6 +54,10 @@
       const cr = ac.createOscillator(), am = ac.createGain(), ao = ac.createOscillator(), ag = ac.createGain();
       cr.frequency.value = 4300; ao.type = "square"; ao.frequency.value = 22; ag.gain.value = 0.5; am.gain.value = 0.5;
       ao.connect(ag); ag.connect(am.gain); cr.connect(am); am.connect(gains.crickets); cr.start(); ao.start();
+      // v89 kamar: lilin (desis rendah + letupan kecil) dan tetes hujan di kaca (denting tinggi pendek)
+      gains.fire = loop("brown", "lowpass", 520, 0.6);
+      gains.glass = ac.createGain(); gains.glass.gain.value = 1; gains.glass.connect(master);
+      pop = noiseBuf("white");
       S.started = true;
       setInterval(tick, 250);
     }
@@ -63,17 +67,34 @@
       g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16);
       o.connect(g); g.connect(gains.birds); o.start(t0); o.stop(t0 + 0.2);
     }
+    function crack(t0, vol) {
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = pop;
+      f.type = "bandpass"; f.frequency.value = 1800 + Math.random() * 3000; f.Q.value = 1.2;
+      g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.012 + Math.random() * 0.02);
+      src.connect(f); f.connect(g); g.connect(master); src.start(t0, Math.random()); src.stop(t0 + 0.05);
+    }
+    function drip(t0, vol) {
+      const o = ac.createOscillator(), g = ac.createGain(), f0 = 1700 + Math.random() * 2200;
+      o.type = "sine"; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f0 * 0.7, t0 + 0.05);
+      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+      o.connect(g); g.connect(gains.glass); o.start(t0); o.stop(t0 + 0.08);
+    }
     function tick() {
       if (!mix || !S.started) return;
       const t = ac.currentTime;
       for (const k of ["rain", "traffic", "crickets"]) gains[k].gain.setTargetAtTime(mix[k] * (k === "crickets" ? 0.05 : 1), t, 0.8);
       gains.crowd.gain.setTargetAtTime(mix.crowd * 0.45, t, 0.8);
       gains.birds.gain.setTargetAtTime(mix.birds, t, 0.8);
+      gains.fire.gain.setTargetAtTime((mix.fire || 0) * 0.1, t, 0.8);
+      if ((mix.fire || 0) > 0.05) for (let k = 0; k < 3; k++) if (Math.random() < 0.22) crack(t + Math.random() * 0.25, 0.05 * mix.fire);
+      if ((mix.glass || 0) > 0.05) for (let k = 0; k < 4; k++) if (Math.random() < 0.5 * mix.glass) drip(t + Math.random() * 0.25, 0.035 * mix.glass);
       if (mix.birds > 0.05 && performance.now() > birdT) { const n = 2 + Math.floor(Math.random() * 4); for (let k = 0; k < n; k++) chirp(t + k * 0.18, 0.06); birdT = performance.now() + 1500 + Math.random() * 4500; }
     }
     S.start = start;
     S.set = m => { mix = m; };
     S.silence = () => { mix = { rain: 0, traffic: 0, birds: 0, crickets: 0, crowd: 0 }; tick(); };
+    // saklar lampu: dua klik pendek
+    S.click = () => { if (!S.started || !S.on) return; const t = ac.currentTime; crack(t, 0.35); crack(t + 0.035, 0.2); };
     S.mute = off => { S.on = !off; try { localStorage.setItem(KEY, S.on ? "on" : "off"); } catch (e) { /* abaikan */ } if (master) master.gain.setTargetAtTime(S.on ? 0.35 : 0, ac.currentTime, 0.2); };
     // guntur: gemuruh derau rendah yang membesar lalu hilang
     S.thunder = () => {
