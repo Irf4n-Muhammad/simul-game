@@ -1568,6 +1568,14 @@ svg { stroke: currentColor; }
 #kpUI .kp-talk { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; gap: 8px; width: min(520px, 40vw); }
 #kpUI .kp-talk input { flex: 1; min-width: 0; height: 48px; border: 0; border-radius: 999px; padding: 0 20px; font-size: 16px; font-weight: 600; color: var(--ink); background: rgba(255,255,255,.88); -webkit-user-select: text; user-select: text; }
 #kpUI .kp-talk button { height: 48px; border: 0; border-radius: 999px; padding: 0 22px; font-size: 15px; font-weight: 800; color: #fff; background: var(--accent); }
+/* v88: layar lebar (desktop). Games dan mini game tegak dirancang buat HP: isinya dipusatkan selebar HP, sisi kiri kanan gelap.
+   Game melintang (Kart cup, Bonk brawl) tetap penuh, cuma kartu mulai/selesainya dibatasi. Lembar di tampilan penuh (konser, kota) tetap selebar kartu HP. */
+@media (min-width: 700px) and (min-aspect-ratio: 1/1) {
+  .arc { padding-left: max(16px, calc(50% - 260px)); padding-right: max(16px, calc(50% - 260px)); }
+  .fcx:not(.fcx-kart):not(.fcx-brawl) { left: calc(50% - 260px); right: calc(50% - 260px); box-shadow: 0 0 0 100vmax #14121F; }
+  .fcx-kart .fcx-card, .fcx-brawl .fcx-card { left: 50%; right: auto; width: 480px; transform: translate(-50%, -50%); }
+  .sheet-wrap > .card { max-width: 496px; }
+}
 </style>
 
 <div id="app">
