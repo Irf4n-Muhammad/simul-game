@@ -34,6 +34,7 @@ function focusEnd(how) {
     credited = !!game.act(F.cid, "belajar");
     if (credited) { save(); refresh(); const c = game.home.get(F.cid); after = c && c.info.ujian ? c.info.ujian.belajar : null; }
   }
+  if (how === "selesai") hdFocusDone();   // v90: kamar tumbuh (buku di rak, tanaman streak), ui/38l-kamar-hd.js
   Tele.ev("fokus", { a: how, ujian: F.exam ? 1 : 0, menit: Math.min(F.min, Math.round((Date.now() - F.t0) / 60000)), kredit: credited ? 1 : 0 });
   drawToday();
   return { ...F, how, credited, after };
