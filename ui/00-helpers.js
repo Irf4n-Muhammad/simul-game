@@ -1,3 +1,5 @@
+// ================================================================ pembantu dasar: $(id), esc/md (amankan teks sebelum masuk innerHTML), setHtml/setText (tulis DOM cuma kalau berubah)
+// Teks dari pemain atau Claude (nama, chat, post) WAJIB lewat esc() sebelum masuk HTML.
 const $ = id => document.getElementById(id);
 const app = $("app"), canvas = $("scene");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
