@@ -57,7 +57,7 @@ function kpCam() {
   const G = r.g.position, x0 = G.x + CELL, x1 = G.x + 11 * CELL, zB = G.z + CELL, zF = G.z + 4 * CELL;
   KP.b = { x0, x1, zB, zF };
   KP.z = zF - 0.6;
-  if (!r.g.userData.kp) { kpDress(r); khDress(r); }   // v89: lampu kecil, gorden, titik kegiatan (ui/38k-kamar-hangat.js)
+  if (!r.g.userData.kp) { kpDress(r); khDress(r); hdDress(r); }   // v89: lampu kecil, gorden, titik kegiatan (ui/38k-kamar-hangat.js)
   camera.fov = 18;
   const t = Math.tan(THREE.MathUtils.degToRad(9)), el = 0.12, zM = (zB + zF) / 2;
   const dist = ((x1 - x0) * KP_FIT / 2) / (t * camera.aspect) + (zF - zM);
@@ -70,6 +70,7 @@ function kpCam() {
     camera.position.y += dy; look.y += dy; camera.lookAt(look);
   }
   camera.updateProjectionMatrix();
+  KP.cam = { p: camera.position.clone(), l: look.clone() };   // titik tengah parallax (hdFrame)
   Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8, far: 34 }); sun.shadow.camera.updateProjectionMatrix();
 }
 
@@ -89,7 +90,7 @@ function kpFrame(t, dt, ts, napping) {
   K.root.rotation.z = KH.lie * 1.45;
   K.root.position.y += KH.y + KH.lie * 0.4;
   K.root.position.x = KP.x + KH.lie * 0.5; K.root.position.z = KH.z; blob.position.z = KH.z + 0.1; blob.position.y = 0.03 + KH.y;
-  khFrame(t, dt, ts);
+  khFrame(t, dt, ts); hdFrame(t, dt, ts);
   if (PT3) {
     const want2 = KP.x - KP.dir * 1.1;
     KP.px += (want2 - KP.px) * Math.min(1, dt * 1.6);
@@ -178,7 +179,7 @@ function kpEnter() {
 }
 function kpExit() {
   if (!kamarOn()) return;
-  khExit();
+  khExit(); hdExit();
   app.classList.remove("kamar"); if (KP.ui) { KP.ui.remove(); KP.ui = null; }
   WX_FORCE = null; wxApply(wxReal);
   if (K) { if (K.__kp) { K.scale /= KP_CS; K.__kp = false; } K.root.position.set(0, 0, 0); K.root.rotation.y = 0; } blob.position.z = 0.1;

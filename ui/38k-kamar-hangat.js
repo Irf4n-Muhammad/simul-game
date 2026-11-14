@@ -370,7 +370,7 @@ function khFrame(t, dt, ts) {
   const spotK = KH_SUN[litName] || KH_SUN.night, wetK = kpRaining() ? 0.2 : WX === "cloud" || WX === "fog" || WX === "snow" ? 0.5 : 1;
   for (const W of H.wins) {
     W.spot.color.setHex(spotK[0]); W.spot.intensity = spotK[1] * (litName === "night" ? 1 : wetK) * (0.12 + 0.88 * KH.curV) + fl * 9;
-    const sunO = spotK[2] * wetK * KH.curV; W.beam.material.opacity = sunO * 0.22; W.patch.material.opacity = Math.min(1, sunO * 0.9); W.spill.sp.material.opacity = sunO * 0.5; W.beam.visible = W.patch.visible = sunO > 0.01;
+    const sunO = W.sunO = spotK[2] * wetK * KH.curV; W.beam.material.opacity = sunO * 0.22; W.patch.material.opacity = Math.min(1, sunO * 0.9); W.spill.sp.material.opacity = sunO * 0.5; W.beam.visible = W.patch.visible = sunO > 0.01;
     W.sky.material.color.copy(W.sky.userData.khC).multiplyScalar(1 + fl * 2.5);
     if (W.drops.visible && !reduce) W.drops.material.map.offset.y += dt * 0.012;
   }

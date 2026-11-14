@@ -519,5 +519,6 @@ function frame(t) {
   if (cur && !gone && !napping && !anim && !bubble && Math.random() < hdt * 0.06) {
     if (cur.needs.lapar < 30) say("I'm hungry...", 1800); else if (cur.needs.kebersihan < 30) say("I smell funny", 1800); else if (cur.needs.energi < 25) say("So sleepy...", 1800);
   }
+  if (kamarOn() && hdRender()) return;   // v90: kamar HD (bloom, grading) di ui/38l-kamar-hd.js
   renderer.render(scene, camera);
 }
