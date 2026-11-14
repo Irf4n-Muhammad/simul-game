@@ -34,13 +34,14 @@ keep separate saves. If you already started in the browser, use **Back up** ther
 This repository is now the **source** of the game; GitHub Pages serves the build.
 
 - `index.html` — page shell (markup and CSS); loads the modules and `ui.js`
-- `ui/*.js` — the UI script in 41 fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed)
+- `ui/*.js` — the UI script in fragments, stitched into one `ui.js` by `tools/build_ui.py` (generated, not committed); map in `docs/PETA-UI.md`
 - `*.js` — game modules (engine, storylets, town, cosmetics, ...); see `MODULES.md`
 - `today.js`, `soon.js`, `weather.js`, `balik.js`, `obrolan.js`, `kabar.js`, `dapur.js` — the Today, Soon and Someday lines, the weather-skin rules, the
   weekly reverse-care questions, the creature's daily question, the notification plan and the kitchen coin wallet: pure modules (snapshot in, text out) with tests
 - `sim/` — Node simulators and browser harnesses, with last results in `sim/last/` (see `sim/README.md`)
 - `test/` — unit tests for pure functions (`npm test`)
-- `tools/` — `build_ui.py` (stitch UI, `--release` strips Dev code) and `build_site.py` (assemble `_site/`)
+- `tools/` — `build_ui.py` (stitch UI, `--release` strips Dev code), `build_site.py` (assemble `_site/`), `peta.py` (generate the code maps)
+- `ARCHITECTURE.md` — how the game fits together, save/replay rules, and recipes for adding things (start here)
 - `lib/` — three.js r128 (MIT, see `lib/LICENSE.three.txt`)
 - `.github/workflows/pages.yml` — lint, test and build on every push and PR; deploys from `main`: the release build (`_release/`, no Dev
   code) at the root of the site and the full build (`_site/`) under `/dev/`
@@ -51,13 +52,14 @@ Dokumen pengembang ditulis dalam bahasa Indonesia; teks yang dilihat pemain teta
 
 ```
 npm install            # eslint, terser, globals
-npm run lint           # gabung ui.js lalu ESLint (no-undef = error, no-unused-vars = peringatan)
+npm run lint           # gabung ui.js, cek peta kode (tools/peta.py --check), lalu ESLint
+npm run peta           # perbarui docs/PETA-UI.md dan kolom Baris MODULES.md
 npm test               # tes unit Node (node --test test/*.test.js)
 npm run build          # _site/   : build lengkap, Dev tools di balik ?dev=1 (CDN three.js diganti lib/); Pages: /dev/
 npm run build:release  # _release/: build tanpa kode Dev, ditolak kalau masih ada jejak Dev; Pages: akar situs
 npm run check          # keempatnya berurutan
 ```
 
-Fragmen UI ada di `ui/`; `ui.js` adalah hasil gabungan dan tidak di-commit. Peta modul, penanda blok Dev, dan catatan penamaan ada
+**Mulai dari `ARCHITECTURE.md`** (alur data, aturan save/replay, resep nambah fitur). Fragmen UI ada di `ui/`; `ui.js` adalah hasil gabungan dan tidak di-commit; peta fragmennya di `docs/PETA-UI.md` (otomatis). Peta modul, penanda blok Dev, dan catatan penamaan ada
 di `MODULES.md`; simulator dan angka terakhirnya di `sim/README.md`; penjelasan untuk orang awam ada di dokumen
 "Cara Kerja Makhluk Kecil" (tautan di `peta/README.md` proyek).

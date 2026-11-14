@@ -28,7 +28,7 @@ for (const f of process.argv.slice(2)) {
       await E("closeSheet && closeSheet(); 1");
     }
     await E("closePhone && closePhone(true); 1");
-    for (const fn of ["showBurrow('jobs')", "showBurrow('feed')", "showBazaar('new')", "showBazaar('used')", `showTree('${id}')`, "showStatus && showStatus()"]) { const r = await E(fn + "; 1"); if (r !== 1) log.push(`${id} ${fn}: ${r}`); await p.waitForTimeout(100); await E("closeSheet(); 1"); }
+    for (const fn of ["showBurrow('jobs')", "showBurrow('feed')", "showBazaar('new')", "showBazaar('used')", `showTree('${id}')`, "showLife()"]) { const r = await E(fn + "; 1"); if (r !== 1) log.push(`${id} ${fn}: ${r}`); await p.waitForTimeout(100); await E("closeSheet(); 1"); }
   }
   console.log('==', f, 'members', ids.length, 'errs', errs.length); console.log(log.filter(l => !/ ok /.test(l)).join('\n')); console.log(log.filter(l => / ok /.test(l)).join(' | '));
   console.log([...new Set(errs)].slice(0, 10).join('\n'));

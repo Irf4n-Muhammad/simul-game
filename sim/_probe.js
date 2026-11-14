@@ -10,8 +10,8 @@ module.exports = function probe(site) {
   if (!ui.startsWith(WRAP)) throw new Error('ui.js tidak diawali ' + WRAP);
   fs.writeFileSync(site + 'ui.probe.js', WRAP + ' globalThis.__e = s => eval(s);' + ui.slice(WRAP.length));
   const html = fs.readFileSync(site + 'index.html', 'utf8');
-  const tag = '<script src="ui.js"></script>';
-  if (!html.includes(tag)) throw new Error('index.html tidak memuat ui.js');
+  const tag = /<script src="ui\.js(\?v=[0-9a-f]+)?"><\/script>/;   // build_site.py menambah ?v=<hash>
+  if (!tag.test(html)) throw new Error('index.html tidak memuat ui.js');
   fs.writeFileSync(site + 'preview.html', html.replace(tag, '<script src="ui.probe.js"></script>'));
   return site + 'preview.html';
 };

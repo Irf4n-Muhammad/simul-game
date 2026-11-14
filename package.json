@@ -5,8 +5,9 @@
   "scripts": {
     "build": "python3 tools/build_site.py",
     "build:release": "python3 tools/build_site.py --release --out _release",
-    "lint": "python3 tools/build_ui.py && eslint .",
+    "lint": "python3 tools/build_ui.py && python3 tools/peta.py --check && eslint .",
     "test": "node --test test/*.test.js",
+    "peta": "python3 tools/peta.py",
     "check": "npm run lint && npm test && npm run build && npm run build:release"
   },
   "devDependencies": {

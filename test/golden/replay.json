@@ -1,0 +1,23 @@
+{
+  "akun-biz0": {
+    "day": 1400,
+    "pending": null,
+    "logs": 2254,
+    "home": "43ea383bd9caebbc7c0abfdbc7df9eff6c7215f480d9b2bbcc50205f051022a2",
+    "log": "c0ad902d613074411bfe0336645e0badb8dad33a805bf1c1dea6526151cb7eeb"
+  },
+  "akun-biz1": {
+    "day": 1400,
+    "pending": null,
+    "logs": 2541,
+    "home": "f7a88bd64de3de31df289376931bd6ae3b96b5f89193ecc1e53af3f6b9aa0ad0",
+    "log": "241a722903176cec17e6b2fa1ec58463079e863044321f9f644b66960060e02a"
+  },
+  "akun-biz4": {
+    "day": 1200,
+    "pending": null,
+    "logs": 1202,
+    "home": "07c97e5acc96b41df53042e8f1af0f9c4146b2aba827fdf0bcc4311d69569f69",
+    "log": "54ef604a03fc7cdcac751063b56efa0bf404f1a25031121ed91d86ea2cb08a29"
+  }
+}

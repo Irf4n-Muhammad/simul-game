@@ -3,8 +3,10 @@
 
 Isi: index.html sumber (ditambah kepala PWA), ui.js dari tools/build_ui.py, modul .js yang dimuat index.html,
 lib/ (three.js lokal, menggantikan URL CDN), ikon, manifest, sw.js. --release memakai build_ui --release.
+Tiap <script src> lokal diberi ?v=<8 huruf sha256 isinya>: habis deploy, HP nggak bisa lagi dapat index.html baru
+dengan ui.js/modul lama dari cache (campur versi = layar putih), dan file yang nggak berubah tetap ke-cache.
 """
-import argparse, pathlib, re, shutil, subprocess, sys
+import argparse, hashlib, pathlib, re, shutil, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CDN = {
@@ -50,6 +52,11 @@ def main():
     for m in mods:
         if m != "ui.js":
             shutil.copyfile(ROOT / m, out / m)
+    def bust(m):
+        src = m.group(1)
+        digest = hashlib.sha256((out / src).read_bytes()).hexdigest()[:8]
+        return f'<script src="{src}?v={digest}"></script>'
+    raw = re.sub(r'<script src="([^":?]+\.js)"></script>', bust, raw)
     i = raw.find("</style>")
     assert i > 0
     head, body = raw[:i + 8], raw[i + 8:]

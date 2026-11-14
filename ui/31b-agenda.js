@@ -64,6 +64,10 @@ function agGoal(R, ev, ws, we, d) {
     if (c.lbl === "SCHOOL") return c.done
       ? { tx: `${c.nama} is enrolled at ${(c.opts.find(o => o.picked) || {}).label}. You can still switch until ${agDay(c.day)}.`, prog: "✓", done: true, card: c.k }
       : { tx: `Choose ${c.nama}'s school before ${agDay(c.day)}`, prog: "0/1", card: c.k, warn: c.urgent };
+    // kartu les (rekom.js, lbl CLASSES) nggak punya hitungan belajar; dulu jatuh ke cabang belajar dan tampil "undefined/3"
+    if (c.lbl === "CLASSES") return c.done
+      ? { tx: c.tx, prog: "✓", done: true, card: c.k }
+      : { tx: `Pick a class for ${c.nama} by ${agDay(c.day)}`, prog: "0/1", card: c.k };
     return { tx: c.done ? `${c.nama} studied 3 evenings. Ready for the ${c.short.toLowerCase()} on ${agDay(c.day)}.` : `Study with ${c.nama} 3 evenings before the ${c.short.toLowerCase()} on ${agDay(c.day)}`,
       prog: `${c.study}/${Rekom.STUDY_MAX}`, done: c.done, card: c.k, warn: c.urgent };
   }
