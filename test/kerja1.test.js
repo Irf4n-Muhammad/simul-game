@@ -71,11 +71,9 @@ test("pindah kerja: kartu pakai gaji dan biaya hidup beneran, ambil = gaji dobel
     if (opts.ambil && opts.tetap) { seen = { day: x.day, info, M: ST.moveOffer(x.c, x.day) }; return [0, "ambil"]; }
     return orig(x, q, opts, w, info);
   };
-  let pay0 = null;
   for (let d = 0; d < 700 && !seen; d++) {
     g.advance(d, null);
     if (c.st && c.st.job && c.st.job.level === 0 && d > 300) { c.st.job.level = 1; c.traits.ambisius = 80; }
-    if (c.st && c.st.job) pay0 = ST.salary(c.st.job);
   }
   assert.ok(seen, "tawaran pindah muncul");
   const money = seen.info.fx.ambil.find(r => r[0] === "🪙");
