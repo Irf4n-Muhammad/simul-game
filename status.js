@@ -878,9 +878,11 @@
     };
   }
   function familyView(home, day) {
-    const F = fam(home), r = diceDay(F, day);
+    const F = fam(home), r = diceDay(F, day), L = luck(F, day);
     return {
-      dice: { today: r ? { rolled: r.v, saved: r.saved, used: r.used } : null, luck: luck(F, day), bank: F.dice.bank.filter(b => b.day > day - BANK_DAYS).map(b => ({ v: b.v, left: b.day + BANK_DAYS - day })), max: BANK_MAX },
+      // shown: angka yang dipakai sistem hari ini (null kalau belum lempar/pakai). UI wajib pakai ini, bukan hitung sendiri,
+      // supaya angka di HUD sama dengan angka yang masuk skor momen penting.
+      dice: { today: r ? { rolled: r.v, saved: r.saved, used: r.used } : null, luck: L, shown: r && (r.v != null || r.used != null) ? L.value : null, bank: F.dice.bank.filter(b => b.day > day - BANK_DAYS).map(b => ({ v: b.v, left: b.day + BANK_DAYS - day })), max: BANK_MAX },
       kpr: BK.kpr(home) ? { left: Math.round(BK.kpr(home).p), pay: BK.due(BK.kpr(home), day, home), rate: BK.rate("kpr", day, home), late: BK.kpr(home).late || 0, ends: BK.kpr(home).from + BK.kpr(home).term, payoff: BK.payoff(BK.kpr(home)) } : null,
       house: houseOf(home), lot: F.lot || null, build: F.build ? { ...F.build, item: ITEM[F.build.id], left: Math.max(0, F.build.done - day) } : null, moments: F.moments.slice().sort((a, b) => a.day - b.day), results: F.results.slice(),
     };
