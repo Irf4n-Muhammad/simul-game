@@ -56,7 +56,7 @@ function showDice() {
   openSheet("dice", `
     <span class="ribbon" style="background: var(--sky)">TODAY'S LUCK</span>
     <h2>${!rolled && !t?.used ? "Roll once a day. Save the good ones for big days." : `Today's luck: ${L.value} <small class="sub">(+${bonusOf(L.value)} on big moments)</small>`}</h2>
-    ${rolled ? `<p>You rolled <b>${t.rolled}</b>${t.saved ? ", and saved it. Today counts as a 3." : "."}${t.used != null ? ` You're using a saved ${t.used} today.` : ""}</p>` : `<p>If you don't roll, today counts as a 2.</p>`}
+    ${rolled ? `<p>You rolled <b>${t.rolled}</b>${t.saved ? `, and saved it for later. Today counts as a ${L.value}, like a day with no roll.` : "."}${t.used != null ? ` You're using a saved ${t.used} today.` : ""}</p>` : `<p>If you don't roll, today counts as a 2.</p>`}
     ${momentsToday.length ? `<div class="box"><h3>Big moment today</h3>${momentsToday.map(m => `<small>${esc(nameOf(m.cid))}: ${esc(m.label)} · needs ${m.req}</small>`).join("")}</div>` : ""}
     <div class="fieldset"><span class="lbl">Saved dice (${d.bank.length}/${d.max})</span>
       <div class="slots">${Array.from({ length: d.max }, (_, i) => d.bank[i] != null
@@ -70,14 +70,14 @@ function showDice() {
     <p class="muted">Luck can't be bought or re-rolled. Families with a bad streak tend to get luckier later.</p>
     <button class="close" data-close="1">Close</button>`);
   const rb = $("rollBtn"); if (rb) rb.onclick = () => { closeSheet(); rollDice(); };
-  const sb = $("saveDie"); if (sb) sb.onclick = () => { if (game.act("home", "simpan_dadu")) { save(); drawDice(); say("Saved it for a big day!"); showDice(); } };
+  // dadu yang disimpan tidak berlaku hari ini: sembunyikan dadu 3D supaya angkanya tidak dikira masih dipakai
+  const sb = $("saveDie"); if (sb) sb.onclick = () => { if (game.act("home", "simpan_dadu")) { save(); clearTimeout(dieHide); die.visible = false; drawDice(); say("Saved it for a big day!"); showDice(); } };
   sheet.querySelectorAll("[data-use]").forEach(b => b.onclick = () => { if (game.act("home", "pakai_dadu:" + b.dataset.use)) { save(); drawDice(); burst(["★"], 4, "#D4A853"); showDice(); } });
   sheet.querySelector("[data-close]").onclick = closeSheet;
 }
 function drawDice() {
   if (!game) return;
-  const d = famStatus().dice, t = d.today;
-  const shown = t?.used != null ? t.used : t?.rolled != null ? (t.saved ? 3 : t.rolled) : null;
+  const shown = famStatus().dice.shown;   // angka yang benar-benar dipakai sistem hari ini (status.js familyView)
   setHtml($("diceBtn"), (shown ? DIE_FACE[shown] : "?") + (shown ? "" : '<span class="badge"></span>'));
   setAttr($("diceBtn"), "aria-label", shown ? `Today's luck: ${shown}` : "Roll today's dice");
 }
@@ -126,7 +126,8 @@ function showResult(r) {
     <h2>${esc(r.line || r.label)}</h2>
     ${r.by === "self" ? `<p>${esc(r.name)} had applied on their own.</p>` : ""}
     ${scoreRows(r.parts, r.req)}
-    ${r.parts.src === "none" ? `<p>No dice was rolled that day, so it counted as a 2.</p>` : ""}
+    ${r.parts.src === "none" ? `<p>No dice was rolled ${r.day === today() - 1 ? "yesterday" : "that day"}, so it counted as a ${r.parts.dice}. Today's roll counts for today's moments.</p>` : ""}
+    ${r.parts.src === "saved_away" ? `<p>That day's roll was saved for later, so the day counted as a ${r.parts.dice}.</p>` : ""}
     ${r.tip ? `<div class="box"><h3>Next time</h3><small>${esc(r.tip)}</small></div>` : ""}
     <button class="big" data-close="1">${r.pass ? "Yay!" : "Okay"}</button>`);
   sheet.querySelector("[data-close]").onclick = closeSheet;
