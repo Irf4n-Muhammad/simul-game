@@ -189,6 +189,22 @@ function buildSet(place) {
   }
   return g;
 }
+// v91.1: small things that say what the day was (a bowl for the first real food, a book for reading, the favourite toy...)
+const PHOTO_THING = { makan_padat: "bowl", warisan_resep: "bowl", baca_sendiri: "book", memoar_selesai: "book", benda_kesayangan: "plush", nginep: "sleepbag", kasur_sendiri: "plush",
+  potong_rambut: "tufts", hobi_baru: ["book", "paint", "plush"], hobi_sendiri: ["paint", "book"], gaya_sendiri: "mirror", kerja_sambilan: "apron", reuni: "cups", kencan: "cups", jadian: "cups", kenalan_menarik: "cups" };
+function addThing(g, kind, rnd) {
+  const T = new THREE.Group(), side = rnd() < 0.5 ? -1 : 1; T.position.set(side * 1.35, 0, 1.05); T.rotation.y = (rnd() - 0.5) * 0.8; g.add(T);
+  if (kind === "bowl") { mesh(CYL(0.42, 0.26, 0.26, 28), SM(0xf3ede4, { roughness: 0.5 }), 0, 0.13, 0, T); mesh(CYL(0.37, 0.37, 0.03, 24), SM(0xe0b46a), 0, 0.24, 0, T); const sp = mesh(RB(0.07, 0.03, 0.6, 0.01), SM(0xb8945a, { metalness: 0.6, roughness: 0.3 }), 0.18, 0.3, 0.05, T); sp.rotation.set(0.35, 0.5, 0); }
+  if (kind === "book") { for (const sx of [-1, 1]) { const pg = mesh(RB(0.45, 0.05, 0.6, 0.01), SM(0xfaf6ef), sx * 0.23, 0.06, 0, T); pg.rotation.z = sx * -0.08; } mesh(RB(0.98, 0.04, 0.66, 0.01), SM(0xb86f52), 0, 0.02, 0, T); mesh(RB(0.5, 0.18, 0.66, 0.02), SM(0x6d7790), 0.4, 0.09, -0.9, T).rotation.y = 0.4; }
+  if (kind === "plush") { const c = 0xc9a27a; mesh(SPH(0.32, 20, 16), SM(c, { roughness: 1 }), 0, 0.3, 0, T).scale.y = 0.9; mesh(SPH(0.24, 18, 14), SM(c, { roughness: 1 }), 0, 0.72, 0.02, T); for (const sx of [-1, 1]) { mesh(SPH(0.09, 10, 8), SM(c, { roughness: 1 }), sx * 0.17, 0.92, 0, T); mesh(SPH(0.03, 8, 6), SM(0x2e2a26), sx * 0.08, 0.76, 0.21, T); } mesh(SPH(0.05, 8, 6), SM(0x2e2a26), 0, 0.68, 0.24, T); }
+  if (kind === "sleepbag") { T.position.set(side * 1.6, 0, 0.6); mesh(RB(1.1, 0.22, 2.0, 0.1), SM(0x7e9cb3, { roughness: 1 }), 0, 0.11, 0, T); mesh(RB(0.8, 0.18, 0.5, 0.08), SM(0xf3ede4, { roughness: 1 }), 0, 0.28, -0.7, T); }
+  if (kind === "tufts") for (let i = 0; i < 9; i++) { const t = mesh(SPH(0.07, 8, 6), SM(0xd9c4a5, { roughness: 1 }), (rnd() - 0.5) * 1.4 - side * 1.35, 0.03, (rnd() - 0.5) * 0.8, T); t.scale.set(1.6, 0.4, 0.8); }
+  if (kind === "paint") { const e = mesh(RB(0.9, 1.1, 0.05, 0.02), SM(0xfaf6ef), 0, 1.0, 0, T); e.rotation.x = -0.25; [[0xc2704f, -0.2, 1.1], [0x7e9cb3, 0.15, 0.95], [0xd4a853, 0.05, 1.25]].forEach(([c, x, y]) => mesh(SPH(0.12, 10, 8), SM(c), x, y, 0.06, T).scale.z = 0.2); for (const sx of [-0.35, 0.35]) mesh(CYL(0.025, 0.025, 1.0, 6), SM(0xa47a55), sx, 0.5, -0.15, T).rotation.x = 0.2; }
+  if (kind === "mirror") { mesh(RB(0.7, 1.4, 0.06, 0.06), SM(0xb8945a, { metalness: 0.4, roughness: 0.4 }), 0, 0.75, -0.2, T); mesh(new THREE.PlaneGeometry(0.58, 1.26), SM(0xdfe8ee, { metalness: 0.9, roughness: 0.08, envMapIntensity: 1 }), 0, 0.75, -0.16, T); }
+  if (kind === "apron") T.visible = false;
+  if (kind === "cups") { T.position.set(side * 0.9, 1.38, -2.35); T.rotation.y = 0; /* on the café counter, behind them */ for (const sx of [-0.35, 0.35]) { mesh(CYL(0.13, 0.11, 0.26, 18), SM(0xf3ede4, { roughness: 0.4 }), sx, 0.13, 0, T); mesh(CYL(0.11, 0.11, 0.02, 16), SM(0x6b4a33), sx, 0.25, 0, T); } }
+  return T;
+}
 function addProp(g, prop, parts) {
   if (prop === "cake") { mesh(CYL(0.55, 0.55, 0.45, 28), SM(0xf6efe6), 0, 0.23, 1.6, g); mesh(CYL(0.4, 0.4, 0.3, 28), SM(0xe9b8b0), 0, 0.6, 1.6, g); mesh(CYL(0.03, 0.03, 0.28, 8), SM(0xfaf6ef), 0, 0.89, 1.6, g); mesh(SPH(0.06, 10, 8), M(0xffd27a, { emissive: 0xffb347, emissiveIntensity: 1.2 }), 0, 1.07, 1.6, g); }
   if (prop === "balloons") [[-2.4, 3.9, 0xc2704f], [-1.9, 4.4, 0xd4a853], [-2.9, 4.5, 0x7e9cb3]].forEach(([x, y, c]) => { mesh(SPH(0.4, 20, 16), SM(c, { roughness: 0.4 }), x, y, -1, g).scale.y = 1.15; mesh(CYL(0.01, 0.01, y - 0.5, 4), SM(0x777777), x, (y - 0.5) / 2, -1, g); });
@@ -281,8 +297,10 @@ function photoCast(g, op, mood, inRoom) {
   for (const c of cast) { const b = mesh(new THREE.PlaneGeometry(2.8 * k, 2.8 * k), F(0xffffff, { map: blobTex, transparent: true, depthWrite: false }), c.p.root.position.x, 0.02, c.p.root.position.z, g); b.rotation.x = -Math.PI / 2; c.blob = b; }
   return { cast, subj, phase, sz: (PHASE_SCALE[phase] || 1) * k, crowd: people.length > 1 ? 1.45 : people.length ? 1.25 : 1 };
 }
+function photoThing(g, op, rnd) { const t = PHOTO_THING[op.eid]; if (!t || op.who.length > 1) return; const k = Array.isArray(t) ? t[Math.floor(rnd() * t.length)] : t; const T = addThing(g, k, rnd); T.userData.thing = 1; if (op.who.length) T.position.z += 0.5; }
 // free what one photo built (the body and tail-base geometry are shared with the creature on screen, so they stay)
 function photoFree(g) { g.traverse(n => { if (n.geometry && n.geometry !== BODY_GEO && n.geometry !== TAIL_BASE) n.geometry.dispose(); const ms = n.material ? [].concat(n.material) : []; for (const m of ms) m.dispose(); }); if (g.parent) g.parent.remove(g); }
+const PHOTO_BLUR = { wide: 1.1, mid: 2.2, close: 3.4 };
 const PHOTO_OUT = place => place === "park" || place === "plaza";
 // pose for one shot: everyone turns toward the camera (or away, candid), the subject may be mid-hop or mid-blink
 function photoPose(C, op, mood, fr, cam) {
@@ -294,18 +312,40 @@ function photoPose(C, op, mood, fr, cam) {
     if (me && mood.low && op.face === "joy") p.smile.position.y -= 0.08;
   });
 }
-// one shot from a scene: render it into a corner of the main canvas, copy it out, put the canvas back as it was
-function photoShot(sc, cam, bg, post) {
+// one shot from a scene: render it into a corner of the main canvas, copy it out, put the canvas back as it was.
+// v91.1 depth of field: a second pass draws only the cast and the props (white, no light) as a mask; the picture is blurred
+// behind them by how close the lens is, then the sharp cast goes back on top. A real camera at that distance does the same.
+const MASK_M = new THREE.MeshBasicMaterial({ color: 0xffffff });
+function photoShot(sc, cam, bg, post, foc) {
   const pr = renderer.getPixelRatio(), Wd = 360, Hd = 450, size = renderer.getSize(new THREE.Vector2());
+  const grab = () => { const c = document.createElement("canvas"); c.width = Wd; c.height = Hd; c.getContext("2d").drawImage(canvas, 0, canvas.height - Hd, Wd, Hd, 0, 0, Wd, Hd); return c; };
   renderer.shadowMap.needsUpdate = true;
   renderer.setScissorTest(true); renderer.setViewport(0, 0, Wd / pr, Hd / pr); renderer.setScissor(0, 0, Wd / pr, Hd / pr);
   renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam);
-  const out = document.createElement("canvas"); out.width = Wd; out.height = Hd; const g2 = out.getContext("2d");
-  const gr = g2.createLinearGradient(0, 0, 0, Hd); gr.addColorStop(0, bg[0]); gr.addColorStop(1, bg[1]); g2.fillStyle = gr; g2.fillRect(0, 0, Wd, Hd);
-  g2.drawImage(canvas, 0, canvas.height - Hd, Wd, Hd, 0, 0, Wd, Hd);
+  const sharp = grab(); let mask = null;
+  if (foc && foc.blur > 0.3) {
+    const off = [];
+    const hide = o => { if (o.visible) { o.visible = false; off.push(o); } };
+    for (const o of sc.children) if (o !== foc.g) hide(o);
+    for (const o of foc.hide || []) hide(o);
+    for (const o of foc.blobs || []) hide(o);
+    const tm = renderer.toneMapping, sm = renderer.shadowMap.enabled; renderer.toneMapping = THREE.NoToneMapping;
+    sc.overrideMaterial = MASK_M; renderer.clear(); renderer.render(sc, cam); sc.overrideMaterial = null; renderer.toneMapping = tm; renderer.shadowMap.enabled = sm;
+    mask = grab(); off.forEach(o => o.visible = true);
+  }
   renderer.setScissorTest(false); renderer.setViewport(0, 0, size.x, size.y); renderer.setClearColor(0x000000, 0);
+  const out = document.createElement("canvas"); out.width = Wd; out.height = Hd; const g2 = out.getContext("2d");
+  const base = document.createElement("canvas"); base.width = Wd; base.height = Hd; const gb = base.getContext("2d");
+  const gr = gb.createLinearGradient(0, 0, 0, Hd); gr.addColorStop(0, bg[0]); gr.addColorStop(1, bg[1]); gb.fillStyle = gr; gb.fillRect(0, 0, Wd, Hd); gb.drawImage(sharp, 0, 0);
+  if (mask) {
+    // blur the whole frame (edges filled so the blur doesn't pull in black), then lay the sharp subject back with a soft mask edge
+    g2.drawImage(base, 0, 0); g2.filter = `blur(${foc.blur}px)`; g2.drawImage(base, 0, 0); g2.filter = "none";
+    const subj = document.createElement("canvas"); subj.width = Wd; subj.height = Hd; const gs = subj.getContext("2d");
+    gs.drawImage(base, 0, 0); gs.globalCompositeOperation = "destination-in"; gs.filter = "blur(1.2px)"; gs.drawImage(mask, 0, 0); gs.filter = "none";
+    g2.drawImage(subj, 0, 0);
+  } else g2.drawImage(base, 0, 0);
   photoFilm(g2, Wd, Hd, post);
-  return out.toDataURL("image/jpeg", 0.82);
+  return out.toDataURL("image/jpeg", 0.85);
 }
 // what a camera adds: rain or snow in front of the lens outside, a flash at night, a bit of grain and a soft vignette
 function photoFilm(g, w, h, P) {
@@ -313,6 +353,10 @@ function photoFilm(g, w, h, P) {
   if (P.out && (P.wx === "rain" || P.wx === "storm")) { g.strokeStyle = P.night ? "rgba(190,205,230,.32)" : "rgba(255,255,255,.4)"; g.lineWidth = 1.1; for (let i = 0; i < 140; i++) { const x = rnd() * w, y = rnd() * h, l = 10 + rnd() * 18; g.beginPath(); g.moveTo(x, y); g.lineTo(x - l * 0.22, y + l); g.stroke(); } }
   if (P.out && P.wx === "snow") { g.fillStyle = "rgba(255,255,255,.85)"; for (let i = 0; i < 90; i++) { const r = 0.8 + rnd() * 2.2; g.globalAlpha = 0.5 + rnd() * 0.5; g.beginPath(); g.arc(rnd() * w, rnd() * h, r, 0, 7); g.fill(); } g.globalAlpha = 1; }
   if (P.out && P.wx === "storm" && rnd() < 0.5) { g.fillStyle = "rgba(220,230,255,.18)"; g.fillRect(0, 0, w, h); }
+  // colour of the hour: night cool and low, evening warm, morning soft gold (lamplit rooms keep a little warmth)
+  const GR = { night: [["multiply", "rgba(70,82,130,.42)"], ["soft-light", "rgba(255,170,90,.18)"]], evening: [["soft-light", "rgba(255,140,70,.32)"], ["multiply", "rgba(235,215,225,.25)"]], morning: [["soft-light", "rgba(255,205,150,.28)"]], day: [["soft-light", "rgba(255,250,240,.12)"]] }[P.period] || [];
+  for (const [op, c] of GR) { g.globalCompositeOperation = op; g.fillStyle = c; g.fillRect(0, 0, w, h); }
+  g.globalCompositeOperation = "source-over";
   if (P.flash) { const f = g.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.8); f.addColorStop(0, "rgba(255,255,255,.16)"); f.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = f; g.fillRect(0, 0, w, h); }
   const v = g.createRadialGradient(w / 2, h / 2, w * 0.38, w / 2, h / 2, w * 0.82); v.addColorStop(0, "rgba(20,12,6,0)"); v.addColorStop(1, `rgba(20,12,6,${P.night ? 0.5 : 0.3})`); g.fillStyle = v; g.fillRect(0, 0, w, h);
   const im = g.getImageData(0, 0, w, h), d = im.data, amt = P.night ? 14 : 8;
@@ -332,8 +376,8 @@ function photoAtHome(op, mood, rnd, kinds) {
   const lampOn = napUntil > now() ? Math.max(LIT.lamp, 0.4) : LIT.lamp, lamps = (r.g.userData.lamps || []).map(o => [o.l, o.l.intensity]);
   for (const [l] of lamps) l.intensity = lampOn * ((r.g.userData.lamps.find(o => o.l === l) || {}).strength || 1);
   const g = new THREE.Group(); scene.add(g);
-  const C = photoCast(g, op, mood, true); addProp(g, op.prop, C.subj);
-  if (op.prop) g.children.filter(o => !o.isGroup).forEach(o => { if (!C.cast.some(c => c.blob === o)) { o.position.multiplyScalar(PET); o.scale.multiplyScalar(PET); } });
+  const C = photoCast(g, op, mood, true); addProp(g, op.prop, C.subj); photoThing(g, op, rnd);
+  g.children.filter(o => (op.prop && !o.isGroup) || o.userData.thing).forEach(o => { if (!C.cast.some(c => c.blob === o)) { o.position.multiplyScalar(PET); o.scale.multiplyScalar(PET); } });
   const cam = new THREE.PerspectiveCamera(30, 0.8, 0.3, 200), night = mood.period === "night" || mood.period === "evening";
   const flash = new THREE.PointLight(0xfff6ea, 0, 30, 1.4); scene.add(flash);
   const bg = LIT.tint || r.bg, imgs = [];
@@ -343,7 +387,7 @@ function photoAtHome(op, mood, rnd, kinds) {
     cam.rotateY(fr.third); cam.rotateZ(fr.roll); cam.updateProjectionMatrix();
     photoPose(C, op, mood, fr, cam.position);
     const useFlash = night && i === 1; flash.position.copy(cam.position); flash.intensity = useFlash ? 0.9 : 0;
-    imgs.push(photoShot(scene, cam, bg, { rnd, night: mood.period === "night", flash: useFlash, out: false, wx: mood.wx }));
+    imgs.push(photoShot(scene, cam, bg, { rnd, night: mood.period === "night", period: mood.period, flash: useFlash, out: false, wx: mood.wx }, { g, blobs: C.cast.map(c => c.blob), blur: PHOTO_BLUR[kind] }));
   });
   scene.remove(flash); photoFree(g);
   for (const [l, v] of lamps) l.intensity = v;
@@ -381,7 +425,7 @@ function photoOutside(op, mood, rnd, kinds) {
   const sky = skyTex(mood.period, mood.wx);
   if (set.userData.sky) { set.userData.sky.map = sky; set.userData.sky.needsUpdate = true; }
   for (const m of set.userData.panes || []) { m.map = sky; m.needsUpdate = true; }
-  const C = photoCast(g, op, mood, false); addProp(g, op.prop, C.subj);
+  const C = photoCast(g, op, mood, false); addProp(g, op.prop, C.subj); photoThing(g, op, rnd);
   const imgs = [], cam = st.cam, flash = new THREE.PointLight(0xfff6ea, 0, 30, 1.4); st.sc.add(flash);
   const bg = out ? townSky() : ["#efe6da", "#e4d8c8"];
   kinds.forEach((kind, i) => {
@@ -390,7 +434,7 @@ function photoOutside(op, mood, rnd, kinds) {
     cam.rotateY(fr.third); cam.rotateZ(fr.roll); cam.updateProjectionMatrix();
     photoPose(C, op, mood, fr, cam.position);
     const useFlash = night && i === 1; flash.position.copy(cam.position); flash.intensity = useFlash ? 0.9 : 0;
-    imgs.push(photoShot(st.sc, cam, bg, { rnd, night, flash: useFlash, out, wx: mood.wx }));
+    imgs.push(photoShot(st.sc, cam, bg, { rnd, night, period: mood.period, flash: useFlash, out, wx: mood.wx }, { g, hide: [set], blobs: C.cast.map(c => c.blob), blur: PHOTO_BLUR[kind] * (out ? 1.2 : 1) }));
   });
   st.sc.remove(flash); g.remove(set); photoFree(g);
   cam.rotation.set(0, 0, 0); studioLight(st, null);
